@@ -614,6 +614,11 @@ async function loadPreferences() {
 }
 
 async function deleteEntry(entryId) {
+  const confirmation = prompt('Type "delete permanently" to confirm deletion:');
+  if (!confirmation || confirmation.trim().toLowerCase() !== 'delete permanently') {
+    saveStatus.textContent = 'Deletion cancelled.';
+    return;
+  }
   const response = await fetch(`/api/entries/${entryId}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },

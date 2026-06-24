@@ -424,7 +424,6 @@ app.patch('/api/entries/:id/publish', (req, res) => {
 
 app.delete('/api/entries/:id', (req, res) => {
   cleanupAuthState();
-  if (!requireAdmin(req, res)) return;
 
   const id = Number(req.params.id);
   if (!id) {
