@@ -508,15 +508,18 @@ function renderOxfordResult(word, entry) {
     return;
   }
   if (!entry || !entry.definition) {
-    oxfordResults.textContent = `No definition found for "${word}".`;
+    const mwUrl = `https://www.merriam-webster.com/dictionary/${encodeURIComponent(word)}`;
+    oxfordResults.innerHTML = `No local definition found for "${word}". <a href="${mwUrl}" target="_blank" rel="noopener">Look up on Merriam-Webster</a>`;
     return;
   }
   const syns = entry.synonyms || [];
   const sorted = Array.isArray(syns) ? syns.slice().sort((a, b) => a.localeCompare(b)) : [];
+  const mwUrl = `https://www.merriam-webster.com/dictionary/${encodeURIComponent(word)}`;
   oxfordResults.innerHTML = `
     <div class="thesaurus-heading">
       <strong>${word}</strong>
       <div class="thesaurus-definition">${entry.definition}</div>
+      <a href="${mwUrl}" target="_blank" rel="noopener" style="font-size:0.85em;">Full definition on Merriam-Webster</a>
     </div>
     <div class="thesaurus-synonym-list">
       <strong>Related</strong>
@@ -528,8 +531,25 @@ function renderOxfordResult(word, entry) {
 async function handleOxfordLookup() {
   const term = (oxfordInput && oxfordInput.value.trim()) || (entryTitle && entryTitle.value.trim());
   if (!term) return;
+  if (oxfordResults) oxfordResults.textContent = 'Looking up...';
   await loadOxfordDictionary();
-  const entry = findOxfordEntry(term);
+  let entry = findOxfordEntry(term);
+  if (!entry || !entry.definition) {
+    // Fallback to Free Dictionary API
+    try {
+      const resp = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        const meanings = data[0]?.meanings || [];
+        const firstMeaning = meanings[0];
+        if (firstMeaning) {
+          const def = firstMeaning.definitions[0]?.definition || '';
+          const syns = firstMeaning.definitions[0]?.synonyms || firstMeaning.synonyms || [];
+          entry = { definition: def, synonyms: syns };
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
   renderOxfordResult(term, entry);
 }
 
