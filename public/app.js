@@ -1031,6 +1031,36 @@ if (oxfordInput) oxfordInput.addEventListener('keypress', (event) => {
   }
 });
 
+// Spellcheck
+const spellcheckInput = document.getElementById('spellcheck-input');
+const spellcheckBtn = document.getElementById('spellcheck-btn');
+const spellcheckResults = document.getElementById('spellcheck-results');
+
+async function handleSpellcheck() {
+  if (!spellcheckInput || !spellcheckResults) return;
+  const word = spellcheckInput.value.trim();
+  if (!word) { spellcheckResults.textContent = 'Enter a word to check.'; return; }
+  spellcheckResults.textContent = 'Checking...';
+  try {
+    const resp = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+    if (resp.ok) {
+      spellcheckResults.innerHTML = `✅ <strong>${word}</strong> is spelled correctly.`;
+    } else if (resp.status === 404) {
+      const mwUrl = `https://www.merriam-webster.com/dictionary/${encodeURIComponent(word)}`;
+      spellcheckResults.innerHTML = `❌ <strong>${word}</strong> — not recognized. <a href="${mwUrl}" target="_blank" rel="noopener">Check on Merriam-Webster</a>`;
+    } else {
+      spellcheckResults.textContent = 'Could not check spelling right now.';
+    }
+  } catch (e) {
+    spellcheckResults.textContent = 'Could not check spelling right now.';
+  }
+}
+
+if (spellcheckBtn) spellcheckBtn.addEventListener('click', handleSpellcheck);
+if (spellcheckInput) spellcheckInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); handleSpellcheck(); }
+});
+
 async function refreshAdminDictionaryStatus(isAdmin) {
   if (!adminStatusBadge) return;
   if (!isAdmin) {
