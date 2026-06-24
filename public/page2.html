@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Personal Blog - Page 2</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div class="header-top">
+        <div>
+          <h1 id="blog-title-display">Your Personal Blog</h1>
+          <p class="subtitle">Blog Page 2</p>
+          <input id="blog-title-input" class="blog-title-input" type="text" placeholder="Type your blog name" />
+        </div>
+        <a id="support-link-button" class="support-button" href="/support">Support</a>
+      </div>
+      <nav class="page-nav">
+        <a class="page-button" href="/page1">Blog Page 1</a>
+        <a class="page-button active" href="/page2">Blog Page 2</a>
+        <a class="page-button" href="/page3">Blog Page 3</a>
+        <a class="page-button" href="/library">Library</a>
+        <a class="page-button" href="/published">Public Entries</a>
+      </nav>
+      <div id="new-site-banner" class="new-site-banner" style="display:none;">
+        <div class="new-site-banner-text">
+          This blog is getting a new home soon. <a id="new-site-link" href="#" target="_blank">Visit the new website</a> or choose Remind me later and we’ll show this again.
+        </div>
+        <button id="new-site-remind" class="secondary-button">Remind me later</button>
+      </div>
+    </header>
+    <section class="entry-form-section">
+      <div class="entry-form-card">
+        <div class="form-row timestamp-row">
+          <label>Timestamp</label>
+          <div id="current-timestamp" class="timestamp-display"></div>
+        </div>
+        <div class="form-row">
+          <label for="entry-title">Title</label>
+          <input id="entry-title" type="text" placeholder="Entry title" />
+        </div>
+        <div class="form-row">
+          <label for="entry-content">Write your entry</label>
+          <textarea id="entry-content" rows="12" placeholder="Begin writing your journal entry here..."></textarea>
+        </div>
+        <div class="form-row form-actions">
+          <button id="save-entry">Save Entry</button>
+          <span id="save-status" class="save-status"></span>
+        </div>
+      </div>
+    </section>
+    <section class="search-panel">
+      <div class="search-row">
+        <label for="search-input">Search entries</label>
+        <input id="search-input" type="search" placeholder="Search by title or content" />
+      </div>
+      <div class="search-row">
+        <label for="calendar-input">Calendar search</label>
+        <input id="calendar-input" type="date" />
+      </div>
+      <div class="search-row">
+        <label for="font-family">Font family</label>
+        <select id="font-family">
+          <option value="">Default (Book Antiqua)</option>
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="'Times New Roman', serif">Times New Roman</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="'Courier New', monospace">Courier New</option>
+          <option value="sans-serif">Sans-serif</option>
+          <option value="serif">Serif</option>
+          <option value="monospace">Monospace</option>
+          <option value="custom">Custom...</option>
+        </select>
+        <input id="font-family-custom" type="text" placeholder="Enter custom font family" style="display:none;margin-top:6px;" />
+      </div>
+      <div class="search-row">
+        <label for="font-size">Font size (px)</label>
+        <input id="font-size" type="number" min="8" max="72" placeholder="16" />
+      </div>
+      <div class="search-row">
+        <label for="support-url">Support page link</label>
+        <input id="support-url" type="text" placeholder="https://your-secure-pay-site.example.com" />
+      </div>
+      <div class="search-row">
+        <label for="new-site-url">New website URL</label>
+        <input id="new-site-url" type="text" placeholder="https://yournewsite.example.com" />
+      </div>
+      <div class="search-row">
+        <label for="admin-password">Admin password</label>
+        <input id="admin-password" type="password" placeholder="Admin password to delete entries" />
+        <button id="admin-login">Login</button>
+        <button id="admin-logout" style="display:none;">Logout</button>
+      </div>
+      <div class="search-row">
+        <button id="save-prefs-server">Save preferences to server</button>
+      </div>
+      <div class="search-row">
+        <label for="new-admin-password">New admin password</label>
+        <input id="new-admin-password" type="password" placeholder="Enter new password" />
+      </div>
+      <div class="search-row">
+        <label for="current-admin-password">Current password</label>
+        <input id="current-admin-password" type="password" placeholder="Enter current password" />
+      </div>
+      <div class="search-row">
+        <label for="override-code">Override code</label>
+        <input id="override-code" type="text" placeholder="Enter override code if forgotten" />
+      </div>
+      <div class="search-row">
+        <button id="change-password">Change admin password</button>
+      </div>
+    </section>
+    <section class="entries-section">
+      <h2>Entries</h2>
+      <div id="entries-list" class="entries-list"></div>
+    </section>
+    <footer class="site-footer">
+      <p>© 2026 My Permanent Blog. All rights reserved. Unauthorized copying prohibited.</p>
+    </footer>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

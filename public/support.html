@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Support Your Personal Blog</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div class="header-top">
+        <div>
+          <h1>Support Your Personal Blog</h1>
+          <p class="subtitle">This site is free for visitors. Enjoy your own personal blog experience.</p>
+        </div>
+        <a id="support-link-button" class="support-button" href="/page1">Back to the blog</a>
+      </div>
+      <nav class="page-nav">
+        <a class="page-button" href="/page1">Blog Page 1</a>
+        <a class="page-button" href="/page2">Blog Page 2</a>
+        <a class="page-button" href="/page3">Blog Page 3</a>
+        <a class="page-button" href="/published">Public Entries</a>
+        <a class="page-button active" href="/support">Support</a>
+      </nav>
+    </header>
+
+    <section class="entry-form-section">
+      <div class="entry-form-card" style="text-align:center;">
+        <h2>Support</h2>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+          <a id="cashapp-link-button" class="support-button" href="#" style="display:none;">Open Cash App Page</a>
+          <a id="venmo-link-button" class="support-button" href="#" style="display:none;">Open Venmo Page</a>
+        </div>
+        <div class="qr-grid" style="display:grid;gap:16px;margin-top:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));">
+          <div class="qr-section">
+            <h3>Cash App</h3>
+            <img id="cashapp-qr" src="" alt="" style="display:none;width:260px;height:260px;border-radius:12px;border:1px solid #ddd;" />
+            <p id="cashapp-qr-note" style="display:none;margin-top:8px;color:#4a3c31;">Scan this Cash App QR with your phone to donate.</p>
+          </div>
+          <div class="qr-section">
+            <h3>Venmo</h3>
+            <img id="venmo-qr" "https://account.venmo.com/u/Lee-Roby-2" src="" alt="" style="display:none;width:260px;height:260px;border-radius:12px;border:1px solid #ddd;" />
+            <p id="venmo-qr-note" style="display:none;margin-top:8px;color:#4a3c31;">Scan this Venmo QR with your phone for Samsung Pass approval.</p>
+          </div>
+        </div>
+        <div id="admin-upload" style="display:none;margin-top:14px;text-align:left;">
+          <label for="qr-type">Choose QR type</label><br/>
+          <select id="qr-type">
+            <option value="cashapp">Cash App QR</option>
+            <option value="venmo">Venmo QR</option>
+          </select>
+          <div style="margin-top:10px;">
+            <label for="qr-file">Upload QR image (admin only)</label><br/>
+            <input id="qr-file" type="file" accept="image/*" />
+            <button id="upload-qr">Upload QR</button>
+          </div>
+          <p id="upload-status" style="color:#4a3c31;margin-top:8px;"></p>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+    async function initSupportPageLink() {
+      const cashAppButton = document.getElementById('cashapp-link-button');
+      const venmoButton = document.getElementById('venmo-link-button');
+      const cashAppQrImg = document.getElementById('cashapp-qr');
+      const cashAppQrNote = document.getElementById('cashapp-qr-note');
+      const venmoQrImg = document.getElementById('venmo-qr');
+      const venmoQrNote = document.getElementById('venmo-qr-note');
+      if (!cashAppButton || !venmoButton) return;
+      try {
+        const response = await fetch('/api/settings');
+        if (!response.ok) return;
+        const settings = await response.json();
+        const cashAppUrl = (settings.supportCashAppUrl || settings.supportUrl || '').trim();
+        const venmoUrl = (settings.supportVenmoUrl || '').trim();
+
+        if (cashAppUrl) {
+          cashAppButton.href = cashAppUrl;
+          cashAppButton.target = '_blank';
+          cashAppButton.style.display = 'inline-flex';
+        } else {
+          cashAppButton.style.display = 'none';
+        }
+
+        if (venmoUrl) {
+          venmoButton.href = venmoUrl;
+          venmoButton.target = '_blank';
+          venmoButton.style.display = 'inline-flex';
+        } else {
+          venmoButton.style.display = 'none';
+        }
+
+        const cashAppQrPath = (settings.supportCashAppQrPath || settings.supportQrPath || '').trim();
+        const venmoQrPath = (settings.supportVenmoQrPath || '').trim();
+
+        if (cashAppQrImg && cashAppQrNote && cashAppQrPath) {
+          cashAppQrImg.src = cashAppQrPath;
+          cashAppQrImg.alt = 'Uploaded Cash App QR code';
+          cashAppQrImg.style.display = 'block';
+          cashAppQrNote.textContent = 'Scan this Cash App QR with your phone to donate.';
+          cashAppQrNote.style.display = 'block';
+        } else if (cashAppQrImg && cashAppQrNote && cashAppUrl && cashAppUrl.includes('cash.app')) {
+          const qrData = encodeURIComponent(cashAppUrl);
+          cashAppQrImg.src = `https://api.qrserver.com/v1/create-qr-code?size=260x260&data=${qrData}`;
+          cashAppQrImg.alt = 'Cash App QR code';
+          cashAppQrImg.style.display = 'block';
+          cashAppQrNote.textContent = 'Scan this Cash App QR with your phone to donate.';
+          cashAppQrNote.style.display = 'block';
+        } else if (cashAppQrImg && cashAppQrNote) {
+          cashAppQrImg.style.display = 'none';
+          cashAppQrNote.style.display = 'none';
+        }
+
+        if (venmoQrImg && venmoQrNote && venmoQrPath) {
+          venmoQrImg.src = venmoQrPath;
+          venmoQrImg.alt = 'Uploaded Venmo QR code';
+          venmoQrImg.style.display = 'block';
+          venmoQrNote.textContent = 'Scan this Venmo QR with your phone for Samsung Pass approval.';
+          venmoQrNote.style.display = 'block';
+        } else if (venmoQrImg && venmoQrNote) {
+          venmoQrImg.style.display = 'none';
+          venmoQrNote.style.display = 'none';
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    initSupportPageLink();
+
+    async function initAdminUpload() {
+      try {
+        const resp = await fetch('/api/admin/session', { credentials: 'same-origin' });
+        if (!resp.ok) return;
+        const obj = await resp.json();
+        if (!obj.authenticated) return;
+        const wrapper = document.getElementById('admin-upload');
+        if (wrapper) wrapper.style.display = 'block';
+
+        const qrType = document.getElementById('qr-type');
+        const fileInput = document.getElementById('qr-file');
+        const uploadBtn = document.getElementById('upload-qr');
+        const status = document.getElementById('upload-status');
+
+        uploadBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          if (!fileInput.files || !fileInput.files[0]) {
+            status.textContent = 'Choose a file first.';
+            return;
+          }
+          const file = fileInput.files[0];
+          if (file.size > 1024 * 1024 * 3) {
+            status.textContent = 'File too large (max 3MB).';
+            return;
+          }
+          status.textContent = 'Uploading...';
+          const reader = new FileReader();
+          reader.onload = async function () {
+            const dataUrl = reader.result;
+            try {
+              const r = await fetch('/api/support/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ imageData: dataUrl, qrType: qrType ? qrType.value : 'cashapp' })
+              });
+              const j = await r.json();
+              if (!r.ok) {
+                status.textContent = j?.error || 'Upload failed.';
+                return;
+              }
+              status.textContent = j.qrType === 'venmo' ? 'Venmo QR uploaded.' : 'Cash App QR uploaded.';
+              initSupportPageLink();
+            } catch (err) {
+              status.textContent = 'Upload failed.';
+            }
+          };
+          reader.readAsDataURL(file);
+        });
+      } catch (e) {
+        // ignore
+      }
+    }
+    initAdminUpload();
+  </script>
+</body>
+</html>

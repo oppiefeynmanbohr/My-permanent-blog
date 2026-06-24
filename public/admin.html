@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin - My Permanent Blog</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell admin-shell">
+    <header>
+      <div class="header-top">
+        <div>
+          <h1>Administration</h1>
+          <p class="subtitle">Login with your Venmo QR to access admin tasks</p>
+        </div>
+        <a class="support-button" href="/page1">Back to blog</a>
+      </div>
+      <div class="new-site-banner" style="display:flex;">
+        <div class="new-site-banner-text">
+          Open this page on your Samsung phone, then use Samsung Pass fingerprint approval to unlock admin settings.
+        </div>
+      </div>
+    </header>
+
+    <section class="search-panel">
+      <div class="search-row" style="grid-column: 1 / -1; text-align:center;">
+        <p class="panel-note">Tap the button below to log in with your Venmo account.</p>
+        <a href="https://account.venmo.com/u/Lee-Roby-2" target="_blank" style="display:inline-block;margin-bottom:12px;">https://account.venmo.com/u/Lee-Roby-2</a>
+      </div>
+      <div class="search-row form-actions">
+        <button id="admin-login">Login with Venmo QR</button>
+        <button id="admin-logout" class="secondary-button" style="display:none;">Logout</button>
+      </div>
+      <div class="search-row" style="grid-column: 1 / -1;">
+        <div id="admin-status" class="sms-provider-banner" style="display:block;">Ready. Tap Login with Venmo QR.</div>
+      </div>
+    </section>
+
+    <section id="admin-config-panel" style="display:none;">
+      <div class="utility-panels">
+        <aside class="word-export-panel">
+          <div class="word-card">
+            <h2>Server Settings</h2>
+            <p>Update the public blog appearance and support links.</p>
+            <div class="form-row">
+              <label for="font-family">Font family</label>
+              <select id="font-family">
+                <option value="">Default (Book Antiqua)</option>
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="'Times New Roman', serif">Times New Roman</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="'Courier New', monospace">Courier New</option>
+                <option value="sans-serif">Sans-serif</option>
+                <option value="serif">Serif</option>
+                <option value="monospace">Monospace</option>
+                <option value="custom">Custom...</option>
+              </select>
+              <input id="font-family-custom" type="text" placeholder="Enter custom font family" style="display:none;margin-top:6px;" />
+            </div>
+            <div class="form-row">
+              <label for="font-size">Font size (px)</label>
+              <input id="font-size" type="number" min="8" max="72" placeholder="16" />
+            </div>
+            <div class="form-row">
+              <label for="support-url">Cash App linked page URL</label>
+              <input id="support-url" type="text" placeholder="https://cash.app/$yourname" />
+            </div>
+            <div class="form-row">
+              <label for="venmo-url">Venmo linked page URL</label>
+              <input id="venmo-url" type="text" placeholder="https://venmo.com/u/yourname" />
+            </div>
+            <div class="form-row">
+              <label for="new-site-url">New website URL</label>
+              <input id="new-site-url" type="text" placeholder="https://yournewsite.example.com" />
+            </div>
+            <div class="form-row form-actions">
+              <button id="save-prefs-server">Save preferences to server</button>
+            </div>
+          </div>
+        </aside>
+        <aside class="dictionary-panel">
+          <div class="word-card">
+            <h2>Dictionary Status</h2>
+            <p class="panel-note">Shows whether the uploaded dictionary is available for admin use.</p>
+            <div id="admin-dictionary-status" class="admin-dictionary-status" style="display:none;">Admin only: dictionary status unavailable.</div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </div>
+  <script src="admin.js"></script>
+</body>
+</html> run
+code

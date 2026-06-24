@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Personal Blog - Page 1</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div class="header-top">
+        <div>
+          <h1 id="blog-title-display">Your Personal Blog</h1>
+          <p class="subtitle">Blog Page 1</p>
+          <input id="blog-title-input" class="blog-title-input" type="text" placeholder="Type your blog name" />
+        </div>
+        <a id="support-link-button" class="support-button" href="/support">Support</a>
+      </div>
+      <nav class="page-nav">
+        <a class="page-button active" href="/page1">Blog Page 1</a>
+        <a class="page-button" href="/page2">Blog Page 2</a>
+        <a class="page-button" href="/page3">Blog Page 3</a>
+        <a class="page-button" href="/library">Library</a>
+        <a class="page-button" href="/published">Public Entries</a>
+      </nav>
+      <div id="new-site-banner" class="new-site-banner" style="display:none;">
+        <div class="new-site-banner-text">
+          This blog is getting a new home soon. <a id="new-site-link" href="#" target="_blank">Visit the new website</a> or choose Remind me later and we’ll show this again.
+        </div>
+        <button id="new-site-remind" class="secondary-button">Remind me later</button>
+      </div>
+    </header>
+    <section class="entry-form-section">
+      <div class="entry-form-card">
+        <div class="form-row timestamp-row">
+          <label>Timestamp</label>
+          <div id="current-timestamp" class="timestamp-display"></div>
+        </div>
+        <div class="form-row">
+          <label for="entry-title">Title</label>
+          <input id="entry-title" type="text" placeholder="Entry title" />
+        </div>
+        <div class="form-row">
+          <label for="entry-content">Write your entry</label>
+          <textarea id="entry-content" rows="12" placeholder="Begin writing your journal entry here..."></textarea>
+        </div>
+        <div class="form-row form-actions">
+          <button id="save-entry">Save Entry</button>
+          <span id="save-status" class="save-status"></span>
+        </div>
+      </div>
+    </section>
+    <section class="utility-panels">
+      <aside class="word-export-panel">
+        <div class="word-card">
+          <h2>Word Export</h2>
+          <p>Connect your timestamped entry to a Word document instantly.</p>
+          <div class="form-row timestamp-row">
+            <label>Export timestamp</label>
+            <div id="export-timestamp" class="timestamp-display"></div>
+          </div>
+          <div class="form-row">
+            <button id="export-word" class="secondary-button">Download Word Document</button>
+          </div>
+          <div id="admin-dictionary-status" class="admin-dictionary-status" style="display:none;">Admin only: dictionary status unavailable.</div>
+          <p class="panel-note">This creates a downloadable .doc file containing the current title, timestamp, and entry content.</p>
+        </div>
+      </aside>
+      <aside class="dictionary-panel">
+        <div class="word-card">
+          <h2>Oxford Dictionary</h2>
+          <p class="panel-note">Look up a concise definition (local Oxford-style) for a word.</p>
+          <label for="oxford-input">Word</label>
+          <input id="oxford-input" type="text" placeholder="e.g. access" />
+          <button id="oxford-lookup" class="secondary-button">Look up</button>
+          <div id="oxford-results" class="thesaurus-results">No lookup yet.</div>
+        </div>
+      </aside>
+      <aside class="thesaurus-panel">
+        <div class="thesaurus-card">
+          <h2>Thesaurus</h2>
+          <p>Type a word and get Historical Thesaurus-style synonyms inspired by the OED.</p>
+          <label for="thesaurus-input">Word</label>
+          <input id="thesaurus-input" type="text" placeholder="e.g. access" />
+          <button id="thesaurus-search" class="secondary-button">Find words</button>
+          <div id="thesaurus-results" class="thesaurus-results">Enter a word to begin.</div>
+        </div>
+      </aside>
+    </section>
+    <section class="search-panel">
+      <div class="search-row">
+        <label for="search-input">Search entries</label>
+        <input id="search-input" type="search" placeholder="Search by title or content" />
+      </div>
+      <div class="search-row">
+        <label for="calendar-input">Calendar search</label>
+        <input id="calendar-input" type="date" />
+      </div>
+      <div class="search-row">
+        <label for="font-family">Font family</label>
+        <select id="font-family">
+          <option value="">Default (Book Antiqua)</option>
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="'Times New Roman', serif">Times New Roman</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="'Courier New', monospace">Courier New</option>
+          <option value="sans-serif">Sans-serif</option>
+          <option value="serif">Serif</option>
+          <option value="monospace">Monospace</option>
+          <option value="custom">Custom...</option>
+        </select>
+        <input id="font-family-custom" type="text" placeholder="Enter custom font family" style="display:none;margin-top:6px;" />
+      </div>
+      <div class="search-row">
+        <label for="font-size">Font size (px)</label>
+        <input id="font-size" type="number" min="8" max="72" placeholder="16" />
+      </div>
+      <div id="admin-qr-row" class="search-row qr-row" style="grid-column: 1 / -1; display:none;">
+        <div class="qr-card">
+          <h3>Support QR</h3>
+          <p class="panel-note">Scan to open your support page on phone.</p>
+          <img id="support-qr-image" class="qr-image" alt="Support QR code" />
+          <a id="support-qr-link" href="/support" target="_blank">Open support link</a>
+        </div>
+        <div class="qr-card">
+          <h3>Admin Login QR</h3>
+          <p class="panel-note">Scan to open the admin page on phone.</p>
+          <img id="admin-login-qr-image" class="qr-image" alt="Admin login QR code" />
+          <a id="admin-login-qr-link" href="/admin" target="_blank">Open admin page</a>
+        </div>
+      </div>
+    </section>
+    <section class="entries-section">
+      <h2>Entries</h2>
+      <div id="entries-list" class="entries-list"></div>
+    </section>
+    <footer class="site-footer">
+      <p>© 2026 My Permanent Blog. All rights reserved. Unauthorized copying prohibited.</p>
+    </footer>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

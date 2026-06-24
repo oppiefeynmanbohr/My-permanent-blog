@@ -1,0 +1,15 @@
+{
+  "name": "my-permanent-blog",
+  "version": "1.0.0",
+  "description": "A permanent blog and journal system with timestamped entries, calendar search, and page navigation.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@simplewebauthn/server": "^13.3.2",
+    "dotenv": "^17.4.2",
+    "express": "^4.18.4",
+    "sqlite3": "^5.1.6"
+  }
+}
