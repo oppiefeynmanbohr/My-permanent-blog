@@ -66,6 +66,22 @@
           <div id="admin-dictionary-status" class="admin-dictionary-status" style="display:none;">Admin only: dictionary status unavailable.</div>
           <p class="panel-note">This creates a downloadable .doc file containing the current title, timestamp, and entry content.</p>
         </div>
+        <div class="word-card" style="margin-top:16px;">
+          <h2>MLA Citation</h2>
+          <p class="panel-note">Generate a proper MLA 9th edition citation for this entry.</p>
+          <div class="form-row">
+            <label for="mla-author">Author name</label>
+            <input id="mla-author" type="text" placeholder="Last, First" />
+          </div>
+          <div class="form-row">
+            <label for="mla-site">Website / Blog name</label>
+            <input id="mla-site" type="text" placeholder="My Permanent Blog" value="My Permanent Blog" />
+          </div>
+          <div class="form-row">
+            <button id="mla-generate" class="secondary-button">Generate Citation</button>
+          </div>
+          <div id="mla-result" class="thesaurus-results" style="user-select:all;"></div>
+        </div>
       </aside>
       <aside class="dictionary-panel">
         <div class="word-card">

@@ -722,6 +722,32 @@ if (newSiteRemindButton) newSiteRemindButton.addEventListener('click', (e) => {
 });
 if (exportWordButton) exportWordButton.addEventListener('click', handleWordExport);
 
+// MLA Citation generator
+const mlaAuthorInput = document.getElementById('mla-author');
+const mlaSiteInput = document.getElementById('mla-site');
+const mlaGenerateBtn = document.getElementById('mla-generate');
+const mlaResult = document.getElementById('mla-result');
+
+function generateMlaCitation() {
+  if (!mlaResult) return;
+  const title = (entryTitle && entryTitle.value.trim()) || 'Untitled Entry';
+  const author = (mlaAuthorInput && mlaAuthorInput.value.trim()) || '';
+  const site = (mlaSiteInput && mlaSiteInput.value.trim()) || 'My Permanent Blog';
+  const url = window.location.href;
+  const now = new Date();
+  const accessDate = now.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+  const pubDate = now.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  // MLA 9th edition: Author. "Title." Site, Date, URL. Accessed Date.
+  let citation = '';
+  if (author) citation += `${author}. `;
+  citation += `"${title}." <em>${site}</em>, ${pubDate}, ${url}. Accessed ${accessDate}.`;
+
+  mlaResult.innerHTML = citation;
+}
+
+if (mlaGenerateBtn) mlaGenerateBtn.addEventListener('click', generateMlaCitation);
+
 refreshTimestamp();
 loadBlogTitle();
 // load preferences (server first, then local) and then entries
