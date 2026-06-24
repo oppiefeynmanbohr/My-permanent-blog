@@ -367,14 +367,17 @@ function renderThesaurusResults(word, entry) {
     return;
   }
   if (!entry || !entry.synonyms || !entry.synonyms.length) {
-    thesaurusResults.textContent = `No historical synonyms found for "${word}".`;
+    const mwUrl = `https://www.merriam-webster.com/thesaurus/${encodeURIComponent(word)}`;
+    thesaurusResults.innerHTML = `No synonyms found for "${word}". <a href="${mwUrl}" target="_blank" rel="noopener">Look up on Merriam-Webster Thesaurus</a>`;
     return;
   }
   const sorted = Array.isArray(entry.synonyms) ? entry.synonyms.slice().sort((a, b) => a.localeCompare(b)) : entry.synonyms;
+  const mwUrl = `https://www.merriam-webster.com/thesaurus/${encodeURIComponent(word)}`;
   thesaurusResults.innerHTML = `
     <div class="thesaurus-heading">
       <strong>"${word}"</strong>
-      <div class="thesaurus-definition">${entry.definition}</div>
+      <div class="thesaurus-definition">${entry.definition || ''}</div>
+      <a href="${mwUrl}" target="_blank" rel="noopener" style="font-size:0.85em;">More synonyms on Merriam-Webster</a>
     </div>
     <div class="thesaurus-synonym-list">
       <strong>Synonyms</strong>
@@ -494,10 +497,31 @@ function findOxfordEntry(word) {
   return getSynonyms(word);
 }
 
-function handleThesaurusSearch() {
+async function handleThesaurusSearch() {
   if (!thesaurusInput) return;
   const term = thesaurusInput.value.trim();
-  const entry = getSynonyms(term);
+  if (!term) return;
+  if (thesaurusResults) thesaurusResults.textContent = 'Looking up...';
+  let entry = getSynonyms(term);
+  if (!entry || !entry.synonyms || !entry.synonyms.length) {
+    // Fallback to Free Dictionary API
+    try {
+      const resp = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        const meanings = data[0]?.meanings || [];
+        const firstMeaning = meanings[0];
+        if (firstMeaning) {
+          const def = firstMeaning.definitions[0]?.definition || '';
+          const syns = [
+            ...(firstMeaning.synonyms || []),
+            ...(firstMeaning.definitions[0]?.synonyms || [])
+          ].filter((s, i, a) => s && a.indexOf(s) === i);
+          entry = { definition: def, synonyms: syns };
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
   renderThesaurusResults(term, entry);
 }
 
