@@ -3,20 +3,184 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Library — Thesaurus</title>
+  <title>Library — Citation Guide</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    .citation-section { margin-bottom: 2rem; }
+    .citation-section h2 { border-bottom: 2px solid #c8a97e; padding-bottom: 6px; margin-bottom: 12px; }
+    .citation-section h3 { margin-top: 1.2rem; margin-bottom: 4px; color: #5a3e28; }
+    .citation-block { background: #fdf6ee; border-left: 4px solid #c8a97e; padding: 10px 14px; margin: 8px 0; border-radius: 4px; font-family: 'Times New Roman', serif; font-size: 0.97em; line-height: 1.7; }
+    .citation-label { font-size: 0.8em; font-weight: bold; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .tab-row { display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .tab-btn { padding: 8px 18px; border: 2px solid #c8a97e; border-radius: 20px; background: transparent; cursor: pointer; font-size: 0.95em; font-weight: bold; color: #5a3e28; }
+    .tab-btn.active { background: #c8a97e; color: #fff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .hanging { padding-left: 2em; text-indent: -2em; }
+  </style>
 </head>
 <body>
   <div class="app-shell">
     <header>
       <div class="header-top">
         <div>
-          <h1>Library</h1>
-          <p class="subtitle">Thesaurus library — load a workspace thesaurus and search it like an assistant.</p>
+          <h1>Library — Citation Guide</h1>
+          <p class="subtitle">How to properly cite sources in MLA, APA, and Turabian</p>
         </div>
         <a class="page-button" href="/page1">Back to Blog</a>
       </div>
+      <nav class="page-nav">
+        <a class="page-button" href="/page1">Blog Page 1</a>
+        <a class="page-button" href="/page2">Blog Page 2</a>
+        <a class="page-button" href="/page3">Blog Page 3</a>
+        <a class="page-button active" href="/library">Library</a>
+        <a class="page-button" href="/published">Public Entries</a>
+      </nav>
     </header>
+
+    <section class="entry-form-section">
+      <div class="entry-form-card">
+
+        <div class="tab-row">
+          <button class="tab-btn active" onclick="showTab('mla')">MLA</button>
+          <button class="tab-btn" onclick="showTab('apa')">APA</button>
+          <button class="tab-btn" onclick="showTab('turabian')">Turabian</button>
+        </div>
+
+        <!-- MLA -->
+        <div id="tab-mla" class="tab-panel active">
+          <div class="citation-section">
+            <h2>MLA (9th Edition) — Modern Language Association</h2>
+            <p>Used in: humanities, literature, language arts.</p>
+
+            <h3>In-Text (Parenthetical) Citations</h3>
+            <div class="citation-label">Format</div>
+            <div class="citation-block">(Author Last Name Page#)</div>
+            <div class="citation-label">Direct quote</div>
+            <div class="citation-block">"The city was silent at dawn" (Morrison 34).</div>
+            <div class="citation-label">Paraphrase</div>
+            <div class="citation-block">The city was described as eerily quiet in the early morning (Morrison 34).</div>
+            <div class="citation-label">No author</div>
+            <div class="citation-block">("Shortened Title" Page#)</div>
+            <div class="citation-label">Two authors</div>
+            <div class="citation-block">(Smith and Jones 22)</div>
+            <div class="citation-label">Three or more authors</div>
+            <div class="citation-block">(Smith et al. 45)</div>
+            <div class="citation-label">No page number (website)</div>
+            <div class="citation-block">(Johnson)</div>
+
+            <h3>Works Cited Entries</h3>
+            <div class="citation-label">Book</div>
+            <div class="citation-block hanging">Last, First. <em>Title of Book</em>. Publisher, Year.</div>
+            <div class="citation-label">Book — Example</div>
+            <div class="citation-block hanging">Morrison, Toni. <em>Beloved</em>. Knopf, 1987.</div>
+
+            <div class="citation-label">Website</div>
+            <div class="citation-block hanging">Last, First. "Page Title." <em>Website Name</em>, Day Month Year, URL.</div>
+            <div class="citation-label">Website — Example</div>
+            <div class="citation-block hanging">Smith, Jane. "How to Write." <em>Writing Today</em>, 10 Jan. 2024, www.writingtoday.com/how-to-write.</div>
+
+            <div class="citation-label">Journal Article</div>
+            <div class="citation-block hanging">Last, First. "Article Title." <em>Journal Name</em>, vol. #, no. #, Year, pp. ##–##.</div>
+            <div class="citation-label">Journal — Example</div>
+            <div class="citation-block hanging">Jones, Alex. "Memory and Narrative." <em>Literary Review</em>, vol. 12, no. 3, 2022, pp. 45–60.</div>
+          </div>
+        </div>
+
+        <!-- APA -->
+        <div id="tab-apa" class="tab-panel">
+          <div class="citation-section">
+            <h2>APA (7th Edition) — American Psychological Association</h2>
+            <p>Used in: social sciences, psychology, education, nursing.</p>
+
+            <h3>In-Text (Parenthetical) Citations</h3>
+            <div class="citation-label">Format</div>
+            <div class="citation-block">(Author, Year, p. Page#)</div>
+            <div class="citation-label">Direct quote</div>
+            <div class="citation-block">"The results were significant" (Smith, 2021, p. 45).</div>
+            <div class="citation-label">Paraphrase (no page needed)</div>
+            <div class="citation-block">The study found notable improvements (Smith, 2021).</div>
+            <div class="citation-label">Two authors</div>
+            <div class="citation-block">(Smith &amp; Jones, 2020, p. 10)</div>
+            <div class="citation-label">Three or more authors</div>
+            <div class="citation-block">(Smith et al., 2019)</div>
+            <div class="citation-label">Organization as author</div>
+            <div class="citation-block">(American Heart Association, 2022)</div>
+
+            <h3>Reference List Entries</h3>
+            <div class="citation-label">Book</div>
+            <div class="citation-block hanging">Last, F. M. (Year). <em>Title of book</em>. Publisher.</div>
+            <div class="citation-label">Book — Example</div>
+            <div class="citation-block hanging">Brown, D. (2018). <em>The psychology of learning</em>. Academic Press.</div>
+
+            <div class="citation-label">Website</div>
+            <div class="citation-block hanging">Last, F. M. (Year, Month Day). <em>Title of page</em>. Site Name. URL</div>
+            <div class="citation-label">Website — Example</div>
+            <div class="citation-block hanging">Centers for Disease Control. (2023, March 5). <em>Understanding flu vaccines</em>. CDC. https://www.cdc.gov/flu/vaccines</div>
+
+            <div class="citation-label">Journal Article</div>
+            <div class="citation-block hanging">Last, F. M. (Year). Title of article. <em>Journal Name</em>, <em>volume</em>(issue), page–page. https://doi.org/xxxxx</div>
+            <div class="citation-label">Journal — Example</div>
+            <div class="citation-block hanging">Garcia, L. (2021). Cognitive load in online learning. <em>Journal of Education</em>, <em>15</em>(2), 100–115. https://doi.org/10.1234/je.2021</div>
+          </div>
+        </div>
+
+        <!-- Turabian -->
+        <div id="tab-turabian" class="tab-panel">
+          <div class="citation-section">
+            <h2>Turabian (9th Edition) — Based on Chicago Style</h2>
+            <p>Used in: history, theology, social sciences. Two systems: <strong>Notes-Bibliography</strong> (humanities) and <strong>Author-Date</strong> (sciences).</p>
+
+            <h3>Notes-Bibliography System — Footnotes/Endnotes</h3>
+            <div class="citation-label">First full note — Book</div>
+            <div class="citation-block">1. First Last, <em>Title of Book</em> (City: Publisher, Year), Page#.</div>
+            <div class="citation-label">Example</div>
+            <div class="citation-block">1. John Smith, <em>The Age of Revolution</em> (New York: Oxford University Press, 2010), 45.</div>
+
+            <div class="citation-label">Shortened note (after first citation)</div>
+            <div class="citation-block">2. Smith, <em>Age of Revolution</em>, 78.</div>
+
+            <div class="citation-label">Bibliography entry — Book</div>
+            <div class="citation-block hanging">Last, First. <em>Title of Book</em>. City: Publisher, Year.</div>
+            <div class="citation-label">Example</div>
+            <div class="citation-block hanging">Smith, John. <em>The Age of Revolution</em>. New York: Oxford University Press, 2010.</div>
+
+            <div class="citation-label">Website — Note</div>
+            <div class="citation-block">3. First Last, "Page Title," Site Name, Month Day, Year, URL.</div>
+            <div class="citation-label">Example</div>
+            <div class="citation-block">3. Jane Doe, "Writing Tips," Writing Today, January 5, 2023, www.writingtoday.com.</div>
+
+            <h3>Author-Date System (in-text)</h3>
+            <div class="citation-label">Format</div>
+            <div class="citation-block">(Author Year, Page#)</div>
+            <div class="citation-label">Example</div>
+            <div class="citation-block">(Smith 2010, 45)</div>
+
+            <div class="citation-label">Reference entry — Book</div>
+            <div class="citation-block hanging">Last, First. Year. <em>Title of Book</em>. City: Publisher.</div>
+            <div class="citation-label">Example</div>
+            <div class="citation-block hanging">Smith, John. 2010. <em>The Age of Revolution</em>. New York: Oxford University Press.</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <p>© 2026 My Permanent Blog. All rights reserved.</p>
+    </footer>
+  </div>
+  <script>
+    function showTab(name) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+      event.target.classList.add('active');
+    }
+  </script>
+</body>
+</html>
+
 
     <section class="library-panel">
       <div class="library-card">
