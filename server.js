@@ -837,10 +837,6 @@ app.get('/library', (req, res) => {
 });
 
 app.get('/support', (req, res) => {
-  cleanupAuthState();
-  if (!isAdminAuthenticated(req)) {
-    return res.redirect('/admin');
-  }
   res.sendFile(path.join(__dirname, 'public', 'support.html'));
 });
 
