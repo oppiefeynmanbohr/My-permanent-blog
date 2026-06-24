@@ -124,7 +124,7 @@ function loadSettings() {
     fontFamily: '',
     fontSize: '',
     supportUrl: '/support',
-    supportCashAppUrl: '',
+    supportCashAppUrl: 'https://cash.app/$LeeRoby5252',
     supportVenmoUrl: '',
     supportCashAppQrPath: '',
     supportVenmoQrPath: '',
@@ -135,6 +135,11 @@ function loadSettings() {
 
   if (!settings.supportCashAppQrPath && settings.supportQrPath) {
     settings.supportCashAppQrPath = settings.supportQrPath;
+  }
+
+  // Fix legacy placeholder value stored on disk
+  if (!settings.supportCashAppUrl || settings.supportCashAppUrl === '/support') {
+    settings.supportCashAppUrl = 'https://cash.app/$LeeRoby5252';
   }
 
   return settings;
