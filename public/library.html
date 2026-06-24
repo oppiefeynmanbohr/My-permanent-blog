@@ -17,6 +17,13 @@
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
     .hanging { padding-left: 2em; text-indent: -2em; }
+    .practice-box { background:#fff8f0; border:2px solid #e8c99a; border-radius:8px; padding:16px; margin-top:24px; }
+    .practice-box h3 { margin-top:0; color:#5a3e28; }
+    .wrong { background:#fdecea; border-left:4px solid #e57373; padding:10px 14px; border-radius:4px; font-family:'Times New Roman',serif; margin:8px 0; }
+    .correct { background:#e8f5e9; border-left:4px solid #66bb6a; padding:10px 14px; border-radius:4px; font-family:'Times New Roman',serif; margin:8px 0; }
+    .error-note { color:#c62828; font-size:0.85em; margin:2px 0 8px 0; }
+    .fix-note { color:#2e7d32; font-size:0.85em; margin:2px 0 8px 0; }
+    .practice-label { font-size:0.8em; font-weight:bold; text-transform:uppercase; letter-spacing:0.05em; margin-top:12px; color:#888; }
   </style>
 </head>
 <body>
@@ -69,6 +76,27 @@
             <div class="citation-label">No page number (website)</div>
             <div class="citation-block">(Johnson)</div>
 
+            <div class="practice-box">
+              <h3>🛠 Practice: Spot & Fix the Errors</h3>
+              <div class="practice-label">❌ Wrong — In-text citation</div>
+              <div class="wrong">Smith says the city was quiet. (page 34)</div>
+              <p class="error-note">Errors: author name inside text doesn't need repeating; "page" should not be spelled out; period goes after parenthesis.</p>
+              <div class="practice-label">✅ Corrected</div>
+              <div class="correct">Smith says the city was quiet (34).</div>
+
+              <div class="practice-label">❌ Wrong — Works Cited book entry</div>
+              <div class="wrong">Toni Morrison, Beloved, Knopf, 1987.</div>
+              <p class="error-note">Errors: first name should come last; title must be italicized; no comma before publisher.</p>
+              <div class="practice-label">✅ Corrected</div>
+              <div class="correct hanging">Morrison, Toni. <em>Beloved</em>. Knopf, 1987.</div>
+
+              <div class="practice-label">❌ Wrong — Website Works Cited</div>
+              <div class="wrong">Jane Smith. How to Write. writingtoday.com. 2024.</div>
+              <p class="error-note">Errors: missing quotes around page title; site name not italicized; date format incorrect; URL needs full format.</p>
+              <div class="practice-label">✅ Corrected</div>
+              <div class="correct hanging">Smith, Jane. "How to Write." <em>Writing Today</em>, 10 Jan. 2024, www.writingtoday.com/how-to-write.</div>
+            </div>
+
             <h3>Works Cited Entries</h3>
             <div class="citation-label">Book</div>
             <div class="citation-block hanging">Last, First. <em>Title of Book</em>. Publisher, Year.</div>
@@ -106,6 +134,27 @@
             <div class="citation-block">(Smith et al., 2019)</div>
             <div class="citation-label">Organization as author</div>
             <div class="citation-block">(American Heart Association, 2022)</div>
+
+            <div class="practice-box">
+              <h3>🛠 Practice: Spot & Fix the Errors</h3>
+              <div class="practice-label">❌ Wrong — In-text citation</div>
+              <div class="wrong">(Brown 2018 p45)</div>
+              <p class="error-note">Errors: missing comma after author; "p" needs a period and space; missing comma before page.</p>
+              <div class="practice-label">✅ Corrected</div>
+              <div class="correct">(Brown, 2018, p. 45)</div>
+
+              <div class="practice-label">❌ Wrong — Reference list book</div>
+              <div class="wrong">Brown D (2018) The psychology of learning Academic Press</div>
+              <p class="error-note">Errors: period after initial; year needs parentheses and period after; title should be italicized; period needed before publisher.</p>
+              <div class="practice-label">✅ Corrected</div>
+              <div class="correct hanging">Brown, D. (2018). <em>The psychology of learning</em>. Academic Press.</div>
+
+              <div class="practice-label">❌ Wrong — Journal article</div>
+              <div class="wrong">Garcia L. "Cognitive load in online learning." Journal of Education 15(2): 100-115.</div>
+              <p class="error-note">Errors: missing year in parentheses; article title should NOT be in quotes; journal name should be italicized; volume should be italicized; use en-dash for page range; needs DOI.</p>
+              <div class="practice-label">✅ Corrected</div>
+              <div class="correct hanging">Garcia, L. (2021). Cognitive load in online learning. <em>Journal of Education</em>, <em>15</em>(2), 100–115. https://doi.org/10.1234/je.2021</div>
+            </div>
 
             <h3>Reference List Entries</h3>
             <div class="citation-label">Book</div>
@@ -160,6 +209,27 @@
             <div class="citation-block hanging">Last, First. Year. <em>Title of Book</em>. City: Publisher.</div>
             <div class="citation-label">Example</div>
             <div class="citation-block hanging">Smith, John. 2010. <em>The Age of Revolution</em>. New York: Oxford University Press.</div>
+
+            <div class="practice-box">
+              <h3>🛠 Practice: Spot & Fix the Errors</h3>
+              <div class="practice-label">❌ Wrong — Footnote</div>
+              <div class="wrong">1. Smith John, The Age of Revolution, Oxford University Press, 2010, pg 45.</div>
+              <p class="error-note">Errors: first name should come first in notes; title must be italicized; city of publication required; "pg" should be just the number after a comma.</p>
+              <div class="practice-label">✅ Corrected</div>
+              <div class="correct">1. John Smith, <em>The Age of Revolution</em> (New York: Oxford University Press, 2010), 45.</div>
+
+              <div class="practice-label">❌ Wrong — Bibliography entry</div>
+              <div class="wrong">John Smith. The Age of Revolution. Oxford University Press. 2010.</div>
+              <p class="error-note">Errors: last name must come first; title must be italicized; city required before publisher; use colon between city and publisher.</p>
+              <div class="practice-label">✅ Corrected</div>
+              <div class="correct hanging">Smith, John. <em>The Age of Revolution</em>. New York: Oxford University Press, 2010.</div>
+
+              <div class="practice-label">❌ Wrong — Author-Date in-text</div>
+              <div class="wrong">(Smith, 2010 p. 45)</div>
+              <p class="error-note">Error: Turabian Author-Date uses no comma between year and page; no "p." needed.</p>
+              <div class="practice-label">✅ Corrected</div>
+              <div class="correct">(Smith 2010, 45)</div>
+            </div>
           </div>
         </div>
 
