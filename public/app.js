@@ -131,6 +131,16 @@ function buildWordDocument(title, timestamp, content) {
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapedTitle}</title></head><body><h1>${escapedTitle}</h1><p><em>${timestamp}</em></p><div>${escapedContent}</div></body></html>`;
 }
 
+function buildAllEntriesDocument(entries) {
+  const rows = entries.map(e => {
+    const ts = e.timestamp || '';
+    const body = (e.content || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>');
+    return `<div style="border-bottom:1px solid #ccc;margin-bottom:24px;padding-bottom:16px;"><p style="color:#888;font-size:0.9em;"><em>${ts}</em></p><div>${body}</div></div>`;
+  }).join('\n');
+  const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>My Blog Entries</title><style>body{font-family:'Book Antiqua',Georgia,serif;max-width:720px;margin:40px auto;line-height:1.7;}</style></head><body><h1>My Blog Entries</h1><p><em>Exported ${date}</em></p><hr/><br/>${rows}</body></html>`;
+}
+
 function downloadDocFile(filename, content) {
   const blob = new Blob([content], { type: 'application/msword' });
   const link = document.createElement('a');
@@ -233,7 +243,17 @@ async function saveEntry() {
   refreshTimestamp();
   saveStatus.textContent = 'Entry saved permanently.';
   saveEntryButton.disabled = false;
-  loadEntries();
+  await loadEntries();
+  // Auto-export all entries to Word after every save
+  try {
+    const resp = await fetch('/api/entries', { credentials: 'same-origin' });
+    if (resp.ok) {
+      const allEntries = await resp.json();
+      const doc = buildAllEntriesDocument(allEntries);
+      const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/[, ]+/g, '_');
+      downloadDocFile(`my_blog_entries_${dateStr}.doc`, doc);
+    }
+  } catch { /* ignore export error */ }
 }
 
 function applyFontFamily(fontFamily) {
