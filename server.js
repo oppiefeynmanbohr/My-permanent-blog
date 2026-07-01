@@ -374,8 +374,9 @@ app.post('/api/auth/signup', (req, res) => {
     [username.trim(), email.trim().toLowerCase(), hash, salt, createdAt],
     function (err) {
       if (err) {
+        console.error('Signup DB error:', err.message);
         if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Username or email already taken.' });
-        return res.status(500).json({ error: 'Signup failed.' });
+        return res.status(500).json({ error: `Signup failed: ${err.message}` });
       }
       createUserSession(res, this.lastID, username.trim());
       res.status(201).json({ success: true, username: username.trim() });
@@ -411,6 +412,19 @@ app.get('/api/auth/session', (req, res) => {
   const user = getUserFromRequest(req);
   if (!user) return res.json({ authenticated: false });
   res.json({ authenticated: true, username: user.username, userId: user.userId });
+});
+
+app.get('/api/auth/debug', (req, res) => {
+  db.all("SELECT name FROM sqlite_master WHERE type='table'", [], (err, tables) => {
+    if (err) return res.json({ error: err.message, tables: [] });
+    db.all('SELECT count(*) as count FROM users', [], (err2, rows) => {
+      res.json({
+        tables: tables.map(t => t.name),
+        usersTableExists: tables.some(t => t.name === 'users'),
+        userCount: err2 ? `error: ${err2.message}` : rows[0].count
+      });
+    });
+  });
 });
 
 // ── Entries Routes ────────────────────────────────────────────────────────────
