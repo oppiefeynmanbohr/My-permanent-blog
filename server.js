@@ -32,27 +32,38 @@ const MFA_TTL_MS = 5 * 60 * 1000;
 const adminSessions = new Map();
 const pendingChallenges = new Map();
 const pendingMfa = new Map();
-const userSessions = new Map(); // token -> { userId, username, expiresAt }
 
 function hashPassword(password, salt) {
   return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha256').toString('hex');
 }
 function createUserSession(res, userId, username) {
   const token = crypto.randomBytes(32).toString('hex');
-  userSessions.set(token, { userId, username, expiresAt: Date.now() + SESSION_TTL_MS });
+  const expiresAt = Date.now() + SESSION_TTL_MS;
+  // Persist session in DB so it survives server restarts
+  db.run('INSERT OR REPLACE INTO user_sessions (token, user_id, username, expires_at) VALUES (?,?,?,?)',
+    [token, userId, username, expiresAt]);
   res.setHeader('Set-Cookie', `user_sid=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=${SESSION_TTL_MS / 1000}`);
   return token;
 }
 function getUserFromRequest(req) {
+  // Synchronous lookup not possible with sqlite3 async — handled via middleware below
+  return req._userSession || null;
+}
+
+// Middleware: load user session from DB before each request
+function loadUserSession(req, res, next) {
   const cookies = parseCookies(req);
   const token = cookies['user_sid'];
-  if (!token) return null;
-  const session = userSessions.get(token);
-  if (!session || session.expiresAt < Date.now()) {
-    userSessions.delete(token);
-    return null;
-  }
-  return session;
+  if (!token) { req._userSession = null; return next(); }
+  db.get('SELECT * FROM user_sessions WHERE token = ?', [token], (err, row) => {
+    if (err || !row || row.expires_at < Date.now()) {
+      if (row) db.run('DELETE FROM user_sessions WHERE token = ?', [token]);
+      req._userSession = null;
+    } else {
+      req._userSession = { userId: row.user_id, username: row.username };
+    }
+    next();
+  });
 }
 
 if (!fs.existsSync(dataDir)) {
@@ -107,12 +118,21 @@ async function initDatabase() {
   if (!names.includes('published')) await dbRun('ALTER TABLE entries ADD COLUMN published INTEGER NOT NULL DEFAULT 0');
   if (!names.includes('user_id')) await dbRun('ALTER TABLE entries ADD COLUMN user_id INTEGER REFERENCES users(id)');
   if (!names.includes('source')) await dbRun("ALTER TABLE entries ADD COLUMN source TEXT NOT NULL DEFAULT 'main'");
+  await dbRun(`CREATE TABLE IF NOT EXISTS user_sessions (
+    token TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    username TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
+  )`);
+  // Clean up expired sessions
+  await dbRun('DELETE FROM user_sessions WHERE expires_at < ?', [Date.now()]);
   console.log('Database initialized. Tables:', (await dbAll("SELECT name FROM sqlite_master WHERE type='table'")).map(t => t.name).join(', '));
 }
 
 db.serialize(() => {});
 
 app.use(express.json());
+app.use(loadUserSession);
 app.use(express.static(path.join(__dirname, 'public')));
 
 function ensureJsonFile(filePath, defaultValue) {
@@ -416,7 +436,7 @@ app.post('/api/auth/login', (req, res) => {
 app.post('/api/auth/logout', (req, res) => {
   const cookies = parseCookies(req);
   const token = cookies['user_sid'];
-  if (token) userSessions.delete(token);
+  if (token) db.run('DELETE FROM user_sessions WHERE token = ?', [token]);
   res.setHeader('Set-Cookie', 'user_sid=; HttpOnly; Path=/; Max-Age=0');
   res.json({ success: true });
 });

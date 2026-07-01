@@ -1182,22 +1182,44 @@ const userLoginPrompt = document.getElementById('user-login-prompt');
 async function checkUserSession() {
   try {
     const r = await fetch('/api/auth/session', { credentials: 'same-origin' });
-    if (!r.ok) return;
+    if (!r.ok) throw new Error('no session endpoint');
     const data = await r.json();
     if (data.authenticated) {
+      localStorage.setItem('blog_username', data.username);
+      localStorage.setItem('blog_logged_in', '1');
       if (userAccountBar) { userAccountBar.style.display = 'flex'; }
       if (userGreeting) userGreeting.textContent = `Logged in as ${data.username}`;
       if (userLoginPrompt) userLoginPrompt.style.display = 'none';
     } else {
-      if (userAccountBar) userAccountBar.style.display = 'none';
-      if (userLoginPrompt) userLoginPrompt.style.display = 'block';
+      // Server session gone — fall back to localStorage flag
+      const lsUser = localStorage.getItem('blog_username');
+      const lsLoggedIn = localStorage.getItem('blog_logged_in');
+      if (lsUser && lsLoggedIn) {
+        if (userAccountBar) { userAccountBar.style.display = 'flex'; }
+        if (userGreeting) userGreeting.textContent = `Logged in as ${lsUser}`;
+        if (userLoginPrompt) userLoginPrompt.style.display = 'none';
+      } else {
+        if (userAccountBar) userAccountBar.style.display = 'none';
+        if (userLoginPrompt) userLoginPrompt.style.display = 'block';
+      }
     }
-  } catch { /* ignore */ }
+  } catch {
+    // Network error — still show from localStorage
+    const lsUser = localStorage.getItem('blog_username');
+    if (lsUser && localStorage.getItem('blog_logged_in')) {
+      if (userAccountBar) { userAccountBar.style.display = 'flex'; }
+      if (userGreeting) userGreeting.textContent = `Logged in as ${lsUser}`;
+      if (userLoginPrompt) userLoginPrompt.style.display = 'none';
+    }
+  }
 }
 
 if (userLogoutBtn) {
   userLogoutBtn.addEventListener('click', async () => {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+    localStorage.removeItem('blog_username');
+    localStorage.removeItem('blog_logged_in');
+    localStorage.removeItem('entries_cache');
     window.location.reload();
   });
 }

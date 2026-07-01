@@ -100,6 +100,8 @@
         if (!r.ok) { status.textContent = data.error || 'Login failed.'; return; }
         status.className = 'auth-status ok';
         status.textContent = `Welcome back, ${data.username}!`;
+        localStorage.setItem('blog_username', data.username);
+        localStorage.setItem('blog_logged_in', '1');
         setTimeout(() => { window.location.href = '/page1'; }, 800);
       } catch { status.textContent = 'Network error. Try again.'; }
     }
@@ -123,6 +125,8 @@
         if (!r.ok) { status.textContent = data.error || 'Signup failed.'; return; }
         status.className = 'auth-status ok';
         status.textContent = `Account created! Welcome, ${data.username}!`;
+        localStorage.setItem('blog_username', data.username);
+        localStorage.setItem('blog_logged_in', '1');
         setTimeout(() => { window.location.href = '/page1'; }, 800);
       } catch { status.textContent = 'Network error. Try again.'; }
     }
