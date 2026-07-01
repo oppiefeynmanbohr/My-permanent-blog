@@ -2,21 +2,21 @@
   --blog-font-family: "Georgia", "Times New Roman", serif;
   --header-font-family: "Garamond", "Georgia", serif;
   --blog-font-size: 16px;
-  --page-bg: rgba(255, 255, 255, 0.94);
-  --page-border: rgba(148, 125, 100, 0.18);
-  --text-color: #2a1f14;
-  --muted-color: #5f4d3e;
-  --link-color: #5a3f25;
-  --accent-color: #a97c50;
-  --card-bg: rgba(255, 255, 255, 0.95);
+  --page-bg: #F8F8FF;
+  --page-border: rgba(93, 138, 168, 0.3);
+  --text-color: #1a1a2e;
+  --muted-color: #3a4a5a;
+  --link-color: #5D8AA8;
+  --accent-color: #9B1C31;
+  --card-bg: #F8F8FF;
 }
 
 body {
   position: relative;
   margin: 0;
   min-height: 100vh;
-  background-color: #f2ede6;
-  background-image: linear-gradient(rgba(242, 237, 230, 0.95), rgba(242, 237, 230, 0.95)), url("https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Christopher_Wren_Library%2C_Trinity_College%2C_Cambridge_-_geograph.org.uk_-_1608526.jpg/1280px-Christopher_Wren_Library%2C_Trinity_College%2C_Cambridge_-_geograph.org.uk_-_1608526.jpg");
+  background-color: #5D8AA8;
+  background-image: linear-gradient(rgba(93, 138, 168, 0.92), rgba(93, 138, 168, 0.92)), url("https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Christopher_Wren_Library%2C_Trinity_College%2C_Cambridge_-_geograph.org.uk_-_1608526.jpg/1280px-Christopher_Wren_Library%2C_Trinity_College%2C_Cambridge_-_geograph.org.uk_-_1608526.jpg");
   background-size: cover;
   background-position: center top;
   background-attachment: fixed;
@@ -101,11 +101,11 @@ header {
   justify-content: center;
   padding: 12px 24px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #b58f5d 0%, #9d7a49 45%, #7a5f38 100%);
-  color: #f8f1e6;
+  background: linear-gradient(135deg, #b52235 0%, #9B1C31 50%, #7a1525 100%);
+  color: #ffffff;
   text-decoration: none;
   font-weight: 700;
-  border: 1px solid rgba(255, 236, 210, 0.35);
+  border: 1px solid rgba(255, 200, 200, 0.3);
   box-shadow: 0 14px 28px -18px rgba(0, 0, 0, 0.45);
   transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
@@ -122,7 +122,7 @@ h1 {
   font-family: var(--header-font-family);
   font-size: 3.4rem;
   letter-spacing: 0.04em;
-  color: #332217;
+  color: #0d1b2a;
   line-height: 1.05;
 }
 
@@ -148,21 +148,21 @@ h1 {
   align-items: center;
   padding: 12px 18px;
   border-radius: 14px;
-  background: rgba(242, 228, 210, 0.9);
-  color: #3a281f;
-  border: 1px solid rgba(160, 134, 110, 0.22);
+  background: rgba(93, 138, 168, 0.15);
+  color: #1a2a3a;
+  border: 1px solid rgba(93, 138, 168, 0.3);
   transition: background 0.2s ease, transform 0.2s ease;
 }
 
 .page-button:hover {
-  background: rgba(232, 214, 188, 0.95);
+  background: rgba(93, 138, 168, 0.28);
   transform: translateY(-1px);
 }
 
 .page-button.active {
-  background: rgba(178, 144, 106, 0.98);
+  background: #5D8AA8;
   color: white;
-  border-color: rgba(148, 115, 84, 0.35);
+  border-color: rgba(93, 138, 168, 0.5);
 }
 
 .entry-form-section,
@@ -186,17 +186,17 @@ h1 {
 .word-card,
 .thesaurus-card {
   padding: 24px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(169, 124, 80, 0.24);
+  background: #F8F8FF;
+  border: 1px solid rgba(93, 138, 168, 0.25);
   border-radius: 24px;
-  box-shadow: 0 18px 36px rgba(80, 56, 40, 0.08);
+  box-shadow: 0 18px 36px rgba(30, 60, 90, 0.1);
 }
 
 .word-card h2,
 .thesaurus-card h2 {
   margin-top: 0;
   font-size: 1.5rem;
-  color: #4f3828;
+  color: #0d1b2a;
 }
 
 .word-card p,
@@ -405,18 +405,18 @@ button {
   font-size: 1rem;
   padding: 14px 22px;
   border-radius: 14px;
-  background: #b38e70;
+  background: #9B1C31;
   color: white;
   transition: background 0.2s ease;
 }
 
 button:hover {
-  background: #a17754;
+  background: #7a1525;
 }
 
 .delete-button {
   border: none;
-  background: #b14b4b;
+  background: #9B1C31;
   color: white;
   border-radius: 12px;
   padding: 10px 16px;
@@ -426,7 +426,7 @@ button:hover {
 }
 
 .delete-button:hover {
-  background: #8f3636;
+  background: #7a1525;
 }
 
 .entry-actions {
@@ -516,8 +516,8 @@ button:hover {
 }
 
 .entry-card {
-  background: #fffdf9;
-  border: 1px solid #e0d0bf;
+  background: #F8F8FF;
+  border: 1px solid rgba(93, 138, 168, 0.25);
   border-radius: 18px;
   padding: 22px;
 }
@@ -538,14 +538,14 @@ button:hover {
 
 .entry-timestamp {
   font-size: 0.95rem;
-  color: #786457;
+  color: #5D8AA8;
 }
 
 .entry-content {
   margin-top: 12px;
   white-space: pre-wrap;
   line-height: 1.8;
-  color: #3c2f25;
+  color: #1a2a3a;
 }
 
 @media (max-width: 820px) {
@@ -581,15 +581,16 @@ button:hover {
 .secondary-button {
   padding: 12px 18px;
   border-radius: 999px;
-  border: 1px solid rgba(112, 83, 52, 0.18);
-  background: rgba(255, 255, 255, 0.92);
-  color: #5a4230;
+  border: 2px solid #9B1C31;
+  background: #F8F8FF;
+  color: #9B1C31;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
 }
 
 .secondary-button:hover {
-  background: rgba(245, 239, 230, 0.98);
+  background: #9B1C31;
+  color: #ffffff;
   transform: translateY(-1px);
 }
 
