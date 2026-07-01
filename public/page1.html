@@ -31,6 +31,15 @@
         <button id="new-site-remind" class="secondary-button">Remind me later</button>
       </div>
     </header>
+    <div id="user-account-bar" style="display:none;background:#f5ede0;border-bottom:1px solid #e8c99a;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <span id="user-greeting" style="font-weight:bold;color:#5a3e28;"></span>
+      <button id="user-logout-btn" class="secondary-button" style="padding:6px 14px;font-size:0.85em;">Log Out</button>
+    </div>
+    <div id="user-login-prompt" style="display:none;background:#fff8f0;border:2px solid #e8c99a;border-radius:8px;margin:16px;padding:16px;text-align:center;">
+      <p style="margin:0 0 10px;color:#5a3e28;font-weight:bold;">Sign in to save your entries permanently</p>
+      <a href="/login" class="support-button" style="margin-right:8px;">Log In</a>
+      <a href="/login" class="secondary-button" onclick="localStorage.setItem('auth_tab','signup')">Sign Up</a>
+    </div>
     <section class="entry-form-section">
       <div class="entry-form-card">
         <div class="form-row timestamp-row">

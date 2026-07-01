@@ -1125,3 +1125,39 @@ async function checkAdminSession() {
 checkAdminSession();
 loadSmsProviderStatus();
 refreshQrCodes();
+
+// ── User account session ──────────────────────────────────────────────────────
+const userAccountBar = document.getElementById('user-account-bar');
+const userGreeting = document.getElementById('user-greeting');
+const userLogoutBtn = document.getElementById('user-logout-btn');
+const userLoginPrompt = document.getElementById('user-login-prompt');
+
+async function checkUserSession() {
+  try {
+    const r = await fetch('/api/auth/session', { credentials: 'same-origin' });
+    if (!r.ok) return;
+    const data = await r.json();
+    if (data.authenticated) {
+      if (userAccountBar) { userAccountBar.style.display = 'flex'; }
+      if (userGreeting) userGreeting.textContent = `Logged in as ${data.username}`;
+      if (userLoginPrompt) userLoginPrompt.style.display = 'none';
+    } else {
+      if (userAccountBar) userAccountBar.style.display = 'none';
+      if (userLoginPrompt) userLoginPrompt.style.display = 'block';
+    }
+  } catch { /* ignore */ }
+}
+
+if (userLogoutBtn) {
+  userLogoutBtn.addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+    window.location.reload();
+  });
+}
+
+checkUserSession();
+
+// Redirect to correct signup tab if flagged
+if (localStorage.getItem('auth_tab') === 'signup') {
+  localStorage.removeItem('auth_tab');
+}

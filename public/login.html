@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login / Sign Up — My Permanent Blog</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .auth-shell { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; background:#fdf6ee; padding:24px; }
+    .auth-card { background:#fff; border-radius:12px; box-shadow:0 2px 16px rgba(0,0,0,0.1); padding:32px; width:100%; max-width:420px; }
+    .auth-card h1 { margin:0 0 4px; font-size:1.5rem; color:#3a2a1a; }
+    .auth-card p { color:#888; margin:0 0 20px; font-size:0.95em; }
+    .auth-tabs { display:flex; gap:0; margin-bottom:24px; border-bottom:2px solid #e8c99a; }
+    .auth-tab { flex:1; padding:10px; text-align:center; cursor:pointer; font-weight:bold; color:#888; border:none; background:transparent; font-size:1em; }
+    .auth-tab.active { color:#5a3e28; border-bottom:3px solid #c8a97e; margin-bottom:-2px; }
+    .auth-form { display:none; flex-direction:column; gap:14px; }
+    .auth-form.active { display:flex; }
+    .auth-form label { font-size:0.85em; font-weight:bold; color:#5a3e28; margin-bottom:2px; display:block; }
+    .auth-form input { width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:6px; font-size:1em; box-sizing:border-box; }
+    .auth-form input:focus { outline:2px solid #c8a97e; border-color:#c8a97e; }
+    .auth-submit { background:#c8a97e; color:#fff; border:none; border-radius:8px; padding:12px; font-size:1em; font-weight:bold; cursor:pointer; margin-top:4px; }
+    .auth-submit:hover { background:#b8936a; }
+    .auth-status { font-size:0.9em; color:#c62828; text-align:center; min-height:20px; }
+    .auth-status.ok { color:#2e7d32; }
+    .back-link { text-align:center; margin-top:18px; font-size:0.9em; color:#888; }
+    .back-link a { color:#c8a97e; text-decoration:none; font-weight:bold; }
+  </style>
+</head>
+<body>
+  <div class="auth-shell">
+    <div class="auth-card">
+      <h1>My Permanent Blog</h1>
+      <p>Sign in to save your entries forever</p>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchTab('login')">Log In</button>
+        <button class="auth-tab" onclick="switchTab('signup')">Sign Up</button>
+      </div>
+
+      <!-- Login -->
+      <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
+        <div>
+          <label for="login-username">Username</label>
+          <input id="login-username" type="text" placeholder="Your username" autocomplete="username" required />
+        </div>
+        <div>
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" placeholder="Your password" autocomplete="current-password" required />
+        </div>
+        <div id="login-status" class="auth-status"></div>
+        <button type="submit" class="auth-submit">Log In</button>
+      </form>
+
+      <!-- Sign Up -->
+      <form id="signup-form" class="auth-form" onsubmit="handleSignup(event)">
+        <div>
+          <label for="signup-username">Username</label>
+          <input id="signup-username" type="text" placeholder="Choose a username" autocomplete="username" required />
+        </div>
+        <div>
+          <label for="signup-email">Email</label>
+          <input id="signup-email" type="email" placeholder="your@email.com" autocomplete="email" required />
+        </div>
+        <div>
+          <label for="signup-password">Password</label>
+          <input id="signup-password" type="password" placeholder="At least 6 characters" autocomplete="new-password" required />
+        </div>
+        <div id="signup-status" class="auth-status"></div>
+        <button type="submit" class="auth-submit">Create Account</button>
+      </form>
+
+      <div class="back-link">
+        <a href="/page1">← Back to blog</a>
+      </div>
+    </div>
+  </div>
+  <script>
+    function switchTab(tab) {
+      document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (i === 0) === (tab === 'login')));
+      document.getElementById('login-form').classList.toggle('active', tab === 'login');
+      document.getElementById('signup-form').classList.toggle('active', tab === 'signup');
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const status = document.getElementById('login-status');
+      status.textContent = '';
+      status.className = 'auth-status';
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+      try {
+        const r = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ username, password })
+        });
+        const data = await r.json();
+        if (!r.ok) { status.textContent = data.error || 'Login failed.'; return; }
+        status.className = 'auth-status ok';
+        status.textContent = `Welcome back, ${data.username}!`;
+        setTimeout(() => { window.location.href = '/page1'; }, 800);
+      } catch { status.textContent = 'Network error. Try again.'; }
+    }
+
+    async function handleSignup(e) {
+      e.preventDefault();
+      const status = document.getElementById('signup-status');
+      status.textContent = '';
+      status.className = 'auth-status';
+      const username = document.getElementById('signup-username').value.trim();
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+      try {
+        const r = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ username, email, password })
+        });
+        const data = await r.json();
+        if (!r.ok) { status.textContent = data.error || 'Signup failed.'; return; }
+        status.className = 'auth-status ok';
+        status.textContent = `Account created! Welcome, ${data.username}!`;
+        setTimeout(() => { window.location.href = '/page1'; }, 800);
+      } catch { status.textContent = 'Network error. Try again.'; }
+    }
+
+    // Redirect if already logged in
+    fetch('/api/auth/session', { credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.authenticated) window.location.href = '/page1';
+        if (localStorage.getItem('auth_tab') === 'signup') {
+          localStorage.removeItem('auth_tab');
+          switchTab('signup');
+        }
+      });
+  </script>
+</body>
+</html>

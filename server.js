@@ -32,6 +32,28 @@ const MFA_TTL_MS = 5 * 60 * 1000;
 const adminSessions = new Map();
 const pendingChallenges = new Map();
 const pendingMfa = new Map();
+const userSessions = new Map(); // token -> { userId, username, expiresAt }
+
+function hashPassword(password, salt) {
+  return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha256').toString('hex');
+}
+function createUserSession(res, userId, username) {
+  const token = crypto.randomBytes(32).toString('hex');
+  userSessions.set(token, { userId, username, expiresAt: Date.now() + SESSION_TTL_MS });
+  res.setHeader('Set-Cookie', `user_sid=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=${SESSION_TTL_MS / 1000}`);
+  return token;
+}
+function getUserFromRequest(req) {
+  const cookies = parseCookies(req);
+  const token = cookies['user_sid'];
+  if (!token) return null;
+  const session = userSessions.get(token);
+  if (!session || session.expiresAt < Date.now()) {
+    userSessions.delete(token);
+    return null;
+  }
+  return session;
+}
 
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
@@ -55,27 +77,27 @@ CREATE TABLE IF NOT EXISTS entries (
 );
 `;
 
-db.run(createTableSql, (err) => {
-  if (err) {
-    console.error('Table creation error:', err);
-    process.exit(1);
-  }
+const createUsersSql = `
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  password_salt TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+`;
+
+db.serialize(() => {
+  db.run(createTableSql, (err) => { if (err) { console.error('entries table error:', err); process.exit(1); } });
+  db.run(createUsersSql, (err) => { if (err) { console.error('users table error:', err); process.exit(1); } });
 
   db.all('PRAGMA table_info(entries)', [], (pragmaErr, columns) => {
-    if (pragmaErr) {
-      console.error('PRAGMA error:', pragmaErr);
-      process.exit(1);
-    }
-
-    const hasPublished = columns.some((column) => column.name === 'published');
-    if (!hasPublished) {
-      db.run('ALTER TABLE entries ADD COLUMN published INTEGER NOT NULL DEFAULT 0', (alterErr) => {
-        if (alterErr) {
-          console.error('Unable to add published column:', alterErr);
-          process.exit(1);
-        }
-      });
-    }
+    if (pragmaErr) { console.error('PRAGMA error:', pragmaErr); process.exit(1); }
+    const hasPublished = columns.some((c) => c.name === 'published');
+    if (!hasPublished) db.run('ALTER TABLE entries ADD COLUMN published INTEGER NOT NULL DEFAULT 0');
+    const hasUserId = columns.some((c) => c.name === 'user_id');
+    if (!hasUserId) db.run('ALTER TABLE entries ADD COLUMN user_id INTEGER REFERENCES users(id)');
   });
 });
 
@@ -335,8 +357,67 @@ function formatTimestamp(date) {
   return `${datePart} ${hours}:${minutePart} ${ampm}`;
 }
 
+// ── User Auth Routes ──────────────────────────────────────────────────────────
+
+app.post('/api/auth/signup', (req, res) => {
+  const { username, email, password } = req.body || {};
+  if (!username || !email || !password) return res.status(400).json({ error: 'Username, email, and password are required.' });
+  if (username.length < 2 || username.length > 40) return res.status(400).json({ error: 'Username must be 2–40 characters.' });
+  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Invalid email address.' });
+
+  const salt = crypto.randomBytes(32).toString('hex');
+  const hash = hashPassword(password, salt);
+  const createdAt = new Date().toISOString();
+
+  db.run('INSERT INTO users (username, email, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?)',
+    [username.trim(), email.trim().toLowerCase(), hash, salt, createdAt],
+    function (err) {
+      if (err) {
+        if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Username or email already taken.' });
+        return res.status(500).json({ error: 'Signup failed.' });
+      }
+      createUserSession(res, this.lastID, username.trim());
+      res.status(201).json({ success: true, username: username.trim() });
+    }
+  );
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) return res.status(400).json({ error: 'Username and password are required.' });
+
+  db.get('SELECT * FROM users WHERE username = ?', [username.trim()], (err, user) => {
+    if (err) return res.status(500).json({ error: 'Login failed.' });
+    if (!user) return res.status(401).json({ error: 'Invalid username or password.' });
+
+    const hash = hashPassword(password, user.password_salt);
+    if (hash !== user.password_hash) return res.status(401).json({ error: 'Invalid username or password.' });
+
+    createUserSession(res, user.id, user.username);
+    res.json({ success: true, username: user.username });
+  });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  const cookies = parseCookies(req);
+  const token = cookies['user_sid'];
+  if (token) userSessions.delete(token);
+  res.setHeader('Set-Cookie', 'user_sid=; HttpOnly; Path=/; Max-Age=0');
+  res.json({ success: true });
+});
+
+app.get('/api/auth/session', (req, res) => {
+  const user = getUserFromRequest(req);
+  if (!user) return res.json({ authenticated: false });
+  res.json({ authenticated: true, username: user.username, userId: user.userId });
+});
+
+// ── Entries Routes ────────────────────────────────────────────────────────────
+
 app.get('/api/entries', (req, res) => {
   cleanupAuthState();
+  const user = getUserFromRequest(req);
   const search = req.query.search || '';
   const date = req.query.date || '';
   const published = req.query.published;
@@ -345,12 +426,14 @@ app.get('/api/entries', (req, res) => {
   const params = [];
   const clauses = [];
 
+  if (user) {
+    clauses.push('(user_id = ? OR user_id IS NULL)');
+    params.push(user.userId);
+  }
+
   if (typeof published !== 'undefined') {
-    if (published === 'true') {
-      clauses.push('published = 1');
-    } else if (published === 'false') {
-      clauses.push('published = 0');
-    }
+    if (published === 'true') clauses.push('published = 1');
+    else if (published === 'false') clauses.push('published = 0');
   }
 
   if (search) {
@@ -363,36 +446,29 @@ app.get('/api/entries', (req, res) => {
     params.push(date);
   }
 
-  if (clauses.length) {
-    sql += ` WHERE ${clauses.join(' AND ')}`;
-  }
-
+  if (clauses.length) sql += ` WHERE ${clauses.join(' AND ')}`;
   sql += ' ORDER BY datetime(created_at) DESC';
 
   db.all(sql, params, (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to load entries.' });
-    }
+    if (err) return res.status(500).json({ error: 'Failed to load entries.' });
     res.json(rows);
   });
 });
 
 app.post('/api/entries', (req, res) => {
   cleanupAuthState();
+  const user = getUserFromRequest(req);
   const { title, content } = req.body;
-  if (!title || !content) {
-    return res.status(400).json({ error: 'Title and content are required.' });
-  }
+  if (!title || !content) return res.status(400).json({ error: 'Title and content are required.' });
 
   const now = new Date();
   const timestamp = formatTimestamp(now);
   const createdAt = now.toISOString();
-  const sql = 'INSERT INTO entries (title, content, timestamp, created_at, published) VALUES (?, ?, ?, ?, 0)';
+  const userId = user ? user.userId : null;
+  const sql = 'INSERT INTO entries (title, content, timestamp, created_at, published, user_id) VALUES (?, ?, ?, ?, 0, ?)';
 
-  db.run(sql, [title, content, timestamp, createdAt], function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to save entry.' });
-    }
+  db.run(sql, [title, content, timestamp, createdAt, userId], function (err) {
+    if (err) return res.status(500).json({ error: 'Failed to save entry.' });
     res.status(201).json({ id: this.lastID, title, content, timestamp, created_at: createdAt, published: 0 });
   });
 });
@@ -826,6 +902,10 @@ app.get(['/', '/page1'], (req, res) => {
 
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 app.get('/page2', (req, res) => {
