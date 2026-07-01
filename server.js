@@ -407,6 +407,8 @@ app.post('/api/auth/login', (req, res) => {
     if (hash !== user.password_hash) return res.status(401).json({ error: 'Invalid username or password.' });
 
     createUserSession(res, user.id, user.username);
+    // Claim any previously unowned entries
+    db.run('UPDATE entries SET user_id = ? WHERE user_id IS NULL', [user.id]);
     res.json({ success: true, username: user.username });
   });
 });
@@ -452,10 +454,7 @@ app.get('/api/entries', (req, res) => {
   const params = [];
   const clauses = [];
 
-  if (user) {
-    clauses.push('(user_id = ? OR user_id IS NULL)');
-    params.push(user.userId);
-  }
+  // No user scoping — all entries are visible to everyone (single-owner blog)
 
   if (source) {
     clauses.push('source = ?');
