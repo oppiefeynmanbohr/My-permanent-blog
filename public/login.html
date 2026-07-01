@@ -33,12 +33,13 @@
       <p>Sign in to save your entries forever</p>
 
       <div class="auth-tabs">
-        <button class="auth-tab active" onclick="switchTab('login')">Log In</button>
-        <button class="auth-tab" onclick="switchTab('signup')">Sign Up</button>
+        <button class="auth-tab" onclick="switchTab('login')">Log In</button>
+        <button class="auth-tab active" onclick="switchTab('signup')">Sign Up</button>
       </div>
 
       <!-- Login -->
-      <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
+      <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+        <p style="margin:0 0 12px;font-size:0.9em;color:#5D8AA8;background:#eef4f8;padding:10px;border-radius:6px;">First time here? Use the <strong>Sign Up</strong> tab above to create your account.</p>
         <div>
           <label for="login-username">Username</label>
           <input id="login-username" type="text" placeholder="Your username" autocomplete="username" required />
@@ -52,7 +53,7 @@
       </form>
 
       <!-- Sign Up -->
-      <form id="signup-form" class="auth-form" onsubmit="handleSignup(event)">
+      <form id="signup-form" class="auth-form active" onsubmit="handleSignup(event)">
         <div>
           <label for="signup-username">Username</label>
           <input id="signup-username" type="text" placeholder="Choose a username" autocomplete="username" required />
