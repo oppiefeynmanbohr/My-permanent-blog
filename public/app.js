@@ -207,9 +207,39 @@ async function loadEntries() {
   if (search) params.set('search', search);
   if (date) params.set('date', date);
   const url = `/api/entries?${params.toString()}`;
-  const response = await fetch(url);
-  const entries = await response.json();
-  renderEntries(entries);
+  try {
+    const response = await fetch(url, { credentials: 'same-origin' });
+    const entries = await response.json();
+    if (Array.isArray(entries) && entries.length > 0) {
+      // Cache entries in localStorage for resilience
+      if (!search && !date) {
+        try { localStorage.setItem('entries_cache', JSON.stringify(entries)); } catch {}
+      }
+      renderEntries(entries);
+    } else if (!search && !date) {
+      // Server returned nothing — try local cache
+      try {
+        const cached = localStorage.getItem('entries_cache');
+        if (cached) {
+          const cachedEntries = JSON.parse(cached);
+          if (cachedEntries.length > 0) {
+            renderEntries(cachedEntries);
+            if (saveStatus) saveStatus.textContent = '(Showing cached entries — server may be restarting)';
+            return;
+          }
+        }
+      } catch {}
+      renderEntries([]);
+    } else {
+      renderEntries(entries);
+    }
+  } catch {
+    // Network error — try cache
+    try {
+      const cached = localStorage.getItem('entries_cache');
+      if (cached) renderEntries(JSON.parse(cached));
+    } catch {}
+  }
 }
 
 async function saveEntry() {
@@ -244,7 +274,6 @@ async function saveEntry() {
   saveStatus.textContent = 'Entry saved permanently.';
   saveEntryButton.disabled = false;
   await loadEntries();
-  // Auto-export all entries to Word after every save
   try {
     const resp = await fetch('/api/entries', { credentials: 'same-origin' });
     if (resp.ok) {
