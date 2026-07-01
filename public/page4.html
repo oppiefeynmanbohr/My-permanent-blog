@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Personal Blog - Daily Journal</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div class="header-top">
+        <div>
+          <h1 id="blog-title-display">Your Personal Blog</h1>
+          <p class="subtitle">Daily Journal — Page 4</p>
+        </div>
+        <a id="support-link-button" class="support-button" href="/support">Support</a>
+      </div>
+      <nav class="page-nav">
+        <a class="page-button" href="/page1">Blog Page 1</a>
+        <a class="page-button" href="/page2">Blog Page 2</a>
+        <a class="page-button" href="/page3">Blog Page 3</a>
+        <a class="page-button active" href="/page4">Daily Journal</a>
+        <a class="page-button" href="/library">Library</a>
+        <a class="page-button" href="/published">Public Entries</a>
+      </nav>
+    </header>
+
+    <section class="entry-form-section">
+      <div class="entry-form-card">
+        <div class="form-row timestamp-row">
+          <label>Today</label>
+          <div id="current-timestamp" class="timestamp-display"></div>
+        </div>
+        <div class="form-row">
+          <label for="entry-content">Write your entry</label>
+          <textarea id="entry-content" rows="10" placeholder="What happened today..."></textarea>
+        </div>
+        <div class="form-row form-actions">
+          <button id="save-entry">Save Entry</button>
+          <span id="save-status" class="save-status"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="entries-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <h2 style="margin:0;">Today's Entries</h2>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <label for="date-filter" style="font-size:0.9em;color:#5D8AA8;">View date:</label>
+          <input id="date-filter" type="date" style="padding:6px 10px;border-radius:8px;border:1px solid rgba(93,138,168,0.3);background:#F8F8FF;" />
+          <button id="clear-date" class="secondary-button" style="padding:6px 14px;font-size:0.85em;">Today</button>
+        </div>
+      </div>
+      <div id="entries-list" class="entries-list"></div>
+    </section>
+
+    <footer class="site-footer">
+      <p>© 2026 My Permanent Blog. All rights reserved.</p>
+    </footer>
+  </div>
+
+  <script>
+    const timestampEl = document.getElementById('current-timestamp');
+    const entryContent = document.getElementById('entry-content');
+    const saveBtn = document.getElementById('save-entry');
+    const saveStatus = document.getElementById('save-status');
+    const entriesList = document.getElementById('entries-list');
+    const dateFilter = document.getElementById('date-filter');
+    const clearDateBtn = document.getElementById('clear-date');
+
+    function getTodayStr() {
+      const d = new Date();
+      return d.toISOString().slice(0, 10);
+    }
+
+    function getFormattedTimestamp() {
+      const now = new Date();
+      const m = String(now.getMonth()+1).padStart(2,'0');
+      const d = String(now.getDate()).padStart(2,'0');
+      const y = now.getFullYear();
+      let h = now.getHours(); const min = String(now.getMinutes()).padStart(2,'0');
+      const ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+      return `(${m}/${d}/${y} ${h}:${min} ${ampm})`;
+    }
+
+    function refreshTimestamp() {
+      if (timestampEl) timestampEl.textContent = getFormattedTimestamp();
+    }
+
+    function escapeHtml(v) {
+      return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br/>');
+    }
+
+    async function loadEntries() {
+      const date = dateFilter.value || getTodayStr();
+      const params = new URLSearchParams({ source: 'page4', date });
+      try {
+        const r = await fetch(`/api/entries?${params}`, { credentials: 'same-origin' });
+        const entries = await r.json();
+        entriesList.innerHTML = '';
+        if (!entries.length) {
+          entriesList.innerHTML = '<p style="color:#5D8AA8;">No entries for this day yet.</p>';
+          return;
+        }
+        entries.forEach(entry => {
+          const card = document.createElement('article');
+          card.className = 'entry-card';
+          card.innerHTML = `
+            <div class="entry-header">
+              <div class="entry-timestamp">${escapeHtml(entry.timestamp)}</div>
+            </div>
+            <div class="entry-content">${escapeHtml(entry.content)}</div>
+            <div class="entry-actions">
+              <button class="delete-button" data-id="${entry.id}">Delete</button>
+            </div>
+          `;
+          card.querySelector('.delete-button').addEventListener('click', () => deleteEntry(entry.id));
+          entriesList.appendChild(card);
+        });
+      } catch { entriesList.innerHTML = '<p>Could not load entries.</p>'; }
+    }
+
+    async function saveEntry() {
+      const content = entryContent.value.trim();
+      if (!content) { saveStatus.textContent = 'Write something first.'; return; }
+      saveBtn.disabled = true;
+      saveStatus.textContent = 'Saving...';
+      try {
+        const r = await fetch('/api/entries', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ content, source: 'page4' })
+        });
+        if (!r.ok) { saveStatus.textContent = 'Could not save. Try again.'; saveBtn.disabled = false; return; }
+        entryContent.value = '';
+        refreshTimestamp();
+        saveStatus.textContent = 'Entry saved.';
+        dateFilter.value = getTodayStr();
+        loadEntries();
+      } catch { saveStatus.textContent = 'Network error.'; }
+      saveBtn.disabled = false;
+    }
+
+    async function deleteEntry(id) {
+      const confirm = prompt('Type "delete permanently" to confirm:');
+      if (!confirm || confirm.trim().toLowerCase() !== 'delete permanently') { return; }
+      await fetch(`/api/entries/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+      loadEntries();
+    }
+
+    saveBtn.addEventListener('click', saveEntry);
+    clearDateBtn.addEventListener('click', () => { dateFilter.value = getTodayStr(); loadEntries(); });
+    dateFilter.addEventListener('change', loadEntries);
+
+    // Apply saved blog title
+    try {
+      const t = localStorage.getItem('blogTitle');
+      if (t) {
+        document.getElementById('blog-title-display').textContent = t;
+        document.title = `${t} - Daily Journal`;
+      }
+    } catch {}
+
+    // Apply saved fonts
+    try {
+      const f = localStorage.getItem('blogFontFamily');
+      const s = localStorage.getItem('blogFontSize');
+      if (f) document.documentElement.style.setProperty('--blog-font-family', f);
+      if (s) document.documentElement.style.setProperty('--blog-font-size', s);
+    } catch {}
+
+    dateFilter.value = getTodayStr();
+    refreshTimestamp();
+    setInterval(refreshTimestamp, 30000);
+    loadEntries();
+  </script>
+</body>
+</html>

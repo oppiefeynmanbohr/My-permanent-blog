@@ -106,6 +106,7 @@ async function initDatabase() {
   const names = columns.map(c => c.name);
   if (!names.includes('published')) await dbRun('ALTER TABLE entries ADD COLUMN published INTEGER NOT NULL DEFAULT 0');
   if (!names.includes('user_id')) await dbRun('ALTER TABLE entries ADD COLUMN user_id INTEGER REFERENCES users(id)');
+  if (!names.includes('source')) await dbRun("ALTER TABLE entries ADD COLUMN source TEXT NOT NULL DEFAULT 'main'");
   console.log('Database initialized. Tables:', (await dbAll("SELECT name FROM sqlite_master WHERE type='table'")).map(t => t.name).join(', '));
 }
 
@@ -445,14 +446,20 @@ app.get('/api/entries', (req, res) => {
   const search = req.query.search || '';
   const date = req.query.date || '';
   const published = req.query.published;
+  const source = req.query.source || '';
 
-  let sql = 'SELECT id, title, content, timestamp, created_at, published FROM entries';
+  let sql = 'SELECT id, title, content, timestamp, created_at, published, source FROM entries';
   const params = [];
   const clauses = [];
 
   if (user) {
     clauses.push('(user_id = ? OR user_id IS NULL)');
     params.push(user.userId);
+  }
+
+  if (source) {
+    clauses.push('source = ?');
+    params.push(source);
   }
 
   if (typeof published !== 'undefined') {
@@ -482,19 +489,20 @@ app.get('/api/entries', (req, res) => {
 app.post('/api/entries', (req, res) => {
   cleanupAuthState();
   const user = getUserFromRequest(req);
-  const { title, content } = req.body;
+  const { title, content, source } = req.body;
   if (!content) return res.status(400).json({ error: 'Content is required.' });
 
   const autoTitle = title || `Entry ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  const entrySource = source || 'main';
   const now = new Date();
   const timestamp = formatTimestamp(now);
   const createdAt = now.toISOString();
   const userId = user ? user.userId : null;
-  const sql = 'INSERT INTO entries (title, content, timestamp, created_at, published, user_id) VALUES (?, ?, ?, ?, 0, ?)';
+  const sql = 'INSERT INTO entries (title, content, timestamp, created_at, published, user_id, source) VALUES (?, ?, ?, ?, 0, ?, ?)';
 
-  db.run(sql, [autoTitle, content, timestamp, createdAt, userId], function (err) {
+  db.run(sql, [autoTitle, content, timestamp, createdAt, userId, entrySource], function (err) {
     if (err) return res.status(500).json({ error: 'Failed to save entry.' });
-    res.status(201).json({ id: this.lastID, title: autoTitle, content, timestamp, created_at: createdAt, published: 0 });
+    res.status(201).json({ id: this.lastID, title: autoTitle, content, timestamp, created_at: createdAt, published: 0, source: entrySource });
   });
 });
 
@@ -939,6 +947,10 @@ app.get('/page2', (req, res) => {
 
 app.get('/page3', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'page3.html'));
+});
+
+app.get('/page4', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'page4.html'));
 });
 
 app.get('/library', (req, res) => {
