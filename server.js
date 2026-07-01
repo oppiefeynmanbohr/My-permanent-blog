@@ -476,25 +476,25 @@ app.post('/api/entries', (req, res) => {
 
 app.patch('/api/entries/:id/publish', (req, res) => {
   cleanupAuthState();
-  if (!requireAdmin(req, res)) return;
+  const isAdmin = isAdminAuthenticated(req);
+  const user = getUserFromRequest(req);
+  if (!isAdmin && !user) return res.status(403).json({ error: 'Not authorized.' });
 
   const { publish } = req.body;
-
   const id = Number(req.params.id);
-  if (!id) {
-    return res.status(400).json({ error: 'Invalid entry ID.' });
-  }
+  if (!id) return res.status(400).json({ error: 'Invalid entry ID.' });
 
   const publishedValue = publish ? 1 : 0;
-  const sql = 'UPDATE entries SET published = ? WHERE id = ?';
 
-  db.run(sql, [publishedValue, id], function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to update publish status.' });
-    }
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Entry not found.' });
-    }
+  // Admins can publish any entry; users can only publish their own
+  const sql = isAdmin
+    ? 'UPDATE entries SET published = ? WHERE id = ?'
+    : 'UPDATE entries SET published = ? WHERE id = ? AND (user_id = ? OR user_id IS NULL)';
+  const params = isAdmin ? [publishedValue, id] : [publishedValue, id, user.userId];
+
+  db.run(sql, params, function (err) {
+    if (err) return res.status(500).json({ error: 'Failed to update publish status.' });
+    if (this.changes === 0) return res.status(404).json({ error: 'Entry not found.' });
     res.json({ success: true, published: publishedValue });
   });
 });
