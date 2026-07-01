@@ -88,18 +88,28 @@ CREATE TABLE IF NOT EXISTS users (
 );
 `;
 
-db.serialize(() => {
-  db.run(createTableSql, (err) => { if (err) { console.error('entries table error:', err); process.exit(1); } });
-  db.run(createUsersSql, (err) => { if (err) { console.error('users table error:', err); process.exit(1); } });
-
-  db.all('PRAGMA table_info(entries)', [], (pragmaErr, columns) => {
-    if (pragmaErr) { console.error('PRAGMA error:', pragmaErr); process.exit(1); }
-    const hasPublished = columns.some((c) => c.name === 'published');
-    if (!hasPublished) db.run('ALTER TABLE entries ADD COLUMN published INTEGER NOT NULL DEFAULT 0');
-    const hasUserId = columns.some((c) => c.name === 'user_id');
-    if (!hasUserId) db.run('ALTER TABLE entries ADD COLUMN user_id INTEGER REFERENCES users(id)');
+function dbRun(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) { if (err) reject(err); else resolve(this); });
   });
-});
+}
+function dbAll(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => { if (err) reject(err); else resolve(rows); });
+  });
+}
+
+async function initDatabase() {
+  await dbRun(createTableSql);
+  await dbRun(createUsersSql);
+  const columns = await dbAll('PRAGMA table_info(entries)');
+  const names = columns.map(c => c.name);
+  if (!names.includes('published')) await dbRun('ALTER TABLE entries ADD COLUMN published INTEGER NOT NULL DEFAULT 0');
+  if (!names.includes('user_id')) await dbRun('ALTER TABLE entries ADD COLUMN user_id INTEGER REFERENCES users(id)');
+  console.log('Database initialized. Tables:', (await dbAll("SELECT name FROM sqlite_master WHERE type='table'")).map(t => t.name).join(', '));
+}
+
+db.serialize(() => {});
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -943,6 +953,13 @@ app.get('/published', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`My Permanent Blog running at http://localhost:${PORT}`);
-});
+initDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`My Permanent Blog running at http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Database initialization failed:', err);
+    process.exit(1);
+  });
