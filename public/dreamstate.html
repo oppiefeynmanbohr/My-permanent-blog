@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Dream State</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .dream-shell {
+      max-width: 860px;
+      margin: 40px auto 60px;
+      padding: 0 20px;
+    }
+
+    .dream-header {
+      text-align: center;
+      margin-bottom: 28px;
+      color: #F8F8FF;
+    }
+
+    .dream-header h1 {
+      font-family: 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+      font-size: 3rem;
+      color: #F8F8FF;
+      letter-spacing: 0.08em;
+      text-shadow: 0 0 24px rgba(120, 180, 255, 0.7), 0 0 60px rgba(60, 120, 255, 0.4);
+      margin-bottom: 6px;
+    }
+
+    .dream-header p {
+      color: rgba(200, 220, 255, 0.75);
+      font-style: italic;
+      font-size: 1rem;
+    }
+
+    .dream-nav {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .dream-paper {
+      position: relative;
+      border-radius: 4px;
+      box-shadow: 2px 4px 24px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .dream-paper::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 68px;
+      width: 2px; height: 100%;
+      background: rgba(220, 100, 100, 0.45);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .lined-textarea {
+      display: block;
+      width: 100%;
+      min-height: 75vh;
+      box-sizing: border-box;
+      background-color: #fffef8;
+      background-image:
+        linear-gradient(transparent 27px, #b8d4ed 27px, #b8d4ed 28px, transparent 28px);
+      background-size: 100% 28px;
+      line-height: 28px;
+      padding: 14px 32px 14px 80px;
+      font-family: 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+      font-size: 1.05rem;
+      color: #1a1a2e;
+      border: none;
+      outline: none;
+      resize: vertical;
+      caret-color: #9B1C31;
+      letter-spacing: 0.02em;
+    }
+
+    .lined-textarea::placeholder {
+      color: rgba(100, 120, 160, 0.5);
+      font-style: italic;
+    }
+
+    .dream-actions {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      justify-content: center;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .dream-status {
+      font-size: 0.95em;
+      color: rgba(200, 220, 255, 0.85);
+      min-height: 20px;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .dream-status.ok { color: #7fffb0; }
+    .dream-status.err { color: #ff9090; }
+
+    .timestamp-glow {
+      text-align: center;
+      color: rgba(160, 200, 255, 0.6);
+      font-size: 0.85em;
+      margin-bottom: 8px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body style="background-color:#050d1a;background-image:radial-gradient(ellipse at 50% 0%,rgba(30,100,220,.45) 0%,transparent 65%),radial-gradient(ellipse at 20% 50%,rgba(20,60,180,.3) 0%,transparent 55%),radial-gradient(ellipse at 80% 80%,rgba(0,80,200,.25) 0%,transparent 55%),linear-gradient(180deg,#050d1a 0%,#0a1628 100%);min-height:100vh;">
+
+  <div class="dream-shell">
+    <div class="dream-header">
+      <h1>✦ The Dream State ✦</h1>
+      <p>Write freely. Publish to send your words to the world.</p>
+    </div>
+
+    <nav class="dream-nav">
+      <a class="page-button" href="/page1">Blog Page 1</a>
+      <a class="page-button" href="/page2">Blog Page 2</a>
+      <a class="page-button" href="/page3">Blog Page 3</a>
+      <a class="page-button" href="/page4">Daily Journal</a>
+      <a class="page-button" href="/library">Library</a>
+      <a class="page-button" href="/published">Public Entries</a>
+      <a class="page-button active" href="/dreamstate">Dream State</a>
+    </nav>
+
+    <div class="timestamp-glow" id="current-timestamp"></div>
+
+    <div class="dream-paper">
+      <textarea
+        id="dream-content"
+        class="lined-textarea"
+        placeholder="Begin writing your dream here... let the words flow."></textarea>
+    </div>
+
+    <div class="dream-actions">
+      <button id="publish-dream" style="background:linear-gradient(135deg,#b52235,#9B1C31,#7a1525);padding:14px 32px;font-size:1rem;border-radius:999px;letter-spacing:0.05em;">
+        ✦ Publish to Blog
+      </button>
+      <button id="save-dream" class="secondary-button" style="padding:14px 28px;">
+        Save Draft
+      </button>
+      <button id="clear-dream" class="secondary-button" style="padding:14px 28px;">
+        Clear
+      </button>
+    </div>
+    <div id="dream-status" class="dream-status"></div>
+  </div>
+
+  <script>
+    const dreamContent = document.getElementById('dream-content');
+    const publishBtn = document.getElementById('publish-dream');
+    const saveBtn = document.getElementById('save-dream');
+    const clearBtn = document.getElementById('clear-dream');
+    const statusEl = document.getElementById('dream-status');
+    const timestampEl = document.getElementById('current-timestamp');
+
+    // Auto-save draft to localStorage
+    const DRAFT_KEY = 'dreamstate_draft';
+    const saved = localStorage.getItem(DRAFT_KEY);
+    if (saved) dreamContent.value = saved;
+
+    dreamContent.addEventListener('input', () => {
+      localStorage.setItem(DRAFT_KEY, dreamContent.value);
+    });
+
+    function getTimestamp() {
+      const now = new Date();
+      const m = String(now.getMonth()+1).padStart(2,'0');
+      const d = String(now.getDate()).padStart(2,'0');
+      const y = now.getFullYear();
+      let h = now.getHours(); const min = String(now.getMinutes()).padStart(2,'0');
+      const ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+      return `(${m}/${d}/${y} ${h}:${min} ${ampm})`;
+    }
+
+    function refreshTimestamp() {
+      if (timestampEl) timestampEl.textContent = getTimestamp();
+    }
+
+    function setStatus(msg, type = '') {
+      statusEl.textContent = msg;
+      statusEl.className = 'dream-status' + (type ? ` ${type}` : '');
+    }
+
+    async function saveEntry(publish) {
+      const content = dreamContent.value.trim();
+      if (!content) { setStatus('Write something first.', 'err'); return; }
+      publishBtn.disabled = true; saveBtn.disabled = true;
+      setStatus(publish ? 'Publishing...' : 'Saving draft...');
+      try {
+        const r = await fetch('/api/entries', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ content, source: 'dreamstate' })
+        });
+        if (!r.ok) { setStatus('Could not save. Try again.', 'err'); return; }
+        const entry = await r.json();
+
+        if (publish) {
+          await fetch(`/api/entries/${entry.id}/publish`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ publish: true })
+          });
+          setStatus('✦ Published to Blog Page 1!', 'ok');
+        } else {
+          setStatus('Draft saved.', 'ok');
+        }
+
+        localStorage.removeItem(DRAFT_KEY);
+        dreamContent.value = '';
+        refreshTimestamp();
+      } catch { setStatus('Network error. Try again.', 'err'); }
+      publishBtn.disabled = false; saveBtn.disabled = false;
+    }
+
+    publishBtn.addEventListener('click', () => saveEntry(true));
+    saveBtn.addEventListener('click', () => saveEntry(false));
+    clearBtn.addEventListener('click', () => {
+      if (confirm('Clear the page?')) {
+        dreamContent.value = '';
+        localStorage.removeItem(DRAFT_KEY);
+        setStatus('');
+      }
+    });
+
+    refreshTimestamp();
+    setInterval(refreshTimestamp, 30000);
+  </script>
+</body>
+</html>
