@@ -15,10 +15,13 @@ body {
   position: relative;
   margin: 0;
   min-height: 100vh;
-  background-color: #5D8AA8;
-  background-image: linear-gradient(rgba(93, 138, 168, 0.92), rgba(93, 138, 168, 0.92)), url("https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Christopher_Wren_Library%2C_Trinity_College%2C_Cambridge_-_geograph.org.uk_-_1608526.jpg/1280px-Christopher_Wren_Library%2C_Trinity_College%2C_Cambridge_-_geograph.org.uk_-_1608526.jpg");
+  background-color: #050d1a;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(30, 100, 220, 0.45) 0%, transparent 65%),
+    radial-gradient(ellipse at 20% 50%, rgba(20, 60, 180, 0.3) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 80%, rgba(0, 80, 200, 0.25) 0%, transparent 55%),
+    linear-gradient(180deg, #050d1a 0%, #0a1628 100%);
   background-size: cover;
-  background-position: center top;
   background-attachment: fixed;
   color: var(--text-color);
   font-family: var(--blog-font-family);
@@ -58,9 +61,9 @@ body::after {
   margin: 40px auto 60px;
   padding: 34px 32px 44px;
   background: var(--page-bg);
-  border: 1px solid var(--page-border);
+  border: 1px solid rgba(60, 130, 255, 0.25);
   border-radius: 32px;
-  box-shadow: 0 30px 80px rgba(70, 50, 35, 0.15);
+  box-shadow: 0 0 40px rgba(30, 100, 255, 0.15), 0 0 80px rgba(10, 60, 200, 0.1), 0 30px 80px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(12px);
   overflow: hidden;
 }
