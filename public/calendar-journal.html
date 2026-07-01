@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calendar Journal</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 18px;
+    }
+    .cal-title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #1a2a3a;
+      min-width: 200px;
+      text-align: center;
+    }
+    .cal-nav {
+      background: #9B1C31;
+      color: white;
+      border: none;
+      border-radius: 999px;
+      padding: 8px 18px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .cal-nav:hover { background: #7a1525; }
+    .day-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .day-btn {
+      aspect-ratio: 1;
+      border: 2px solid rgba(93,138,168,0.25);
+      border-radius: 10px;
+      background: #F8F8FF;
+      color: #1a2a3a;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.15s;
+      position: relative;
+    }
+    .day-btn:hover { background: rgba(93,138,168,0.15); transform: scale(1.05); }
+    .day-btn.today { border-color: #9B1C31; color: #9B1C31; }
+    .day-btn.has-entry { background: rgba(93,138,168,0.2); }
+    .day-btn.selected { background: #9B1C31; color: white; border-color: #9B1C31; }
+    .day-btn.has-entry::after {
+      content: '●';
+      position: absolute;
+      bottom: 4px;
+      right: 6px;
+      font-size: 0.5rem;
+      color: #5D8AA8;
+    }
+    .day-btn.selected.has-entry::after { color: rgba(255,255,255,0.7); }
+    .day-label {
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: #5D8AA8;
+      text-align: center;
+      padding: 4px 0;
+    }
+    .entry-panel {
+      background: #F8F8FF;
+      border: 1px solid rgba(93,138,168,0.25);
+      border-radius: 16px;
+      padding: 20px;
+    }
+    .entry-panel h3 { margin: 0 0 12px; color: #1a2a3a; }
+    .entry-panel textarea {
+      width: 100%;
+      min-height: 180px;
+      box-sizing: border-box;
+      border: 1px solid rgba(93,138,168,0.3);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: inherit;
+      font-size: 1rem;
+      line-height: 1.6;
+      resize: vertical;
+      background: white;
+      color: #1a2a3a;
+    }
+    .entry-panel textarea:focus { outline: 2px solid #9B1C31; }
+    .entry-actions { display: flex; gap: 12px; margin-top: 12px; align-items: center; flex-wrap: wrap; }
+    .day-status { font-size: 0.9em; color: #5D8AA8; }
+    .empty-day { color: #888; font-style: italic; padding: 8px 0; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div class="header-top">
+        <div>
+          <h1>Calendar Journal</h1>
+          <p class="subtitle">Write an entry for any day of the month</p>
+        </div>
+        <a class="support-button" href="/support">Support</a>
+      </div>
+      <nav class="page-nav">
+        <a class="page-button" href="/page1">Blog Page 1</a>
+        <a class="page-button" href="/page2">Blog Page 2</a>
+        <a class="page-button" href="/page3">Blog Page 3</a>
+        <a class="page-button" href="/page4">Daily Journal</a>
+        <a class="page-button" href="/dreamstate">Dream State</a>
+        <a class="page-button active" href="/calendar-journal">Calendar</a>
+        <a class="page-button" href="/library">Library</a>
+        <a class="page-button" href="/published">Public Entries</a>
+      </nav>
+    </header>
+
+    <section class="entry-form-section">
+      <div class="entry-form-card">
+
+        <div class="cal-header">
+          <button class="cal-nav" id="prev-month">&#8592;</button>
+          <div class="cal-title" id="cal-title"></div>
+          <button class="cal-nav" id="next-month">&#8594;</button>
+        </div>
+
+        <!-- Day-of-week headers -->
+        <div class="day-grid" id="dow-headers">
+          <div class="day-label">Sun</div>
+          <div class="day-label">Mon</div>
+          <div class="day-label">Tue</div>
+          <div class="day-label">Wed</div>
+          <div class="day-label">Thu</div>
+          <div class="day-label">Fri</div>
+          <div class="day-label">Sat</div>
+        </div>
+
+        <div class="day-grid" id="day-grid"></div>
+
+        <div class="entry-panel" id="entry-panel" style="display:none;">
+          <h3 id="entry-day-label"></h3>
+          <textarea id="day-entry-content" placeholder="Write your entry for this day..."></textarea>
+          <div class="entry-actions">
+            <button id="save-day-entry">Save Entry</button>
+            <button id="delete-day-entry" class="secondary-button">Delete</button>
+            <span class="day-status" id="day-status"></span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <p>© 2026 My Permanent Blog. All rights reserved.</p>
+    </footer>
+  </div>
+
+  <script>
+    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const today = new Date();
+    let viewYear = today.getFullYear();
+    let viewMonth = today.getMonth(); // 0-based
+    let selectedDay = null;
+    let entryMap = {}; // 'YYYY-MM-DD' -> { id, content }
+
+    function daysInMonth(year, month) {
+      return new Date(year, month + 1, 0).getDate();
+    }
+    function firstDayOfWeek(year, month) {
+      return new Date(year, month, 1).getDay();
+    }
+    function padDate(n) { return String(n).padStart(2,'0'); }
+    function dateKey(year, month, day) {
+      return `${year}-${padDate(month+1)}-${padDate(day)}`;
+    }
+
+    async function loadMonthEntries() {
+      const yearStr = viewYear;
+      const monthStr = padDate(viewMonth + 1);
+      try {
+        const r = await fetch(`/api/entries?source=calendar&calmonth=${yearStr}-${monthStr}`, { credentials: 'same-origin' });
+        if (!r.ok) return;
+        const entries = await r.json();
+        entryMap = {};
+        entries.forEach(e => {
+          const d = e.created_at ? e.created_at.slice(0,10) : '';
+          if (d) entryMap[d] = { id: e.id, content: e.content };
+        });
+      } catch {}
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const calTitle = document.getElementById('cal-title');
+      const grid = document.getElementById('day-grid');
+      calTitle.textContent = `${MONTHS[viewMonth]} ${viewYear}`;
+      grid.innerHTML = '';
+
+      const total = daysInMonth(viewYear, viewMonth);
+      const startDow = firstDayOfWeek(viewYear, viewMonth);
+      const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
+
+      // Empty cells before first day
+      for (let i = 0; i < startDow; i++) {
+        const blank = document.createElement('div');
+        grid.appendChild(blank);
+      }
+
+      for (let d = 1; d <= total; d++) {
+        const key = dateKey(viewYear, viewMonth, d);
+        const btn = document.createElement('button');
+        btn.className = 'day-btn';
+        btn.textContent = d;
+        if (key === todayKey) btn.classList.add('today');
+        if (entryMap[key]) btn.classList.add('has-entry');
+        if (selectedDay === d && viewYear === today.getFullYear() || selectedDay === d) {
+          // highlight selected
+        }
+        btn.addEventListener('click', () => selectDay(d));
+        grid.appendChild(btn);
+      }
+    }
+
+    function selectDay(day) {
+      selectedDay = day;
+      const key = dateKey(viewYear, viewMonth, day);
+      const panel = document.getElementById('entry-panel');
+      const label = document.getElementById('entry-day-label');
+      const textarea = document.getElementById('day-entry-content');
+      const status = document.getElementById('day-status');
+
+      panel.style.display = 'block';
+      label.textContent = `${MONTHS[viewMonth]} ${day}, ${viewYear}`;
+      textarea.value = entryMap[key] ? entryMap[key].content : '';
+      status.textContent = entryMap[key] ? 'Entry exists — edit and save to update.' : 'No entry yet.';
+
+      // Highlight selected button
+      document.querySelectorAll('.day-btn').forEach((b, i) => {
+        const bDay = parseInt(b.textContent);
+        b.classList.toggle('selected', bDay === day && b.textContent.trim() === String(day));
+      });
+
+      textarea.focus();
+    }
+
+    document.getElementById('save-day-entry').addEventListener('click', async () => {
+      const key = dateKey(viewYear, viewMonth, selectedDay);
+      const content = document.getElementById('day-entry-content').value.trim();
+      const status = document.getElementById('day-status');
+      if (!content) { status.textContent = 'Write something first.'; return; }
+
+      status.textContent = 'Saving...';
+      // If entry exists, delete it first then re-create
+      if (entryMap[key]) {
+        await fetch(`/api/entries/${entryMap[key].id}`, { method: 'DELETE', credentials: 'same-origin' });
+      }
+
+      const dateStr = `${viewYear}-${padDate(viewMonth+1)}-${padDate(selectedDay)}`;
+      const r = await fetch('/api/entries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          content,
+          source: 'calendar',
+          caldate: dateStr
+        })
+      });
+      if (r.ok) {
+        status.textContent = 'Saved!';
+        await loadMonthEntries();
+        selectDay(selectedDay);
+      } else {
+        status.textContent = 'Could not save. Try again.';
+      }
+    });
+
+    document.getElementById('delete-day-entry').addEventListener('click', async () => {
+      const key = dateKey(viewYear, viewMonth, selectedDay);
+      if (!entryMap[key]) return;
+      const confirm = prompt('Type "delete permanently" to confirm:');
+      if (!confirm || confirm.trim().toLowerCase() !== 'delete permanently') return;
+      await fetch(`/api/entries/${entryMap[key].id}`, { method: 'DELETE', credentials: 'same-origin' });
+      await loadMonthEntries();
+      document.getElementById('entry-panel').style.display = 'none';
+    });
+
+    document.getElementById('prev-month').addEventListener('click', () => {
+      viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+      selectedDay = null;
+      document.getElementById('entry-panel').style.display = 'none';
+      loadMonthEntries();
+    });
+    document.getElementById('next-month').addEventListener('click', () => {
+      viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+      selectedDay = null;
+      document.getElementById('entry-panel').style.display = 'none';
+      loadMonthEntries();
+    });
+
+    // Apply saved fonts/title
+    try {
+      const t = localStorage.getItem('blogTitle');
+      if (t) document.title = `${t} - Calendar Journal`;
+      const f = localStorage.getItem('blogFontFamily');
+      const s = localStorage.getItem('blogFontSize');
+      if (f) document.documentElement.style.setProperty('--blog-font-family', f);
+      if (s) document.documentElement.style.setProperty('--blog-font-size', s);
+    } catch {}
+
+    loadMonthEntries();
+  </script>
+</body>
+</html>

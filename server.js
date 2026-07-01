@@ -449,32 +449,20 @@ app.get('/api/entries', (req, res) => {
   const date = req.query.date || '';
   const published = req.query.published;
   const source = req.query.source || '';
+  const calmonth = req.query.calmonth || ''; // e.g. '2026-07'
 
   let sql = 'SELECT id, title, content, timestamp, created_at, published, source FROM entries';
   const params = [];
   const clauses = [];
 
-  // No user scoping — all entries are visible to everyone (single-owner blog)
-
-  if (source) {
-    clauses.push('source = ?');
-    params.push(source);
-  }
-
+  if (source) { clauses.push('source = ?'); params.push(source); }
+  if (calmonth) { clauses.push("strftime('%Y-%m', created_at) = ?"); params.push(calmonth); }
   if (typeof published !== 'undefined') {
     if (published === 'true') clauses.push('published = 1');
     else if (published === 'false') clauses.push('published = 0');
   }
-
-  if (search) {
-    clauses.push('(title LIKE ? OR content LIKE ?)');
-    params.push(`%${search}%`, `%${search}%`);
-  }
-
-  if (date) {
-    clauses.push('date(created_at) = date(?)');
-    params.push(date);
-  }
+  if (search) { clauses.push('(title LIKE ? OR content LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
+  if (date) { clauses.push('date(created_at) = date(?)'); params.push(date); }
 
   if (clauses.length) sql += ` WHERE ${clauses.join(' AND ')}`;
   sql += ' ORDER BY datetime(created_at) DESC';
@@ -954,6 +942,10 @@ app.get('/page4', (req, res) => {
 
 app.get('/dreamstate', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dreamstate.html'));
+});
+
+app.get('/calendar-journal', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'calendar-journal.html'));
 });
 
 app.get('/library', (req, res) => {
