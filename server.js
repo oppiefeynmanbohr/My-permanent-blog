@@ -11,6 +11,18 @@ const {
   verifyAuthenticationResponse
 } = require('@simplewebauthn/server');
 
+// ── Turso cloud DB (permanent storage) or local SQLite fallback ───────────────
+const TURSO_URL = process.env.TURSO_URL || '';
+const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN || '';
+let tursoClient = null;
+if (TURSO_URL) {
+  try {
+    const { createClient } = require('@libsql/client');
+    tursoClient = createClient({ url: TURSO_URL, authToken: TURSO_AUTH_TOKEN });
+    console.log('Using Turso cloud database for permanent storage.');
+  } catch (e) { console.error('Turso init failed, falling back to SQLite:', e.message); }
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const dataDir = path.join(__dirname, 'data');
@@ -39,31 +51,30 @@ function hashPassword(password, salt) {
 function createUserSession(res, userId, username) {
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = Date.now() + SESSION_TTL_MS;
-  // Persist session in DB so it survives server restarts
-  db.run('INSERT OR REPLACE INTO user_sessions (token, user_id, username, expires_at) VALUES (?,?,?,?)',
+  dbRun('INSERT OR REPLACE INTO user_sessions (token, user_id, username, expires_at) VALUES (?,?,?,?)',
     [token, userId, username, expiresAt]);
   res.setHeader('Set-Cookie', `user_sid=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=${SESSION_TTL_MS / 1000}`);
   return token;
 }
 function getUserFromRequest(req) {
-  // Synchronous lookup not possible with sqlite3 async — handled via middleware below
   return req._userSession || null;
 }
 
 // Middleware: load user session from DB before each request
-function loadUserSession(req, res, next) {
+async function loadUserSession(req, res, next) {
   const cookies = parseCookies(req);
   const token = cookies['user_sid'];
   if (!token) { req._userSession = null; return next(); }
-  db.get('SELECT * FROM user_sessions WHERE token = ?', [token], (err, row) => {
-    if (err || !row || row.expires_at < Date.now()) {
-      if (row) db.run('DELETE FROM user_sessions WHERE token = ?', [token]);
+  try {
+    const row = await dbGet('SELECT * FROM user_sessions WHERE token = ?', [token]);
+    if (!row || row.expires_at < Date.now()) {
+      if (row) dbRun('DELETE FROM user_sessions WHERE token = ?', [token]);
       req._userSession = null;
     } else {
       req._userSession = { userId: row.user_id, username: row.username };
     }
-    next();
-  });
+  } catch { req._userSession = null; }
+  next();
 }
 
 if (!fs.existsSync(dataDir)) {
@@ -100,13 +111,21 @@ CREATE TABLE IF NOT EXISTS users (
 `;
 
 function dbRun(sql, params = []) {
+  if (tursoClient) return tursoClient.execute({ sql, args: params }).then(() => ({}));
   return new Promise((resolve, reject) => {
     db.run(sql, params, function (err) { if (err) reject(err); else resolve(this); });
   });
 }
 function dbAll(sql, params = []) {
+  if (tursoClient) return tursoClient.execute({ sql, args: params }).then(r => r.rows);
   return new Promise((resolve, reject) => {
     db.all(sql, params, (err, rows) => { if (err) reject(err); else resolve(rows); });
+  });
+}
+function dbGet(sql, params = []) {
+  if (tursoClient) return tursoClient.execute({ sql, args: params }).then(r => r.rows[0] || null);
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => { if (err) reject(err); else resolve(row); });
   });
 }
 
@@ -390,7 +409,7 @@ function formatTimestamp(date) {
 
 // ── User Auth Routes ──────────────────────────────────────────────────────────
 
-app.post('/api/auth/signup', (req, res) => {
+app.post('/api/auth/signup', async (req, res) => {
   const { username, email, password } = req.body || {};
   if (!username || !email || !password) return res.status(400).json({ error: 'Username, email, and password are required.' });
   if (username.length < 2 || username.length > 40) return res.status(400).json({ error: 'Username must be 2–40 characters.' });
@@ -401,42 +420,44 @@ app.post('/api/auth/signup', (req, res) => {
   const hash = hashPassword(password, salt);
   const createdAt = new Date().toISOString();
 
-  db.run('INSERT INTO users (username, email, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?)',
-    [username.trim(), email.trim().toLowerCase(), hash, salt, createdAt],
-    function (err) {
-      if (err) {
-        console.error('Signup DB error:', err.message);
-        if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Username or email already taken.' });
-        return res.status(500).json({ error: `Signup failed: ${err.message}` });
-      }
-      createUserSession(res, this.lastID, username.trim());
-      res.status(201).json({ success: true, username: username.trim() });
-    }
-  );
+  try {
+    const result = await dbRun(
+      'INSERT INTO users (username, email, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?)',
+      [username.trim(), email.trim().toLowerCase(), hash, salt, createdAt]
+    );
+    const newUser = await dbGet('SELECT id FROM users WHERE username = ?', [username.trim()]);
+    createUserSession(res, newUser.id, username.trim());
+    res.status(201).json({ success: true, username: username.trim() });
+  } catch (err) {
+    console.error('Signup DB error:', err.message);
+    if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Username or email already taken.' });
+    return res.status(500).json({ error: `Signup failed: ${err.message}` });
+  }
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: 'Username and password are required.' });
 
-  db.get('SELECT * FROM users WHERE username = ?', [username.trim()], (err, user) => {
-    if (err) return res.status(500).json({ error: 'Login failed.' });
+  try {
+    const user = await dbGet('SELECT * FROM users WHERE username = ?', [username.trim()]);
     if (!user) return res.status(401).json({ error: 'Invalid username or password.' });
 
     const hash = hashPassword(password, user.password_salt);
     if (hash !== user.password_hash) return res.status(401).json({ error: 'Invalid username or password.' });
 
     createUserSession(res, user.id, user.username);
-    // Claim any previously unowned entries
-    db.run('UPDATE entries SET user_id = ? WHERE user_id IS NULL', [user.id]);
+    dbRun('UPDATE entries SET user_id = ? WHERE user_id IS NULL', [user.id]);
     res.json({ success: true, username: user.username });
-  });
+  } catch (err) {
+    res.status(500).json({ error: 'Login failed.' });
+  }
 });
 
 app.post('/api/auth/logout', (req, res) => {
   const cookies = parseCookies(req);
   const token = cookies['user_sid'];
-  if (token) db.run('DELETE FROM user_sessions WHERE token = ?', [token]);
+  if (token) dbRun('DELETE FROM user_sessions WHERE token = ?', [token]);
   res.setHeader('Set-Cookie', 'user_sid=; HttpOnly; Path=/; Max-Age=0');
   res.json({ success: true });
 });
@@ -462,7 +483,7 @@ app.get('/api/auth/debug', (req, res) => {
 
 // ── Entries Routes ────────────────────────────────────────────────────────────
 
-app.get('/api/entries', (req, res) => {
+app.get('/api/entries', async (req, res) => {
   cleanupAuthState();
   const user = getUserFromRequest(req);
   const search = req.query.search || '';
@@ -487,13 +508,15 @@ app.get('/api/entries', (req, res) => {
   if (clauses.length) sql += ` WHERE ${clauses.join(' AND ')}`;
   sql += ' ORDER BY datetime(created_at) DESC';
 
-  db.all(sql, params, (err, rows) => {
-    if (err) return res.status(500).json({ error: 'Failed to load entries.' });
+  try {
+    const rows = await dbAll(sql, params);
     res.json(rows);
-  });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load entries.' });
+  }
 });
 
-app.post('/api/entries', (req, res) => {
+app.post('/api/entries', async (req, res) => {
   cleanupAuthState();
   const user = getUserFromRequest(req);
   const { title, content, source } = req.body;
@@ -507,13 +530,17 @@ app.post('/api/entries', (req, res) => {
   const userId = user ? user.userId : null;
   const sql = 'INSERT INTO entries (title, content, timestamp, created_at, published, user_id, source) VALUES (?, ?, ?, ?, 0, ?, ?)';
 
-  db.run(sql, [autoTitle, content, timestamp, createdAt, userId, entrySource], function (err) {
-    if (err) return res.status(500).json({ error: 'Failed to save entry.' });
-    res.status(201).json({ id: this.lastID, title: autoTitle, content, timestamp, created_at: createdAt, published: 0, source: entrySource });
-  });
+  try {
+    await dbRun(sql, [autoTitle, content, timestamp, createdAt, userId, entrySource]);
+    const row = await dbGet('SELECT id FROM entries WHERE created_at = ? AND user_id IS ?', [createdAt, userId]);
+    const newId = row ? row.id : Date.now();
+    res.status(201).json({ id: newId, title: autoTitle, content, timestamp, created_at: createdAt, published: 0, source: entrySource });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save entry.' });
+  }
 });
 
-app.patch('/api/entries/:id/publish', (req, res) => {
+app.patch('/api/entries/:id/publish', async (req, res) => {
   cleanupAuthState();
   const isAdmin = isAdminAuthenticated(req);
   const user = getUserFromRequest(req);
@@ -524,38 +551,30 @@ app.patch('/api/entries/:id/publish', (req, res) => {
   if (!id) return res.status(400).json({ error: 'Invalid entry ID.' });
 
   const publishedValue = publish ? 1 : 0;
-
-  // Admins can publish any entry; users can only publish their own
   const sql = isAdmin
     ? 'UPDATE entries SET published = ? WHERE id = ?'
     : 'UPDATE entries SET published = ? WHERE id = ? AND (user_id = ? OR user_id IS NULL)';
   const params = isAdmin ? [publishedValue, id] : [publishedValue, id, user.userId];
 
-  db.run(sql, params, function (err) {
-    if (err) return res.status(500).json({ error: 'Failed to update publish status.' });
-    if (this.changes === 0) return res.status(404).json({ error: 'Entry not found.' });
+  try {
+    await dbRun(sql, params);
     res.json({ success: true, published: publishedValue });
-  });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update publish status.' });
+  }
 });
 
-app.delete('/api/entries/:id', (req, res) => {
+app.delete('/api/entries/:id', async (req, res) => {
   cleanupAuthState();
-
   const id = Number(req.params.id);
-  if (!id) {
-    return res.status(400).json({ error: 'Invalid entry ID.' });
-  }
+  if (!id) return res.status(400).json({ error: 'Invalid entry ID.' });
 
-  const sql = 'DELETE FROM entries WHERE id = ?';
-  db.run(sql, [id], function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to delete entry.' });
-    }
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Entry not found.' });
-    }
+  try {
+    await dbRun('DELETE FROM entries WHERE id = ?', [id]);
     res.json({ success: true });
-  });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete entry.' });
+  }
 });
 
 app.get('/api/settings', (req, res) => {
