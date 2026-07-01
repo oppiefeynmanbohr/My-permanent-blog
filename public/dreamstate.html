@@ -65,12 +65,14 @@
       box-sizing: border-box;
       background-color: #fffef8;
       background-image:
-        linear-gradient(transparent 27px, #b8d4ed 27px, #b8d4ed 28px, transparent 28px);
-      background-size: 100% 28px;
-      line-height: 28px;
-      padding: 14px 32px 14px 80px;
+        linear-gradient(transparent 31px, #b8d4ed 31px, #b8d4ed 33px, transparent 33px);
+      background-size: 100% 33px;
+      background-position-y: 8px;
+      background-attachment: local;
+      line-height: 33px;
+      padding: 8px 32px 14px 80px;
       font-family: 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
-      font-size: 1.05rem;
+      font-size: 18px;
       color: #1a1a2e;
       border: none;
       outline: none;
@@ -162,13 +164,45 @@
     const statusEl = document.getElementById('dream-status');
     const timestampEl = document.getElementById('current-timestamp');
 
-    // Auto-save draft to localStorage
+    // Auto-save draft to localStorage AND server
     const DRAFT_KEY = 'dreamstate_draft';
     const saved = localStorage.getItem(DRAFT_KEY);
     if (saved) dreamContent.value = saved;
 
+    // Load server-side draft on page open
+    async function loadServerDraft() {
+      try {
+        const r = await fetch('/api/entries?source=dreamstate&published=false', { credentials: 'same-origin' });
+        if (!r.ok) return;
+        const entries = await r.json();
+        // Use most recent unpublished draft if textarea is empty
+        if (!dreamContent.value.trim() && entries.length > 0) {
+          dreamContent.value = entries[0].content;
+          localStorage.setItem(DRAFT_KEY, entries[0].content);
+          setStatus('Draft restored from server.', 'ok');
+          setTimeout(() => setStatus(''), 3000);
+        }
+      } catch {}
+    }
+    loadServerDraft();
+
+    let autoSaveTimer = null;
     dreamContent.addEventListener('input', () => {
       localStorage.setItem(DRAFT_KEY, dreamContent.value);
+      // Auto-save to server 3 seconds after typing stops
+      clearTimeout(autoSaveTimer);
+      autoSaveTimer = setTimeout(async () => {
+        const content = dreamContent.value.trim();
+        if (!content) return;
+        try {
+          await fetch('/api/entries', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ content, source: 'dreamstate' })
+          });
+        } catch {}
+      }, 3000);
     });
 
     function getTimestamp() {
