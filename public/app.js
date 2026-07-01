@@ -143,11 +143,10 @@ function downloadDocFile(filename, content) {
 }
 
 function handleWordExport() {
-  const title = entryTitle.value.trim() || 'Untitled Entry';
   const content = entryContent.value.trim() || 'No content yet.';
   const timestamp = exportTimestamp ? exportTimestamp.textContent : getFormattedTimestamp(new Date());
-  const fileNameSafe = title.replace(/[^a-z0-9-_ ]/gi, '').replace(/\s+/g, '_').slice(0, 60) || 'entry';
-  const documentContent = buildWordDocument(title, timestamp, content);
+  const fileNameSafe = `entry_${Date.now()}`;
+  const documentContent = buildWordDocument('Journal Entry', timestamp, content);
   downloadDocFile(`${fileNameSafe}.doc`, documentContent);
 }
 
@@ -175,7 +174,6 @@ function renderEntries(entries) {
     const isPublished = entry.published === 1 || entry.published === true;
     card.innerHTML = `
       <div class="entry-header">
-        <h3 class="entry-title">${escapeHtml(entry.title)}</h3>
         <div class="entry-timestamp">${escapeHtml(entry.timestamp)}</div>
       </div>
       <div class="entry-content">${escapeHtml(entry.content)}</div>
@@ -205,16 +203,17 @@ async function loadEntries() {
 }
 
 async function saveEntry() {
-  const title = entryTitle.value.trim();
   const content = entryContent.value.trim();
 
-  if (!title || !content) {
-    saveStatus.textContent = 'Please add both a title and content.';
+  if (!content) {
+    saveStatus.textContent = 'Please write something before saving.';
     return;
   }
 
   saveEntryButton.disabled = true;
   saveStatus.textContent = 'Saving...';
+
+  const title = `Entry ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
   const response = await fetch('/api/entries', {
     method: 'POST',
@@ -230,7 +229,6 @@ async function saveEntry() {
     return;
   }
 
-  entryTitle.value = '';
   entryContent.value = '';
   refreshTimestamp();
   saveStatus.textContent = 'Entry saved permanently.';
@@ -553,7 +551,7 @@ function renderOxfordResult(word, entry) {
 }
 
 async function handleOxfordLookup() {
-  const term = (oxfordInput && oxfordInput.value.trim()) || (entryTitle && entryTitle.value.trim());
+  const term = (oxfordInput && oxfordInput.value.trim());
   if (!term) return;
   if (oxfordResults) oxfordResults.textContent = 'Looking up...';
   await loadOxfordDictionary();

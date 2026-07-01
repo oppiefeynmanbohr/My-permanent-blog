@@ -459,17 +459,18 @@ app.post('/api/entries', (req, res) => {
   cleanupAuthState();
   const user = getUserFromRequest(req);
   const { title, content } = req.body;
-  if (!title || !content) return res.status(400).json({ error: 'Title and content are required.' });
+  if (!content) return res.status(400).json({ error: 'Content is required.' });
 
+  const autoTitle = title || `Entry ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
   const now = new Date();
   const timestamp = formatTimestamp(now);
   const createdAt = now.toISOString();
   const userId = user ? user.userId : null;
   const sql = 'INSERT INTO entries (title, content, timestamp, created_at, published, user_id) VALUES (?, ?, ?, ?, 0, ?)';
 
-  db.run(sql, [title, content, timestamp, createdAt, userId], function (err) {
+  db.run(sql, [autoTitle, content, timestamp, createdAt, userId], function (err) {
     if (err) return res.status(500).json({ error: 'Failed to save entry.' });
-    res.status(201).json({ id: this.lastID, title, content, timestamp, created_at: createdAt, published: 0 });
+    res.status(201).json({ id: this.lastID, title: autoTitle, content, timestamp, created_at: createdAt, published: 0 });
   });
 });
 
