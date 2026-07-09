@@ -753,8 +753,12 @@ async function togglePublish(entryId, publish) {
   });
 
   if (!response.ok) {
+    if (response.status === 403) {
+      window.location.href = '/login';
+      return;
+    }
     const error = await response.json().catch(() => ({}));
-    saveStatus.textContent = error?.error || 'Failed to update publish status. Make sure you are logged in.';
+    saveStatus.textContent = error?.error || 'Failed to update publish status.';
     return;
   }
 

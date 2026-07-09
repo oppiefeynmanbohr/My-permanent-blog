@@ -570,13 +570,9 @@ app.patch('/api/entries/:id/publish', async (req, res) => {
   if (!id) return res.status(400).json({ error: 'Invalid entry ID.' });
 
   const publishedValue = publish ? 1 : 0;
-  const sql = isAdmin
-    ? 'UPDATE entries SET published = ? WHERE id = ?'
-    : 'UPDATE entries SET published = ? WHERE id = ? AND (user_id = ? OR user_id IS NULL)';
-  const params = isAdmin ? [publishedValue, id] : [publishedValue, id, user.userId];
 
   try {
-    await dbRun(sql, params);
+    await dbRun('UPDATE entries SET published = ? WHERE id = ?', [publishedValue, id]);
     res.json({ success: true, published: publishedValue });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update publish status.' });
