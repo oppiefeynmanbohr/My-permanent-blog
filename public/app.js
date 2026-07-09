@@ -739,8 +739,12 @@ async function togglePublish(entryId, publish) {
     return;
   }
 
-  saveStatus.textContent = publish ? 'Entry published.' : 'Entry unpublished.';
-  loadEntries();
+  if (publish) {
+    window.location.href = '/published';
+  } else {
+    saveStatus.textContent = 'Entry unpublished.';
+    loadEntries();
+  }
 }
 
 saveEntryButton.addEventListener('click', saveEntry);

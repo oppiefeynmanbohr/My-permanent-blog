@@ -249,7 +249,10 @@
             credentials: 'same-origin',
             body: JSON.stringify({ publish: true })
           });
-          setStatus('✦ Published to Blog Page 1!', 'ok');
+          localStorage.removeItem(DRAFT_KEY);
+          dreamContent.value = '';
+          window.location.href = '/published';
+          return;
         } else {
           setStatus('Draft saved.', 'ok');
         }
