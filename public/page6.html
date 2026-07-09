@@ -88,7 +88,15 @@
           div.innerHTML = `
             <div class="entry-meta">${entry.timestamp}</div>
             <div class="entry-body">${entry.content.replace(/\n/g, '<br>')}</div>
+            <div class="entry-actions" style="margin-top:8px;">
+              <button class="secondary-button" style="font-size:0.82em;padding:5px 12px;" data-id="${entry.id}">Move to Database</button>
+            </div>
           `;
+          div.querySelector('button').addEventListener('click', async () => {
+            const r = await fetch(`/api/entries/${entry.id}/archive`, { method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } });
+            if (r.ok) { document.getElementById('save-status').textContent = 'Entry moved to Database.'; loadEntries(); }
+            else document.getElementById('save-status').textContent = 'Could not move entry. Make sure you are logged in.';
+          });
           list.appendChild(div);
         });
       } catch { /* ignore */ }

@@ -189,13 +189,16 @@ function renderEntries(entries) {
       <div class="entry-content">${escapeHtml(entry.content)}</div>
       <div class="entry-actions">
         <button class="publish-button" data-id="${entry.id}">${isPublished ? 'Unpublish' : 'Publish'}</button>
+        <button class="archive-button" data-id="${entry.id}">Move to Database</button>
         <button class="delete-button" data-id="${entry.id}">Delete</button>
       </div>
     `;
     const deleteButton = card.querySelector('.delete-button');
     const publishButton = card.querySelector('.publish-button');
+    const archiveButton = card.querySelector('.archive-button');
     deleteButton.addEventListener('click', () => deleteEntry(entry.id));
     publishButton.addEventListener('click', () => togglePublish(entry.id, !isPublished));
+    archiveButton.addEventListener('click', () => archiveEntry(entry.id));
     entriesList.appendChild(card);
   });
 }
@@ -702,6 +705,21 @@ async function loadPreferences() {
   } catch (e) {
     // ignore
   }
+}
+
+async function archiveEntry(entryId) {
+  const response = await fetch(`/api/entries/${entryId}/archive`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin'
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    saveStatus.textContent = error?.error || 'Could not move entry. Make sure you are logged in.';
+    return;
+  }
+  saveStatus.textContent = 'Entry moved to Database.';
+  loadEntries();
 }
 
 async function deleteEntry(entryId) {

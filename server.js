@@ -142,6 +142,7 @@ async function initDatabase() {
   if (!names.includes('user_id')) await dbRun('ALTER TABLE entries ADD COLUMN user_id INTEGER REFERENCES users(id)');
   if (!names.includes('source')) await dbRun("ALTER TABLE entries ADD COLUMN source TEXT NOT NULL DEFAULT 'main'");
   if (!names.includes('deleted')) await dbRun('ALTER TABLE entries ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0');
+  if (!names.includes('archived')) await dbRun('ALTER TABLE entries ADD COLUMN archived INTEGER NOT NULL DEFAULT 0');
   await dbRun(`CREATE TABLE IF NOT EXISTS user_sessions (
     token TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL,
@@ -499,9 +500,12 @@ app.get('/api/entries', async (req, res) => {
   const source = req.query.source || '';
   const calmonth = req.query.calmonth || ''; // e.g. '2026-07'
 
-  let sql = 'SELECT id, title, content, timestamp, created_at, published, source FROM entries';
+  let sql = 'SELECT id, title, content, timestamp, created_at, published, source, archived FROM entries';
   const params = [];
   const clauses = ['deleted = 0'];
+
+  // Exclude archived entries unless caller opts in (page7 uses include_archived=true)
+  if (req.query.include_archived !== 'true') clauses.push('archived = 0');
 
   // When a user is logged in, show only their entries
   if (user) { clauses.push('(user_id = ? OR user_id IS NULL)'); params.push(user.userId); }
@@ -576,6 +580,24 @@ app.patch('/api/entries/:id/publish', async (req, res) => {
     res.json({ success: true, published: publishedValue });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update publish status.' });
+  }
+});
+
+app.patch('/api/entries/:id/archive', async (req, res) => {
+  cleanupAuthState();
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid entry ID.' });
+  const isAdmin = isAdminAuthenticated(req);
+  const user = getUserFromRequest(req);
+  if (!isAdmin && !user) return res.status(403).json({ error: 'Authentication required.' });
+  try {
+    const row = await dbGet('SELECT id, user_id FROM entries WHERE id = ? AND deleted = 0', [id]);
+    if (!row) return res.status(404).json({ error: 'Entry not found.' });
+    if (!isAdmin && row.user_id !== user.userId) return res.status(403).json({ error: 'You can only archive your own entries.' });
+    await dbRun('UPDATE entries SET archived = 1 WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to archive entry.' });
   }
 });
 
