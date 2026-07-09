@@ -39,6 +39,7 @@ const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
 const TWILIO_FROM_NUMBER = process.env.TWILIO_FROM_NUMBER || '';
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const REMEMBER_ME_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
 const MFA_TTL_MS = 5 * 60 * 1000;
 
 const adminSessions = new Map();
@@ -48,12 +49,13 @@ const pendingMfa = new Map();
 function hashPassword(password, salt) {
   return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha256').toString('hex');
 }
-function createUserSession(res, userId, username) {
+function createUserSession(res, userId, username, rememberMe = false) {
   const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = Date.now() + SESSION_TTL_MS;
+  const ttl = rememberMe ? REMEMBER_ME_TTL_MS : SESSION_TTL_MS;
+  const expiresAt = Date.now() + ttl;
   dbRun('INSERT OR REPLACE INTO user_sessions (token, user_id, username, expires_at) VALUES (?,?,?,?)',
     [token, userId, username, expiresAt]);
-  res.setHeader('Set-Cookie', `user_sid=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=${SESSION_TTL_MS / 1000}`);
+  res.setHeader('Set-Cookie', `user_sid=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=${ttl / 1000}`);
   return token;
 }
 function getUserFromRequest(req) {
@@ -437,7 +439,7 @@ app.post('/api/auth/signup', async (req, res) => {
 });
 
 app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body || {};
+  const { username, password, rememberMe } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: 'Username and password are required.' });
 
   try {
@@ -447,7 +449,7 @@ app.post('/api/auth/login', async (req, res) => {
     const hash = hashPassword(password, user.password_salt);
     if (hash !== user.password_hash) return res.status(401).json({ error: 'Invalid username or password.' });
 
-    createUserSession(res, user.id, user.username);
+    createUserSession(res, user.id, user.username, !!rememberMe);
     dbRun('UPDATE entries SET user_id = ? WHERE user_id IS NULL', [user.id]);
     res.json({ success: true, username: user.username });
   } catch (err) {
@@ -496,6 +498,9 @@ app.get('/api/entries', async (req, res) => {
   let sql = 'SELECT id, title, content, timestamp, created_at, published, source FROM entries';
   const params = [];
   const clauses = ['deleted = 0'];
+
+  // When a user is logged in, show only their entries
+  if (user) { clauses.push('(user_id = ? OR user_id IS NULL)'); params.push(user.userId); }
 
   if (source) { clauses.push('source = ?'); params.push(source); }
   if (calmonth) { clauses.push("strftime('%Y-%m', created_at) = ?"); params.push(calmonth); }

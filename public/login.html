@@ -48,6 +48,10 @@
           <label for="login-password">Password</label>
           <input id="login-password" type="password" placeholder="Your password" autocomplete="current-password" required />
         </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input id="login-remember" type="checkbox" style="width:auto;margin:0;cursor:pointer;" />
+          <label for="login-remember" style="font-size:0.9em;color:#666;font-weight:normal;margin:0;cursor:pointer;">Remember me for 1 year</label>
+        </div>
         <div id="login-status" class="auth-status"></div>
         <button type="submit" class="auth-submit">Log In</button>
       </form>
@@ -89,12 +93,13 @@
       status.className = 'auth-status';
       const username = document.getElementById('login-username').value.trim();
       const password = document.getElementById('login-password').value;
+      const rememberMe = document.getElementById('login-remember').checked;
       try {
         const r = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ username, password })
+          body: JSON.stringify({ username, password, rememberMe })
         });
         const data = await r.json();
         if (!r.ok) { status.textContent = data.error || 'Login failed.'; return; }
@@ -102,7 +107,7 @@
         status.textContent = `Welcome back, ${data.username}!`;
         localStorage.setItem('blog_username', data.username);
         localStorage.setItem('blog_logged_in', '1');
-        setTimeout(() => { window.location.href = '/page1'; }, 800);
+        setTimeout(() => { window.location.href = '/page7'; }, 800);
       } catch { status.textContent = 'Network error. Try again.'; }
     }
 
@@ -127,7 +132,7 @@
         status.textContent = `Account created! Welcome, ${data.username}!`;
         localStorage.setItem('blog_username', data.username);
         localStorage.setItem('blog_logged_in', '1');
-        setTimeout(() => { window.location.href = '/page1'; }, 800);
+        setTimeout(() => { window.location.href = '/page7'; }, 800);
       } catch { status.textContent = 'Network error. Try again.'; }
     }
 
@@ -135,10 +140,15 @@
     fetch('/api/auth/session', { credentials: 'same-origin' })
       .then(r => r.json())
       .then(data => {
-        if (data.authenticated) window.location.href = '/page1';
+        if (data.authenticated) window.location.href = '/page7';
+        // Pre-fill username from last login
+        const savedUsername = localStorage.getItem('blog_username');
+        if (savedUsername) document.getElementById('login-username').value = savedUsername;
         if (localStorage.getItem('auth_tab') === 'signup') {
           localStorage.removeItem('auth_tab');
           switchTab('signup');
+        } else {
+          switchTab('login');
         }
       });
   </script>
