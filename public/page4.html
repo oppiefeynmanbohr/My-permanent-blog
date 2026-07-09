@@ -163,9 +163,15 @@
             </div>
             <div class="entry-content">${escapeHtml(entry.content)}</div>
             <div class="entry-actions">
+              <button class="secondary-button word-dl-btn" data-id="${entry.id}" style="font-size:0.82em;padding:5px 12px;">&#8595; Word</button>
               <button class="delete-button" data-id="${entry.id}">Delete</button>
             </div>
           `;
+          card.querySelector('.word-dl-btn').addEventListener('click', () => {
+            const doc = buildSingleDoc(entry.content, entry.timestamp);
+            const safe = (entry.timestamp || Date.now()).toString().replace(/[^a-zA-Z0-9]/g, '_');
+            downloadDoc(`journal_${safe}.doc`, doc);
+          });
           card.querySelector('.delete-button').addEventListener('click', () => deleteEntry(entry.id));
           entriesList.appendChild(card);
         });
