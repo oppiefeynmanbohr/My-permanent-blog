@@ -507,8 +507,8 @@ app.get('/api/entries', async (req, res) => {
   // Exclude archived entries unless caller opts in (page7 uses include_archived=true)
   if (req.query.include_archived !== 'true') clauses.push('archived = 0');
 
-  // When a user is logged in, show only their entries
-  if (user) { clauses.push('(user_id = ? OR user_id IS NULL)'); params.push(user.userId); }
+  // When a user is logged in, show only their entries (skip filter for public published view)
+  if (user && published !== 'true') { clauses.push('(user_id = ? OR user_id IS NULL)'); params.push(user.userId); }
 
   if (source) { clauses.push('source = ?'); params.push(source); }
   if (calmonth) { clauses.push("strftime('%Y-%m', created_at) = ?"); params.push(calmonth); }
