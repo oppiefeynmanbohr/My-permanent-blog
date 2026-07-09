@@ -730,12 +730,13 @@ async function togglePublish(entryId, publish) {
   const response = await fetch(`/api/entries/${entryId}/publish`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
     body: JSON.stringify({ publish })
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    saveStatus.textContent = error?.error || 'Failed to update publish status.';
+    const error = await response.json().catch(() => ({}));
+    saveStatus.textContent = error?.error || 'Failed to update publish status. Make sure you are logged in.';
     return;
   }
 
