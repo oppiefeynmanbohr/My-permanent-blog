@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Personal Blog - Page 6</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div class="header-top">
+        <div>
+          <h1>Your Personal Blog</h1>
+          <p class="subtitle">Blog Page 6</p>
+        </div>
+        <a class="support-button" href="/support">Support</a>
+      </div>
+      <nav class="page-nav">
+        <a class="page-button" href="/page1">Blog Page 1</a>
+        <a class="page-button" href="/page2">Blog Page 2</a>
+        <a class="page-button" href="/page3">Blog Page 3</a>
+        <a class="page-button" href="/page5">Blog Page 5</a>
+        <a class="page-button active" href="/page6">Blog Page 6</a>
+        <a class="page-button" href="/library">Library</a>
+        <a class="page-button" href="/page4">Daily Journal</a>
+        <a class="page-button" href="/dreamstate">Dream State</a>
+        <a class="page-button" href="/calendar-journal">Calendar</a>
+        <a class="page-button" href="/published">Public Entries</a>
+      </nav>
+    </header>
+
+    <section class="entry-form-section">
+      <div class="entry-form-card">
+        <div class="form-row timestamp-row">
+          <label>Timestamp</label>
+          <div id="current-timestamp" class="timestamp-display"></div>
+        </div>
+        <div class="form-row">
+          <label for="entry-content">Write your entry</label>
+          <textarea id="entry-content" rows="12" placeholder="Begin writing your journal entry here..."></textarea>
+        </div>
+        <div class="form-row form-actions">
+          <button id="save-entry">Save Entry</button>
+          <span id="save-status" class="save-status"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="entries-section">
+      <h2>Entries</h2>
+      <div id="entries-list" class="entries-list"></div>
+    </section>
+
+    <footer class="site-footer">
+      <p>© 2026 My Permanent Blog. All rights reserved. Unauthorized copying prohibited.</p>
+    </footer>
+  </div>
+
+  <script>
+    const PAGE_SOURCE = 'page6';
+
+    function refreshTimestamp() {
+      const el = document.getElementById('current-timestamp');
+      if (el) el.textContent = new Date().toLocaleString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long',
+        day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit'
+      });
+    }
+    refreshTimestamp();
+    setInterval(refreshTimestamp, 1000);
+
+    async function loadEntries() {
+      try {
+        const res = await fetch(`/api/entries?source=${PAGE_SOURCE}`);
+        if (!res.ok) return;
+        const entries = await res.json();
+        const list = document.getElementById('entries-list');
+        list.innerHTML = '';
+        if (!entries.length) {
+          list.innerHTML = '<p style="color:#888;">No entries yet.</p>';
+          return;
+        }
+        entries.forEach(entry => {
+          const div = document.createElement('div');
+          div.className = 'entry-card';
+          div.innerHTML = `
+            <div class="entry-meta">${entry.timestamp}</div>
+            <div class="entry-body">${entry.content.replace(/\n/g, '<br>')}</div>
+          `;
+          list.appendChild(div);
+        });
+      } catch { /* ignore */ }
+    }
+
+    document.getElementById('save-entry').addEventListener('click', async () => {
+      const content = document.getElementById('entry-content').value.trim();
+      const status = document.getElementById('save-status');
+      const btn = document.getElementById('save-entry');
+      if (!content) { status.textContent = 'Please write something before saving.'; return; }
+
+      btn.disabled = true;
+      status.textContent = 'Saving...';
+
+      try {
+        const res = await fetch('/api/entries', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, source: PAGE_SOURCE })
+        });
+        if (!res.ok) throw new Error();
+        document.getElementById('entry-content').value = '';
+        status.textContent = 'Entry saved.';
+        refreshTimestamp();
+        await loadEntries();
+      } catch {
+        status.textContent = 'Could not save entry. Try again.';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    loadEntries();
+  </script>
+</body>
+</html>

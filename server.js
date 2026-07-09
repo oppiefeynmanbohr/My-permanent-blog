@@ -137,6 +137,7 @@ async function initDatabase() {
   if (!names.includes('published')) await dbRun('ALTER TABLE entries ADD COLUMN published INTEGER NOT NULL DEFAULT 0');
   if (!names.includes('user_id')) await dbRun('ALTER TABLE entries ADD COLUMN user_id INTEGER REFERENCES users(id)');
   if (!names.includes('source')) await dbRun("ALTER TABLE entries ADD COLUMN source TEXT NOT NULL DEFAULT 'main'");
+  if (!names.includes('deleted')) await dbRun('ALTER TABLE entries ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0');
   await dbRun(`CREATE TABLE IF NOT EXISTS user_sessions (
     token TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL,
@@ -150,7 +151,7 @@ async function initDatabase() {
 
 db.serialize(() => {});
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(loadUserSession);
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -494,7 +495,7 @@ app.get('/api/entries', async (req, res) => {
 
   let sql = 'SELECT id, title, content, timestamp, created_at, published, source FROM entries';
   const params = [];
-  const clauses = [];
+  const clauses = ['deleted = 0'];
 
   if (source) { clauses.push('source = ?'); params.push(source); }
   if (calmonth) { clauses.push("strftime('%Y-%m', created_at) = ?"); params.push(calmonth); }
@@ -569,8 +570,19 @@ app.delete('/api/entries/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid entry ID.' });
 
+  const isAdmin = isAdminAuthenticated(req);
+  const user = getUserFromRequest(req);
+  if (!isAdmin && !user) return res.status(403).json({ error: 'Authentication required to delete entries.' });
+
   try {
-    await dbRun('DELETE FROM entries WHERE id = ?', [id]);
+    // Only allow users to delete their own entries; admins can delete any
+    let row;
+    if (!isAdmin) {
+      row = await dbGet('SELECT id, user_id FROM entries WHERE id = ? AND deleted = 0', [id]);
+      if (!row) return res.status(404).json({ error: 'Entry not found.' });
+      if (row.user_id !== user.userId) return res.status(403).json({ error: 'You can only delete your own entries.' });
+    }
+    await dbRun('UPDATE entries SET deleted = 1 WHERE id = ?', [id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete entry.' });
@@ -977,6 +989,14 @@ app.get('/page3', (req, res) => {
 
 app.get('/page4', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'page4.html'));
+});
+
+app.get('/page5', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'page5.html'));
+});
+
+app.get('/page6', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'page6.html'));
 });
 
 app.get('/dreamstate', (req, res) => {
