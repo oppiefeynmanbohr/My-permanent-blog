@@ -754,7 +754,7 @@ async function togglePublish(entryId, publish) {
 
   if (!response.ok) {
     if (response.status === 403) {
-      window.location.href = '/login';
+      saveStatus.textContent = 'You must be logged in as admin to publish. Use the Admin Login section below.';
       return;
     }
     const error = await response.json().catch(() => ({}));
