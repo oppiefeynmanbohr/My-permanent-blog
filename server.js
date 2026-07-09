@@ -999,6 +999,10 @@ app.get('/page6', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'page6.html'));
 });
 
+app.get('/page7', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'page7.html'));
+});
+
 app.get('/dreamstate', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dreamstate.html'));
 });
