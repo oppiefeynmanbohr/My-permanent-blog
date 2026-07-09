@@ -50,10 +50,11 @@
     <section class="entries-section">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
         <h2 style="margin:0;">Today's Entries</h2>
-        <div style="display:flex;gap:10px;align-items:center;">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <label for="date-filter" style="font-size:0.9em;color:#5D8AA8;">View date:</label>
           <input id="date-filter" type="date" style="padding:6px 10px;border-radius:8px;border:1px solid rgba(93,138,168,0.3);background:#F8F8FF;" />
           <button id="clear-date" class="secondary-button" style="padding:6px 14px;font-size:0.85em;">Today</button>
+          <button id="export-word" class="secondary-button" style="padding:6px 14px;font-size:0.85em;">⬇ Export to Word</button>
         </div>
       </div>
       <div id="entries-list" class="entries-list"></div>
@@ -157,6 +158,39 @@
     saveBtn.addEventListener('click', saveEntry);
     clearDateBtn.addEventListener('click', () => { dateFilter.value = getTodayStr(); loadEntries(); });
     dateFilter.addEventListener('change', loadEntries);
+
+    function buildEntriesDoc(entries, dateStr) {
+      const rows = entries.map(e => {
+        const ts = e.timestamp || '';
+        const body = (e.content || '')
+          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br/>');
+        return `<div style="border-bottom:1px solid #ccc;margin-bottom:24px;padding-bottom:16px;"><p style="color:#888;font-size:0.9em;"><em>${ts}</em></p><div>${body}</div></div>`;
+      }).join('\n');
+      return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Daily Journal ${dateStr}</title><style>body{font-family:'Book Antiqua',Georgia,serif;max-width:720px;margin:40px auto;line-height:1.7;}</style></head><body><h1>Daily Journal</h1><p><em>${dateStr}</em></p><hr/><br/>${rows}</body></html>`;
+    }
+
+    function downloadDoc(filename, content) {
+      const blob = new Blob([content], { type: 'application/msword' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    }
+
+    document.getElementById('export-word').addEventListener('click', async () => {
+      const date = dateFilter.value || getTodayStr();
+      const params = new URLSearchParams({ source: 'page4', date });
+      try {
+        const r = await fetch(`/api/entries?${params}`, { credentials: 'same-origin' });
+        const entries = await r.json();
+        if (!entries.length) { saveStatus.textContent = 'No entries to export for this date.'; return; }
+        const doc = buildEntriesDoc(entries, date);
+        downloadDoc(`daily_journal_${date}.doc`, doc);
+      } catch { saveStatus.textContent = 'Export failed. Try again.'; }
+    });
 
     // Apply saved blog title
     try {
