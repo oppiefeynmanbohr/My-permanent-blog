@@ -5,8 +5,95 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Your Personal Blog - Page 1</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    #splash-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 32px;
+      cursor: pointer;
+      animation: splashFlash 0.6s ease-out forwards;
+    }
+    @keyframes splashFlash {
+      0%   { opacity: 0; transform: scale(1.06); }
+      30%  { opacity: 1; transform: scale(1); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    #splash-screen.fade-out {
+      animation: splashFade 0.8s ease-in forwards;
+    }
+    @keyframes splashFade {
+      0%   { opacity: 1; }
+      100% { opacity: 0; pointer-events: none; }
+    }
+    .splash-rule {
+      width: 60px;
+      border: none;
+      border-top: 1px solid #c8a97e;
+      margin: 22px auto;
+    }
+    .splash-created {
+      font-family: "Book Antiqua", "Palatino Linotype", Georgia, serif;
+      font-size: clamp(1rem, 4vw, 1.45rem);
+      color: #c8a97e;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin: 0 0 10px;
+    }
+    .splash-title {
+      font-family: "Book Antiqua", "Palatino Linotype", Georgia, serif;
+      font-size: clamp(2rem, 8vw, 4rem);
+      color: #ffffff;
+      letter-spacing: 0.06em;
+      margin: 0 0 6px;
+      font-weight: normal;
+    }
+    .splash-copyright {
+      font-family: "Book Antiqua", "Palatino Linotype", Georgia, serif;
+      font-size: clamp(0.78rem, 2.5vw, 1rem);
+      color: #888;
+      margin: 0 0 6px;
+      line-height: 1.7;
+      max-width: 520px;
+    }
+    .splash-warning {
+      font-family: "Book Antiqua", "Palatino Linotype", Georgia, serif;
+      font-size: clamp(0.72rem, 2vw, 0.88rem);
+      color: #c8a97e;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-top: 18px;
+    }
+    .splash-hint {
+      position: absolute;
+      bottom: 28px;
+      font-size: 0.78rem;
+      color: #444;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+  </style>
 </head>
 <body>
+  <!-- Splash / Cover Screen -->
+  <div id="splash-screen" role="dialog" aria-label="Welcome screen">
+    <p class="splash-created">Created by</p>
+    <h1 class="splash-title">Lee Roby</h1>
+    <hr class="splash-rule" />
+    <p class="splash-copyright">
+      This website and all of its contents are the exclusive intellectual property of Lee Roby.<br/>
+      © 2026 Lee Roby. All rights reserved.
+    </p>
+    <p class="splash-warning">Unauthorized copying, reproduction, or distribution is strictly prohibited.</p>
+    <span class="splash-hint">Tap anywhere to enter</span>
+  </div>
+
   <div class="app-shell">
     <header>
       <div class="header-top">
@@ -157,6 +244,31 @@
       <p>© 2026 My Permanent Blog. All rights reserved. Unauthorized copying prohibited.</p>
     </footer>
   </div>
+  <script>
+    (function () {
+      var splash = document.getElementById('splash-screen');
+      if (!splash) return;
+      // Only show once per browser session
+      if (sessionStorage.getItem('splash_shown')) {
+        splash.style.display = 'none';
+        return;
+      }
+      sessionStorage.setItem('splash_shown', '1');
+      function dismiss() {
+        splash.classList.add('fade-out');
+        splash.addEventListener('animationend', function () {
+          splash.style.display = 'none';
+        }, { once: true });
+      }
+      // Auto-dismiss after 4 seconds
+      var timer = setTimeout(dismiss, 4000);
+      // Tap/click to dismiss early
+      splash.addEventListener('click', function () {
+        clearTimeout(timer);
+        dismiss();
+      });
+    })();
+  </script>
   <script src="app.js"></script>
 </body>
 </html>
