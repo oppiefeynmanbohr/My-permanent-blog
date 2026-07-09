@@ -38,18 +38,18 @@
       </div>
 
       <!-- Login -->
-      <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+      <form id="login-form" class="auth-form" action="/api/auth/login" method="post" autocomplete="on" onsubmit="handleLogin(event)">
         <p style="margin:0 0 12px;font-size:0.9em;color:#5D8AA8;background:#eef4f8;padding:10px;border-radius:6px;">First time here? Use the <strong>Sign Up</strong> tab above to create your account.</p>
         <div>
           <label for="login-username">Username</label>
-          <input id="login-username" type="text" placeholder="Your username" autocomplete="username" required />
+          <input id="login-username" name="username" type="text" placeholder="Your username" autocomplete="username" required />
         </div>
         <div>
           <label for="login-password">Password</label>
-          <input id="login-password" type="password" placeholder="Your password" autocomplete="current-password" required />
+          <input id="login-password" name="password" type="password" placeholder="Your password" autocomplete="current-password" required />
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <input id="login-remember" type="checkbox" style="width:auto;margin:0;cursor:pointer;" />
+          <input id="login-remember" name="remember" type="checkbox" checked style="width:auto;margin:0;cursor:pointer;" />
           <label for="login-remember" style="font-size:0.9em;color:#666;font-weight:normal;margin:0;cursor:pointer;">Remember me for 1 year</label>
         </div>
         <div id="login-status" class="auth-status"></div>
@@ -57,18 +57,18 @@
       </form>
 
       <!-- Sign Up -->
-      <form id="signup-form" class="auth-form active" onsubmit="handleSignup(event)">
+      <form id="signup-form" class="auth-form active" action="/api/auth/signup" method="post" autocomplete="on" onsubmit="handleSignup(event)">
         <div>
           <label for="signup-username">Username</label>
-          <input id="signup-username" type="text" placeholder="Choose a username" autocomplete="username" required />
+          <input id="signup-username" name="username" type="text" placeholder="Choose a username" autocomplete="username" required />
         </div>
         <div>
           <label for="signup-email">Email</label>
-          <input id="signup-email" type="email" placeholder="your@email.com" autocomplete="email" required />
+          <input id="signup-email" name="email" type="email" placeholder="your@email.com" autocomplete="email" required />
         </div>
         <div>
           <label for="signup-password">Password</label>
-          <input id="signup-password" type="password" placeholder="At least 6 characters" autocomplete="new-password" required />
+          <input id="signup-password" name="password" type="password" placeholder="At least 6 characters" autocomplete="new-password" required />
         </div>
         <div id="signup-status" class="auth-status"></div>
         <button type="submit" class="auth-submit">Create Account</button>
