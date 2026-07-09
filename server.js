@@ -53,9 +53,11 @@ function createUserSession(res, userId, username, rememberMe = false) {
   const token = crypto.randomBytes(32).toString('hex');
   const ttl = rememberMe ? REMEMBER_ME_TTL_MS : SESSION_TTL_MS;
   const expiresAt = Date.now() + ttl;
+  const isProduction = process.env.NODE_ENV === 'production';
+  const securePart = isProduction ? '; Secure' : '';
   dbRun('INSERT OR REPLACE INTO user_sessions (token, user_id, username, expires_at) VALUES (?,?,?,?)',
     [token, userId, username, expiresAt]);
-  res.setHeader('Set-Cookie', `user_sid=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=${ttl / 1000}`);
+  appendSetCookie(res, `user_sid=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${ttl / 1000}${securePart}`);
   return token;
 }
 function getUserFromRequest(req) {
@@ -461,7 +463,9 @@ app.post('/api/auth/logout', (req, res) => {
   const cookies = parseCookies(req);
   const token = cookies['user_sid'];
   if (token) dbRun('DELETE FROM user_sessions WHERE token = ?', [token]);
-  res.setHeader('Set-Cookie', 'user_sid=; HttpOnly; Path=/; Max-Age=0');
+  const isProduction = process.env.NODE_ENV === 'production';
+  const securePart = isProduction ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `user_sid=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0${securePart}`);
   res.json({ success: true });
 });
 
