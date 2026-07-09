@@ -47,6 +47,53 @@
       </div>
     </section>
 
+    <section class="utility-panels">
+      <aside class="word-export-panel">
+        <div class="word-card">
+          <h2>Word Export</h2>
+          <p>Download your current entry or all entries for the selected date as a Word document.</p>
+          <div class="form-row timestamp-row">
+            <label>Export timestamp</label>
+            <div id="export-timestamp" class="timestamp-display"></div>
+          </div>
+          <div class="form-row">
+            <button id="export-current" class="secondary-button">Download Current Entry</button>
+          </div>
+          <div class="form-row">
+            <button id="export-word" class="secondary-button">Download All Entries for Date</button>
+          </div>
+          <p class="panel-note">The first button exports whatever is in the text box. The second exports all saved entries for the selected date.</p>
+          <p class="panel-note" style="margin-top:8px;">&#128218; Need citation help? Visit the <a href="/library" style="color:#c8a97e;font-weight:bold;">Library</a> for MLA, APA &amp; Turabian guides.</p>
+        </div>
+        <div class="thesaurus-card" style="margin-top:16px;">
+          <h2>Thesaurus</h2>
+          <p>Type a word to find synonyms.</p>
+          <label for="thesaurus-input">Word</label>
+          <input id="thesaurus-input" type="text" placeholder="e.g. journal" />
+          <button id="thesaurus-search" class="secondary-button">Find words</button>
+          <div id="thesaurus-results" class="thesaurus-results">Enter a word to begin.</div>
+        </div>
+      </aside>
+      <aside class="dictionary-panel">
+        <div class="word-card">
+          <h2>Oxford Dictionary</h2>
+          <p class="panel-note">Look up a concise definition for a word.</p>
+          <label for="oxford-input">Word</label>
+          <input id="oxford-input" type="text" placeholder="e.g. journal" />
+          <button id="oxford-lookup" class="secondary-button">Look up</button>
+          <div id="oxford-results" class="thesaurus-results">No lookup yet.</div>
+        </div>
+        <div class="word-card" style="margin-top:16px;">
+          <h2>Spell Check</h2>
+          <p class="panel-note">Type a word to check its spelling.</p>
+          <label for="spellcheck-input">Word</label>
+          <input id="spellcheck-input" type="text" placeholder="e.g. recieve" />
+          <button id="spellcheck-btn" class="secondary-button">Check spelling</button>
+          <div id="spellcheck-results" class="thesaurus-results">Enter a word to check.</div>
+        </div>
+      </aside>
+    </section>
+
     <section class="entries-section">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
         <h2 style="margin:0;">Today's Entries</h2>
@@ -54,7 +101,6 @@
           <label for="date-filter" style="font-size:0.9em;color:#5D8AA8;">View date:</label>
           <input id="date-filter" type="date" style="padding:6px 10px;border-radius:8px;border:1px solid rgba(93,138,168,0.3);background:#F8F8FF;" />
           <button id="clear-date" class="secondary-button" style="padding:6px 14px;font-size:0.85em;">Today</button>
-          <button id="export-word" class="secondary-button" style="padding:6px 14px;font-size:0.85em;">⬇ Export to Word</button>
         </div>
       </div>
       <div id="entries-list" class="entries-list"></div>
@@ -159,6 +205,19 @@
     clearDateBtn.addEventListener('click', () => { dateFilter.value = getTodayStr(); loadEntries(); });
     dateFilter.addEventListener('change', loadEntries);
 
+    // ── Word Export ────────────────────────────────────────────────
+    const exportTimestampEl = document.getElementById('export-timestamp');
+    function refreshExportTimestamp() {
+      if (exportTimestampEl) exportTimestampEl.textContent = getFormattedTimestamp();
+    }
+    refreshExportTimestamp();
+    setInterval(refreshExportTimestamp, 1000);
+
+    function buildSingleDoc(content, timestamp) {
+      const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br/>');
+      return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Daily Journal Entry</title><style>body{font-family:'Book Antiqua',Georgia,serif;max-width:720px;margin:40px auto;line-height:1.7;}</style></head><body><h1>Daily Journal</h1><p><em>${esc(timestamp)}</em></p><hr/><br/><div>${esc(content)}</div></body></html>`;
+    }
+
     function buildEntriesDoc(entries, dateStr) {
       const rows = entries.map(e => {
         const ts = e.timestamp || '';
@@ -180,6 +239,12 @@
       URL.revokeObjectURL(a.href);
     }
 
+    document.getElementById('export-current').addEventListener('click', () => {
+      const content = entryContent.value.trim() || 'No content yet.';
+      const timestamp = getFormattedTimestamp();
+      downloadDoc(`daily_journal_entry_${Date.now()}.doc`, buildSingleDoc(content, timestamp));
+    });
+
     document.getElementById('export-word').addEventListener('click', async () => {
       const date = dateFilter.value || getTodayStr();
       const params = new URLSearchParams({ source: 'page4', date });
@@ -187,10 +252,66 @@
         const r = await fetch(`/api/entries?${params}`, { credentials: 'same-origin' });
         const entries = await r.json();
         if (!entries.length) { saveStatus.textContent = 'No entries to export for this date.'; return; }
-        const doc = buildEntriesDoc(entries, date);
-        downloadDoc(`daily_journal_${date}.doc`, doc);
+        downloadDoc(`daily_journal_${date}.doc`, buildEntriesDoc(entries, date));
       } catch { saveStatus.textContent = 'Export failed. Try again.'; }
     });
+
+    // ── Thesaurus ──────────────────────────────────────────────────
+    document.getElementById('thesaurus-search').addEventListener('click', async () => {
+      const word = document.getElementById('thesaurus-input').value.trim();
+      const out = document.getElementById('thesaurus-results');
+      if (!word) return;
+      out.textContent = 'Looking up...';
+      try {
+        const r = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+        if (!r.ok) throw new Error();
+        const data = await r.json();
+        const meanings = data[0]?.meanings || [];
+        const syns = [...new Set(meanings.flatMap(m => [...(m.synonyms||[]), ...m.definitions.flatMap(d => d.synonyms||[])]))];
+        const def = meanings[0]?.definitions[0]?.definition || '';
+        if (!syns.length && !def) { out.textContent = `No results found for "${word}".`; return; }
+        const mwUrl = `https://www.merriam-webster.com/thesaurus/${encodeURIComponent(word)}`;
+        out.innerHTML = `<div class="thesaurus-heading"><strong>${word}</strong><div class="thesaurus-definition">${def}</div><a href="${mwUrl}" target="_blank" rel="noopener" style="font-size:0.85em;">Merriam-Webster Thesaurus &#8599;</a></div><div class="thesaurus-synonym-list"><strong>Synonyms</strong><ul>${syns.slice(0,20).map(s=>`<li>${s}</li>`).join('')}</ul></div>`;
+      } catch { out.textContent = `Could not find synonyms for "${word}".`; }
+    });
+    document.getElementById('thesaurus-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('thesaurus-search').click(); });
+
+    // ── Oxford Dictionary ──────────────────────────────────────────
+    document.getElementById('oxford-lookup').addEventListener('click', async () => {
+      const word = document.getElementById('oxford-input').value.trim();
+      const out = document.getElementById('oxford-results');
+      if (!word) return;
+      out.textContent = 'Looking up...';
+      try {
+        const r = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+        if (!r.ok) throw new Error();
+        const data = await r.json();
+        const meanings = data[0]?.meanings || [];
+        const def = meanings[0]?.definitions[0]?.definition || '';
+        const syns = [...new Set(meanings.flatMap(m => m.synonyms||[]))].slice(0,10);
+        const mwUrl = `https://www.merriam-webster.com/dictionary/${encodeURIComponent(word)}`;
+        out.innerHTML = `<div class="thesaurus-heading"><strong>${word}</strong><div class="thesaurus-definition">${def}</div><a href="${mwUrl}" target="_blank" rel="noopener" style="font-size:0.85em;">Full definition on Merriam-Webster &#8599;</a></div>${syns.length ? `<div class="thesaurus-synonym-list"><strong>Related</strong><ul>${syns.map(s=>`<li>${s}</li>`).join('')}</ul></div>` : ''}`;
+      } catch { out.textContent = `No definition found for "${word}".`; }
+    });
+    document.getElementById('oxford-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('oxford-lookup').click(); });
+
+    // ── Spell Check ────────────────────────────────────────────────
+    document.getElementById('spellcheck-btn').addEventListener('click', async () => {
+      const word = document.getElementById('spellcheck-input').value.trim();
+      const out = document.getElementById('spellcheck-results');
+      if (!word) return;
+      out.textContent = 'Checking...';
+      try {
+        const r = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+        if (r.ok) {
+          out.innerHTML = `<span style="color:#2e7d32;">&#10003; "${word}" appears to be spelled correctly.</span>`;
+        } else {
+          const mwUrl = `https://www.merriam-webster.com/dictionary/${encodeURIComponent(word)}`;
+          out.innerHTML = `<span style="color:#c62828;">&#10007; "${word}" may be misspelled.</span> <a href="${mwUrl}" target="_blank" rel="noopener">Check on Merriam-Webster</a>`;
+        }
+      } catch { out.textContent = 'Could not check spelling right now.'; }
+    });
+    document.getElementById('spellcheck-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('spellcheck-btn').click(); });
 
     // Apply saved blog title
     try {
