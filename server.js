@@ -529,12 +529,17 @@ app.get('/api/entries', async (req, res) => {
 app.post('/api/entries', async (req, res) => {
   cleanupAuthState();
   const user = getUserFromRequest(req);
-  const { title, content, source } = req.body;
+  const { title, content, source, caldate } = req.body;
   if (!content) return res.status(400).json({ error: 'Content is required.' });
 
   const autoTitle = title || `Entry ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
   const entrySource = source || 'main';
-  const now = new Date();
+
+  // For calendar entries, use the selected date; otherwise use now
+  let now = new Date();
+  if (caldate && /^\d{4}-\d{2}-\d{2}$/.test(caldate)) {
+    now = new Date(`${caldate}T12:00:00`);
+  }
   const timestamp = formatTimestamp(now);
   const createdAt = now.toISOString();
   const userId = user ? user.userId : null;
