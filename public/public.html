@@ -84,27 +84,36 @@
       }
     })();
     async function loadPublishedEntries() {
-      const response = await fetch('/api/entries?published=true');
-      const entries = await response.json();
       const entriesList = document.getElementById('entries-list');
-      entriesList.innerHTML = '';
+      try {
+        const response = await fetch('/api/entries?published=true', { credentials: 'omit' });
+        if (!response.ok) {
+          entriesList.innerHTML = '<p>Could not load entries. Please try refreshing.</p>';
+          return;
+        }
+        const data = await response.json();
+        const entries = Array.isArray(data) ? data : [];
+        entriesList.innerHTML = '';
 
-      if (!entries.length) {
-        entriesList.innerHTML = '<p>No published entries yet.</p>';
-        return;
+        if (!entries.length) {
+          entriesList.innerHTML = '<p>No published entries yet.</p>';
+          return;
+        }
+
+        entries.forEach((entry) => {
+          const card = document.createElement('article');
+          card.className = 'entry-card';
+          card.innerHTML = `
+            <div class="entry-header">
+              <div class="entry-timestamp">${escapeHtml(entry.timestamp || '')}</div>
+            </div>
+            <div class="entry-content">${escapeHtml(entry.content || '')}</div>
+          `;
+          entriesList.appendChild(card);
+        });
+      } catch (e) {
+        entriesList.innerHTML = '<p>Could not load entries. Please try refreshing.</p>';
       }
-
-      entries.forEach((entry) => {
-        const card = document.createElement('article');
-        card.className = 'entry-card';
-        card.innerHTML = `
-          <div class="entry-header">
-            <div class="entry-timestamp">${escapeHtml(entry.timestamp)}</div>
-          </div>
-          <div class="entry-content">${escapeHtml(entry.content)}</div>
-        `;
-        entriesList.appendChild(card);
-      });
     }
 
     function escapeHtml(value) {
