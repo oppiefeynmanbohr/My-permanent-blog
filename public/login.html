@@ -8,8 +8,10 @@
   <style>
     .auth-shell { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; background:#fdf6ee; padding:24px; }
     .auth-card { background:#fff; border-radius:12px; box-shadow:0 2px 16px rgba(0,0,0,0.1); padding:32px; width:100%; max-width:420px; }
-    .auth-card h1 { margin:0 0 4px; font-size:1.5rem; color:#3a2a1a; }
-    .auth-card .subtitle { color:#888; margin:0 0 24px; font-size:0.95em; }
+    .auth-card h1 { margin:0 0 16px; font-size:1.5rem; color:#3a2a1a; }
+    .tab-row { display:flex; border-bottom:2px solid #e8c99a; margin-bottom:22px; }
+    .tab-btn { flex:1; background:none; border:none; padding:10px; font-size:0.95em; font-weight:bold; color:#a07850; cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px; transition:color .15s,border-color .15s; }
+    .tab-btn.active { color:#3a2a1a; border-bottom-color:#c8a97e; }
     .auth-field { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
     .auth-field label { font-size:0.85em; font-weight:bold; color:#5a3e28; }
     .auth-field input { padding:10px 12px; border:1px solid #ccc; border-radius:6px; font-size:1em; box-sizing:border-box; width:100%; }
@@ -26,45 +28,87 @@
     .forgot-link a:hover { text-decoration:underline; }
     .back-link { text-align:center; margin-top:18px; font-size:0.9em; color:#888; }
     .back-link a { color:#c8a97e; text-decoration:none; font-weight:bold; }
+    .panel { display:none; }
+    .panel.active { display:block; }
   </style>
 </head>
 <body>
   <div class="auth-shell">
     <div class="auth-card">
       <h1>My Permanent Blog</h1>
-      <p class="subtitle">Sign in to your account</p>
 
-      <div class="auth-field">
-        <label for="username-input">Username</label>
-        <input id="username-input" type="text" placeholder="Your username" autocomplete="username" />
+      <div class="tab-row">
+        <button class="tab-btn active" id="tab-login" onclick="showTab('login')">Log In</button>
+        <button class="tab-btn" id="tab-signup" onclick="showTab('signup')">Sign Up</button>
       </div>
-      <div class="auth-field">
-        <label for="password-input">Password</label>
-        <input id="password-input" type="password" placeholder="Your password" autocomplete="current-password" />
+
+      <!-- ── Log In panel ── -->
+      <div id="panel-login" class="panel active">
+        <div class="auth-field">
+          <label for="login-username">Username</label>
+          <input id="login-username" type="text" placeholder="Your username" autocomplete="username" />
+        </div>
+        <div class="auth-field">
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" placeholder="Your password" autocomplete="current-password" />
+        </div>
+        <div class="forgot-link"><a href="/reset-password">Forgot password?</a></div>
+        <label class="auth-remember">
+          <input id="remember-me" type="checkbox" /> Remember me
+        </label>
+        <div id="login-status" class="auth-status"></div>
+        <button class="auth-submit" id="login-btn">Log In</button>
       </div>
-      <div class="forgot-link"><a href="/reset-password.html">Forgot password?</a></div>
-      <label class="auth-remember">
-        <input id="remember-me" type="checkbox" /> Remember me
-      </label>
-      <div id="login-status" class="auth-status"></div>
-      <button class="auth-submit" id="login-btn">Log In</button>
+
+      <!-- ── Sign Up panel ── -->
+      <div id="panel-signup" class="panel">
+        <div class="auth-field">
+          <label for="signup-username">Username</label>
+          <input id="signup-username" type="text" placeholder="Choose a username" autocomplete="username" />
+        </div>
+        <div class="auth-field">
+          <label for="signup-email">Email address</label>
+          <input id="signup-email" type="email" placeholder="your@email.com" autocomplete="email" />
+        </div>
+        <div class="auth-field">
+          <label for="signup-password">Password</label>
+          <input id="signup-password" type="password" placeholder="At least 6 characters" autocomplete="new-password" />
+        </div>
+        <div class="auth-field">
+          <label for="signup-confirm">Confirm password</label>
+          <input id="signup-confirm" type="password" placeholder="Repeat your password" autocomplete="new-password" />
+        </div>
+        <div id="signup-status" class="auth-status"></div>
+        <button class="auth-submit" id="signup-btn">Create Account</button>
+      </div>
 
       <div class="back-link"><a href="/page1">← Back to blog</a></div>
     </div>
   </div>
 
   <script>
-    const loginBtn = document.getElementById('login-btn');
-    const usernameInput = document.getElementById('username-input');
-    const passwordInput = document.getElementById('password-input');
-    const statusEl = document.getElementById('login-status');
+    function showTab(tab) {
+      document.getElementById('panel-login').classList.toggle('active', tab === 'login');
+      document.getElementById('panel-signup').classList.toggle('active', tab === 'signup');
+      document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+      document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+    }
 
-    usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') passwordInput.focus(); });
-    passwordInput.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
+    // Auto-switch to signup if directed from Sign Up button on blog
+    if (localStorage.getItem('auth_tab') === 'signup') {
+      localStorage.removeItem('auth_tab');
+      showTab('signup');
+    }
+
+    // ── Log In ──
+    const loginBtn = document.getElementById('login-btn');
+    document.getElementById('login-username').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-password').focus(); });
+    document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
 
     loginBtn.addEventListener('click', async () => {
-      const username = usernameInput.value.trim();
-      const password = passwordInput.value;
+      const statusEl = document.getElementById('login-status');
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
       const rememberMe = document.getElementById('remember-me').checked;
       if (!username || !password) { statusEl.textContent = 'Please enter your username and password.'; return; }
       statusEl.textContent = '';
@@ -92,6 +136,54 @@
         statusEl.textContent = 'Network error. Try again.';
         loginBtn.disabled = false;
         loginBtn.textContent = 'Log In';
+      }
+    });
+
+    // ── Sign Up ──
+    const signupBtn = document.getElementById('signup-btn');
+    document.getElementById('signup-confirm').addEventListener('keydown', e => { if (e.key === 'Enter') signupBtn.click(); });
+
+    signupBtn.addEventListener('click', async () => {
+      const statusEl = document.getElementById('signup-status');
+      const username = document.getElementById('signup-username').value.trim();
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+      const confirm = document.getElementById('signup-confirm').value;
+      if (!username || !email || !password) { statusEl.textContent = 'Please fill in all fields.'; return; }
+      if (password !== confirm) { statusEl.textContent = 'Passwords do not match.'; return; }
+      if (password.length < 6) { statusEl.textContent = 'Password must be at least 6 characters.'; return; }
+      statusEl.textContent = '';
+      signupBtn.disabled = true;
+      signupBtn.textContent = 'Creating account…';
+      try {
+        const r = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ username, email, password })
+        });
+        const data = await r.json();
+        if (!r.ok) {
+          statusEl.textContent = data.error || 'Sign up failed.';
+          signupBtn.disabled = false;
+          signupBtn.textContent = 'Create Account';
+          return;
+        }
+        // Auto-login after signup
+        const lr = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ username, password })
+        });
+        localStorage.setItem('blog_logged_in', '1');
+        statusEl.className = 'auth-status ok';
+        statusEl.textContent = 'Account created! Redirecting…';
+        setTimeout(() => { window.location.href = '/page1'; }, 800);
+      } catch {
+        statusEl.textContent = 'Network error. Try again.';
+        signupBtn.disabled = false;
+        signupBtn.textContent = 'Create Account';
       }
     });
 
