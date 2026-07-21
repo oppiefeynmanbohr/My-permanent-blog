@@ -86,7 +86,7 @@
     async function loadPublishedEntries() {
       const entriesList = document.getElementById('entries-list');
       try {
-        const response = await fetch('/api/entries?published=true', { credentials: 'omit' });
+        const response = await fetch('/api/entries?published=true&order=desc', { credentials: 'omit' });
         if (!response.ok) {
           entriesList.innerHTML = '<p>Could not load entries. Please try refreshing.</p>';
           return;

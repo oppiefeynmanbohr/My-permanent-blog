@@ -640,6 +640,7 @@ app.get('/api/entries', async (req, res) => {
   const published = req.query.published;
   const source = req.query.source || '';
   const calmonth = req.query.calmonth || ''; // e.g. '2026-07'
+  const order = (req.query.order || 'asc').toLowerCase() === 'desc' ? 'DESC' : 'ASC';
 
   let sql = 'SELECT id, title, content, timestamp, created_at, published, source, archived FROM entries';
   const params = [];
@@ -662,7 +663,7 @@ app.get('/api/entries', async (req, res) => {
   if (date) { clauses.push('date(created_at) = date(?)'); params.push(date); }
 
   if (clauses.length) sql += ` WHERE ${clauses.join(' AND ')}`;
-  sql += ' ORDER BY datetime(created_at) DESC';
+  sql += ` ORDER BY datetime(created_at) ${order}`;
 
   try {
     const rows = await dbAll(sql, params);

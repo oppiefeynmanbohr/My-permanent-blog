@@ -167,7 +167,7 @@
 
     async function loadAll() {
       try {
-        const res = await fetch('/api/entries?include_archived=true', { credentials: 'same-origin' });
+        const res = await fetch('/api/entries?include_archived=true&order=desc', { credentials: 'same-origin' });
         if (!res.ok) throw new Error();
         allEntries = await res.json();
         render();

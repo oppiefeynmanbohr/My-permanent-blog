@@ -275,9 +275,12 @@ async function saveEntry() {
 
   entryContent.value = '';
   refreshTimestamp();
-  saveStatus.textContent = 'Entry saved permanently.';
+  saveStatus.textContent = 'Entry saved.';
   saveEntryButton.disabled = false;
   await loadEntries();
+  // Scroll to the bottom so the new entry is visible
+  const el = document.getElementById('entries-list');
+  if (el) el.lastElementChild && el.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
   try {
     const resp = await fetch('/api/entries', { credentials: 'same-origin' });
     if (resp.ok) {
