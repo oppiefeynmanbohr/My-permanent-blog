@@ -44,42 +44,46 @@
 
       <!-- ── Log In panel ── -->
       <div id="panel-login" class="panel active">
-        <div class="auth-field">
-          <label for="login-username">Username or Email</label>
-          <input id="login-username" type="text" placeholder="Your username or email" autocomplete="username" />
-        </div>
-        <div class="auth-field">
-          <label for="login-password">Password</label>
-          <input id="login-password" type="password" placeholder="Your password" autocomplete="current-password" />
-        </div>
-        <div class="forgot-link"><a href="/reset-password">Forgot password?</a></div>
-        <label class="auth-remember">
-          <input id="remember-me" type="checkbox" checked /> Remember me
-        </label>
-        <div id="login-status" class="auth-status"></div>
-        <button class="auth-submit" id="login-btn">Log In</button>
+        <form id="login-form" autocomplete="on" onsubmit="return false;">
+          <div class="auth-field">
+            <label for="login-username">Username or Email</label>
+            <input id="login-username" type="text" placeholder="Your username or email" autocomplete="username" />
+          </div>
+          <div class="auth-field">
+            <label for="login-password">Password</label>
+            <input id="login-password" type="password" placeholder="Your password" autocomplete="current-password" />
+          </div>
+          <div class="forgot-link"><a href="/reset-password">Forgot password?</a></div>
+          <label class="auth-remember">
+            <input id="remember-me" type="checkbox" checked /> Remember me
+          </label>
+          <div id="login-status" class="auth-status"></div>
+          <button class="auth-submit" id="login-btn" type="submit">Log In</button>
+        </form>
       </div>
 
       <!-- ── Sign Up panel ── -->
       <div id="panel-signup" class="panel">
-        <div class="auth-field">
-          <label for="signup-username">Username</label>
-          <input id="signup-username" type="text" placeholder="Choose a username" autocomplete="username" />
-        </div>
-        <div class="auth-field">
-          <label for="signup-email">Email address</label>
-          <input id="signup-email" type="email" placeholder="your@email.com" autocomplete="email" />
-        </div>
-        <div class="auth-field">
-          <label for="signup-password">Password</label>
-          <input id="signup-password" type="password" placeholder="At least 6 characters" autocomplete="new-password" />
-        </div>
-        <div class="auth-field">
-          <label for="signup-confirm">Confirm password</label>
-          <input id="signup-confirm" type="password" placeholder="Repeat your password" autocomplete="new-password" />
-        </div>
-        <div id="signup-status" class="auth-status"></div>
-        <button class="auth-submit" id="signup-btn">Create Account</button>
+        <form id="signup-form" autocomplete="on" onsubmit="return false;">
+          <div class="auth-field">
+            <label for="signup-username">Username</label>
+            <input id="signup-username" type="text" placeholder="Choose a username" autocomplete="username" />
+          </div>
+          <div class="auth-field">
+            <label for="signup-email">Email address</label>
+            <input id="signup-email" type="email" placeholder="your@email.com" autocomplete="email" />
+          </div>
+          <div class="auth-field">
+            <label for="signup-password">Password</label>
+            <input id="signup-password" type="password" placeholder="At least 6 characters" autocomplete="new-password" />
+          </div>
+          <div class="auth-field">
+            <label for="signup-confirm">Confirm password</label>
+            <input id="signup-confirm" type="password" placeholder="Repeat your password" autocomplete="new-password" />
+          </div>
+          <div id="signup-status" class="auth-status"></div>
+          <button class="auth-submit" id="signup-btn" type="submit">Create Account</button>
+        </form>
       </div>
 
       <div class="back-link"><a href="/page1">← Back to blog</a></div>
@@ -100,12 +104,14 @@
       showTab('signup');
     }
 
+    // Pre-fill username from last successful login
+    const savedUser = localStorage.getItem('blog_username');
+    if (savedUser) document.getElementById('login-username').value = savedUser;
+
     // ── Log In ──
     const loginBtn = document.getElementById('login-btn');
-    document.getElementById('login-username').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-password').focus(); });
-    document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
-
-    loginBtn.addEventListener('click', async () => {
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
       const statusEl = document.getElementById('login-status');
       const username = document.getElementById('login-username').value.trim();
       const password = document.getElementById('login-password').value;
@@ -123,15 +129,18 @@
         });
         const data = await r.json();
         if (!r.ok) {
-          statusEl.textContent = data.error || 'Login failed.';
+          const msg = data.error || 'Login failed.';
+          const isNotFound = msg.toLowerCase().includes('no account');
+          statusEl.textContent = msg + (isNotFound ? ' — try the Sign Up tab to create a new account.' : '');
           loginBtn.disabled = false;
           loginBtn.textContent = 'Log In';
           return;
         }
         localStorage.setItem('blog_logged_in', '1');
+        localStorage.setItem('blog_username', data.username || username);
         statusEl.className = 'auth-status ok';
         statusEl.textContent = 'Logged in! Redirecting…';
-        setTimeout(() => { window.location.href = '/page1'; }, 800);
+        setTimeout(() => { window.location.href = '/page1'; }, 600);
       } catch {
         statusEl.textContent = 'Network error. Try again.';
         loginBtn.disabled = false;
@@ -141,9 +150,8 @@
 
     // ── Sign Up ──
     const signupBtn = document.getElementById('signup-btn');
-    document.getElementById('signup-confirm').addEventListener('keydown', e => { if (e.key === 'Enter') signupBtn.click(); });
-
-    signupBtn.addEventListener('click', async () => {
+    document.getElementById('signup-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
       const statusEl = document.getElementById('signup-status');
       const username = document.getElementById('signup-username').value.trim();
       const email = document.getElementById('signup-email').value.trim();
@@ -169,17 +177,11 @@
           signupBtn.textContent = 'Create Account';
           return;
         }
-        // Auto-login after signup
-        const lr = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({ username, password })
-        });
         localStorage.setItem('blog_logged_in', '1');
+        localStorage.setItem('blog_username', username);
         statusEl.className = 'auth-status ok';
         statusEl.textContent = 'Account created! Redirecting…';
-        setTimeout(() => { window.location.href = '/page1'; }, 800);
+        setTimeout(() => { window.location.href = '/page1'; }, 600);
       } catch {
         statusEl.textContent = 'Network error. Try again.';
         signupBtn.disabled = false;
