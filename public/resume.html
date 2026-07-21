@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Resume — My Permanent Blog</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { background:#fdf6ee; font-family:"Book Antiqua","Palatino Linotype",Georgia,serif; margin:0; }
+    .resume-shell { max-width:860px; margin:0 auto; padding:24px 16px 60px; }
+
+    /* Header nav */
+    .resume-nav { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:24px; }
+    .resume-nav a { color:#c8a97e; text-decoration:none; font-size:0.9em; }
+    .resume-nav a:hover { text-decoration:underline; }
+    .resume-nav span { color:#bbb; }
+
+    /* Two-column layout */
+    .resume-layout { display:grid; grid-template-columns:220px 1fr; gap:28px; }
+    @media (max-width:640px) { .resume-layout { grid-template-columns:1fr; } }
+
+    /* Left sidebar */
+    .resume-sidebar { display:flex; flex-direction:column; gap:20px; }
+    .photo-block { display:flex; flex-direction:column; align-items:center; gap:12px; }
+    .photo-circle {
+      width:160px; height:160px; border-radius:50%; object-fit:cover;
+      border:3px solid #c8a97e; background:#f0ebe3;
+      display:flex; align-items:center; justify-content:center;
+      color:#bbb; font-size:0.85em; overflow:hidden; cursor:pointer;
+    }
+    .photo-circle img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+    #photo-upload { display:none; }
+    .photo-hint { font-size:0.78em; color:#aaa; text-align:center; }
+
+    .sidebar-card { background:#fff; border-radius:10px; box-shadow:0 1px 8px rgba(0,0,0,.07); padding:16px; }
+    .sidebar-card h3 { margin:0 0 10px; font-size:0.88em; text-transform:uppercase; letter-spacing:.08em; color:#a07850; border-bottom:1px solid #f0e8de; padding-bottom:6px; }
+    .contact-row { display:flex; align-items:flex-start; gap:8px; margin-bottom:7px; font-size:0.88em; color:#3a2a1a; word-break:break-all; }
+    .contact-label { font-size:0.78em; font-weight:bold; color:#a07850; min-width:54px; flex-shrink:0; }
+    .skills-list { display:flex; flex-wrap:wrap; gap:6px; }
+    .skill-tag { background:#f0e8de; border:1px solid #e0d0c0; border-radius:20px; padding:3px 10px; font-size:0.82em; color:#5a3e28; }
+
+    /* Main content */
+    .resume-main { display:flex; flex-direction:column; gap:20px; }
+    .resume-card { background:#fff; border-radius:10px; box-shadow:0 1px 8px rgba(0,0,0,.07); padding:20px 22px; }
+    .resume-card h2 { margin:0 0 4px; font-size:1.5rem; color:#3a2a1a; }
+    .resume-card .person-title { color:#c8a97e; font-size:1.05em; margin:0 0 12px; }
+    .section-heading { font-size:0.88em; text-transform:uppercase; letter-spacing:.08em; color:#a07850; border-bottom:1px solid #f0e8de; padding-bottom:6px; margin:0 0 14px; }
+
+    /* Work entry cards */
+    .work-entry { border-left:3px solid #c8a97e; padding:10px 0 10px 14px; margin-bottom:14px; }
+    .work-entry:last-child { margin-bottom:0; }
+    .work-role { font-weight:bold; color:#3a2a1a; font-size:1em; }
+    .work-employer { color:#c8a97e; font-size:0.95em; }
+    .work-dates { font-size:0.82em; color:#888; margin:2px 0 6px; }
+    .work-desc { font-size:0.9em; color:#5a3e28; line-height:1.6; white-space:pre-wrap; }
+    .work-actions { margin-top:6px; display:flex; gap:8px; }
+
+    /* Buttons */
+    .btn-primary { background:#c8a97e; color:#fff; border:none; border-radius:7px; padding:9px 18px; font-size:0.9em; font-weight:bold; cursor:pointer; }
+    .btn-primary:hover { background:#b8936a; }
+    .btn-secondary { background:#f0e8de; color:#5a3e28; border:1px solid #d9c8b0; border-radius:7px; padding:7px 14px; font-size:0.85em; cursor:pointer; }
+    .btn-secondary:hover { background:#e6d8c4; }
+    .btn-danger { background:#fff0f0; color:#c62828; border:1px solid #f5c0c0; border-radius:7px; padding:7px 14px; font-size:0.85em; cursor:pointer; }
+    .btn-danger:hover { background:#fce4e4; }
+    .btn-sm { padding:4px 10px; font-size:0.8em; }
+
+    /* Edit mode fields */
+    .field-group { display:flex; flex-direction:column; gap:5px; margin-bottom:12px; }
+    .field-group label { font-size:0.82em; font-weight:bold; color:#5a3e28; }
+    .field-group input, .field-group textarea, .field-group select { padding:9px 11px; border:1px solid #ccc; border-radius:6px; font-size:0.95em; font-family:inherit; box-sizing:border-box; width:100%; }
+    .field-group input:focus, .field-group textarea:focus { outline:2px solid #c8a97e; border-color:#c8a97e; }
+    .field-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    @media(max-width:480px) { .field-row { grid-template-columns:1fr; } }
+
+    .status-msg { font-size:0.88em; color:#c62828; min-height:18px; margin-top:4px; }
+    .status-msg.ok { color:#2e7d32; }
+
+    /* Edit/view toggle */
+    .edit-view { display:none; }
+    .show-edit .view-view { display:none; }
+    .show-edit .edit-view { display:block; }
+
+    /* Add work form */
+    .add-work-form { background:#fdf6ee; border:1px dashed #d4b896; border-radius:8px; padding:16px; margin-top:14px; display:none; }
+    .add-work-form.open { display:block; }
+
+    .login-notice { background:#fff8f0; border:2px solid #e8c99a; border-radius:8px; padding:20px; text-align:center; color:#5a3e28; }
+    .login-notice a { color:#c8a97e; font-weight:bold; }
+  </style>
+</head>
+<body>
+  <div class="resume-shell">
+    <div class="resume-nav">
+      <a href="/page1">← Blog</a>
+      <span>|</span>
+      <a href="/resume">Resume / Bio</a>
+    </div>
+
+    <div id="login-notice" class="login-notice" style="display:none;">
+      Please <a href="/login">log in</a> to view and edit your resume.
+    </div>
+
+    <div id="resume-content" style="display:none;">
+      <div class="resume-layout">
+
+        <!-- ── LEFT SIDEBAR ── -->
+        <div class="resume-sidebar">
+
+          <!-- Photo -->
+          <div class="photo-block sidebar-card">
+            <div class="photo-circle" id="photo-display" title="Click to upload photo" onclick="document.getElementById('photo-upload').click()">
+              <span id="photo-placeholder">Click to add photo</span>
+            </div>
+            <input type="file" id="photo-upload" accept="image/*" />
+            <p class="photo-hint">Click photo to change</p>
+          </div>
+
+          <!-- Contact info -->
+          <div class="sidebar-card">
+            <h3>Contact</h3>
+            <div id="contact-view">
+              <div class="contact-row"><span class="contact-label">Email</span><span id="cv-email">—</span></div>
+              <div class="contact-row"><span class="contact-label">Phone</span><span id="cv-phone">—</span></div>
+              <div class="contact-row"><span class="contact-label">Location</span><span id="cv-location">—</span></div>
+              <div class="contact-row"><span class="contact-label">Website</span><span id="cv-website">—</span></div>
+            </div>
+          </div>
+
+          <!-- Skills -->
+          <div class="sidebar-card">
+            <h3>Skills</h3>
+            <div id="skills-view" class="skills-list"></div>
+            <p id="skills-empty" style="color:#bbb;font-size:0.85em;display:none;">No skills added yet.</p>
+          </div>
+
+          <!-- Education -->
+          <div class="sidebar-card">
+            <h3>Education</h3>
+            <div id="education-view" style="font-size:0.9em;color:#3a2a1a;white-space:pre-wrap;line-height:1.6;"></div>
+            <p id="education-empty" style="color:#bbb;font-size:0.85em;display:none;">No education added yet.</p>
+          </div>
+
+          <button class="btn-secondary" onclick="openProfileEdit()">✏️ Edit Profile</button>
+        </div>
+
+        <!-- ── MAIN CONTENT ── -->
+        <div class="resume-main">
+
+          <!-- Name / Bio card -->
+          <div class="resume-card" id="bio-card">
+            <div id="bio-view">
+              <h2 id="cv-name">Your Name</h2>
+              <p class="person-title" id="cv-title"></p>
+              <p id="cv-bio" style="color:#5a3e28;line-height:1.7;white-space:pre-wrap;"></p>
+              <p id="bio-empty" style="color:#bbb;font-size:0.9em;">Add your bio by clicking "Edit Profile" on the left.</p>
+            </div>
+          </div>
+
+          <!-- Work History card -->
+          <div class="resume-card">
+            <div class="section-heading">Work History</div>
+            <div id="work-list"></div>
+            <p id="work-empty" style="color:#bbb;font-size:0.9em;display:none;">No work history added yet.</p>
+
+            <button class="btn-secondary" onclick="toggleAddWork()" id="add-work-toggle-btn">+ Add Position</button>
+
+            <div class="add-work-form" id="add-work-form">
+              <div class="field-row">
+                <div class="field-group">
+                  <label>Job Title / Role *</label>
+                  <input id="w-role" type="text" placeholder="e.g. Software Engineer" />
+                </div>
+                <div class="field-group">
+                  <label>Employer / Company *</label>
+                  <input id="w-employer" type="text" placeholder="e.g. Acme Corp" />
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field-group">
+                  <label>Start Date</label>
+                  <input id="w-start" type="month" />
+                </div>
+                <div class="field-group">
+                  <label>End Date (leave blank if current)</label>
+                  <input id="w-end" type="month" />
+                </div>
+              </div>
+              <div class="field-group">
+                <label>Description / Responsibilities</label>
+                <textarea id="w-desc" rows="4" placeholder="Describe your role and key achievements..."></textarea>
+              </div>
+              <div id="work-form-status" class="status-msg"></div>
+              <div style="display:flex;gap:10px;margin-top:8px;">
+                <button class="btn-primary" onclick="saveWork()">Save Position</button>
+                <button class="btn-secondary" onclick="toggleAddWork()">Cancel</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status / Work Status card -->
+          <div class="resume-card">
+            <div class="section-heading">Current Work Status</div>
+            <div id="status-view">
+              <p id="cv-work-status" style="color:#3a2a1a;font-size:1em;font-weight:bold;">—</p>
+              <p id="cv-status-note" style="color:#5a3e28;font-size:0.9em;line-height:1.6;white-space:pre-wrap;"></p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PROFILE EDIT MODAL ── -->
+    <div id="profile-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;overflow-y:auto;padding:24px 16px;">
+      <div style="background:#fff;max-width:620px;margin:0 auto;border-radius:12px;padding:28px;position:relative;">
+        <h2 style="margin:0 0 20px;font-size:1.3rem;color:#3a2a1a;">Edit Profile</h2>
+
+        <div class="field-row">
+          <div class="field-group">
+            <label>Full Name</label>
+            <input id="p-name" type="text" placeholder="Your full name" />
+          </div>
+          <div class="field-group">
+            <label>Professional Title</label>
+            <input id="p-title" type="text" placeholder="e.g. Registered Nurse, Freelance Writer" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label>Bio / About Me</label>
+          <textarea id="p-bio" rows="5" placeholder="A short paragraph about yourself..."></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Email</label>
+            <input id="p-email" type="email" placeholder="your@email.com" />
+          </div>
+          <div class="field-group">
+            <label>Phone</label>
+            <input id="p-phone" type="tel" placeholder="(555) 123-4567" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Location</label>
+            <input id="p-location" type="text" placeholder="City, State" />
+          </div>
+          <div class="field-group">
+            <label>Website / LinkedIn</label>
+            <input id="p-website" type="url" placeholder="https://..." />
+          </div>
+        </div>
+        <div class="field-group">
+          <label>Current Work Status</label>
+          <select id="p-work-status">
+            <option value="">— Select —</option>
+            <option value="Employed (Full-time)">Employed (Full-time)</option>
+            <option value="Employed (Part-time)">Employed (Part-time)</option>
+            <option value="Self-employed / Freelance">Self-employed / Freelance</option>
+            <option value="Open to opportunities">Open to opportunities</option>
+            <option value="Actively job searching">Actively job searching</option>
+            <option value="Not currently working">Not currently working</option>
+            <option value="Retired">Retired</option>
+            <option value="Student">Student</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Status Note (optional)</label>
+          <textarea id="p-status-note" rows="2" placeholder="Any additional context about your work situation..."></textarea>
+        </div>
+        <div class="field-group">
+          <label>Skills <span style="color:#888;font-weight:normal;">(comma-separated)</span></label>
+          <input id="p-skills" type="text" placeholder="Writing, Excel, Customer Service, Python..." />
+        </div>
+        <div class="field-group">
+          <label>Education</label>
+          <textarea id="p-education" rows="3" placeholder="B.S. Computer Science — State University, 2018&#10;High School Diploma — Lincoln High, 2014"></textarea>
+        </div>
+
+        <div id="profile-save-status" class="status-msg"></div>
+        <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+          <button class="btn-primary" onclick="saveProfile()">Save Profile</button>
+          <button class="btn-secondary" onclick="closeProfileEdit()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let profileData = {};
+    let workList = [];
+    let pendingPhotoDataUrl = null;
+    let editingWorkId = null;
+
+    // ── Load everything on page load ──
+    async function init() {
+      try {
+        const r = await fetch('/api/auth/session', { credentials: 'same-origin' });
+        const s = await r.json();
+        if (!s.authenticated) {
+          document.getElementById('login-notice').style.display = 'block';
+          return;
+        }
+      } catch {
+        document.getElementById('login-notice').style.display = 'block';
+        return;
+      }
+      document.getElementById('resume-content').style.display = 'block';
+      await loadProfile();
+      await loadWork();
+    }
+
+    async function loadProfile() {
+      try {
+        const r = await fetch('/api/profile', { credentials: 'same-origin' });
+        if (!r.ok) return;
+        profileData = await r.json();
+        renderProfile();
+      } catch {}
+    }
+
+    function renderProfile() {
+      const p = profileData;
+      document.getElementById('cv-name').textContent = p.full_name || 'Your Name';
+      document.getElementById('cv-title').textContent = p.title || '';
+      document.getElementById('cv-bio').textContent = p.bio || '';
+      document.getElementById('bio-empty').style.display = p.bio ? 'none' : 'block';
+      document.getElementById('cv-email').textContent = p.email || '—';
+      document.getElementById('cv-phone').textContent = p.phone || '—';
+      document.getElementById('cv-location').textContent = p.location || '—';
+      const websiteEl = document.getElementById('cv-website');
+      if (p.website) {
+        websiteEl.innerHTML = `<a href="${escHtml(p.website)}" target="_blank" rel="noopener" style="color:#c8a97e;">${escHtml(p.website)}</a>`;
+      } else { websiteEl.textContent = '—'; }
+
+      // Work status
+      document.getElementById('cv-work-status').textContent = p.work_status || '—';
+      document.getElementById('cv-status-note').textContent = p.status_note || '';
+
+      // Skills
+      const skillsEl = document.getElementById('skills-view');
+      const skillsEmpty = document.getElementById('skills-empty');
+      const skills = (p.skills || '').split(',').map(s => s.trim()).filter(Boolean);
+      skillsEl.innerHTML = skills.map(s => `<span class="skill-tag">${escHtml(s)}</span>`).join('');
+      skillsEmpty.style.display = skills.length ? 'none' : 'block';
+
+      // Education
+      const eduEl = document.getElementById('education-view');
+      const eduEmpty = document.getElementById('education-empty');
+      eduEl.textContent = p.education || '';
+      eduEmpty.style.display = p.education ? 'none' : 'block';
+
+      // Photo
+      const photoDisplay = document.getElementById('photo-display');
+      const placeholder = document.getElementById('photo-placeholder');
+      if (pendingPhotoDataUrl || p.photo) {
+        const src = pendingPhotoDataUrl || p.photo;
+        photoDisplay.innerHTML = `<img src="${src}" alt="Profile photo" />`;
+      } else {
+        photoDisplay.innerHTML = `<span id="photo-placeholder">Click to add photo</span>`;
+      }
+    }
+
+    async function loadWork() {
+      try {
+        const r = await fetch('/api/profile/work', { credentials: 'same-origin' });
+        if (!r.ok) return;
+        workList = await r.json();
+        renderWork();
+      } catch {}
+    }
+
+    function renderWork() {
+      const container = document.getElementById('work-list');
+      const empty = document.getElementById('work-empty');
+      container.innerHTML = '';
+      if (!workList.length) { empty.style.display = 'block'; return; }
+      empty.style.display = 'none';
+      workList.forEach(w => {
+        const dates = [formatMonth(w.start_date), w.end_date ? formatMonth(w.end_date) : 'Present'].filter(Boolean).join(' – ');
+        const div = document.createElement('div');
+        div.className = 'work-entry';
+        div.innerHTML = `
+          <div class="work-role">${escHtml(w.role)}</div>
+          <div class="work-employer">${escHtml(w.employer)}</div>
+          <div class="work-dates">${escHtml(dates)}</div>
+          <div class="work-desc">${escHtml(w.description)}</div>
+          <div class="work-actions">
+            <button class="btn-secondary btn-sm" onclick="openEditWork(${w.id})">Edit</button>
+            <button class="btn-danger btn-sm" onclick="deleteWork(${w.id})">Delete</button>
+          </div>`;
+        container.appendChild(div);
+      });
+    }
+
+    function formatMonth(val) {
+      if (!val) return '';
+      const [y, m] = val.split('-');
+      if (!y) return val;
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return `${months[parseInt(m,10)-1] || m} ${y}`;
+    }
+
+    // ── Photo upload ──
+    document.getElementById('photo-upload').addEventListener('change', function() {
+      const file = this.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { alert('Photo must be under 5 MB.'); return; }
+      const reader = new FileReader();
+      reader.onload = e => {
+        pendingPhotoDataUrl = e.target.result;
+        renderProfile();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // ── Profile edit modal ──
+    function openProfileEdit() {
+      const p = profileData;
+      document.getElementById('p-name').value = p.full_name || '';
+      document.getElementById('p-title').value = p.title || '';
+      document.getElementById('p-bio').value = p.bio || '';
+      document.getElementById('p-email').value = p.email || '';
+      document.getElementById('p-phone').value = p.phone || '';
+      document.getElementById('p-location').value = p.location || '';
+      document.getElementById('p-website').value = p.website || '';
+      document.getElementById('p-skills').value = p.skills || '';
+      document.getElementById('p-education').value = p.education || '';
+      document.getElementById('p-work-status').value = p.work_status || '';
+      document.getElementById('p-status-note').value = p.status_note || '';
+      document.getElementById('profile-save-status').textContent = '';
+      document.getElementById('profile-modal').style.display = 'block';
+    }
+
+    function closeProfileEdit() {
+      document.getElementById('profile-modal').style.display = 'none';
+    }
+
+    async function saveProfile() {
+      const statusEl = document.getElementById('profile-save-status');
+      statusEl.textContent = 'Saving...';
+      statusEl.className = 'status-msg';
+      const payload = {
+        full_name: document.getElementById('p-name').value.trim(),
+        title: document.getElementById('p-title').value.trim(),
+        bio: document.getElementById('p-bio').value.trim(),
+        email: document.getElementById('p-email').value.trim(),
+        phone: document.getElementById('p-phone').value.trim(),
+        location: document.getElementById('p-location').value.trim(),
+        website: document.getElementById('p-website').value.trim(),
+        skills: document.getElementById('p-skills').value.trim(),
+        education: document.getElementById('p-education').value.trim(),
+        work_status: document.getElementById('p-work-status').value,
+        status_note: document.getElementById('p-status-note').value.trim(),
+        photo: pendingPhotoDataUrl || profileData.photo || ''
+      };
+      try {
+        const r = await fetch('/api/profile', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin', body: JSON.stringify(payload)
+        });
+        const data = await r.json();
+        if (!r.ok) { statusEl.textContent = data.error || 'Save failed.'; return; }
+        profileData = { ...profileData, ...payload };
+        pendingPhotoDataUrl = null;
+        renderProfile();
+        statusEl.textContent = 'Saved!';
+        statusEl.className = 'status-msg ok';
+        setTimeout(() => closeProfileEdit(), 900);
+      } catch { statusEl.textContent = 'Network error. Try again.'; }
+    }
+
+    // ── Work history ──
+    function toggleAddWork() {
+      const form = document.getElementById('add-work-form');
+      const btn = document.getElementById('add-work-toggle-btn');
+      const open = form.classList.toggle('open');
+      btn.textContent = open ? '✕ Cancel' : '+ Add Position';
+      if (open) {
+        editingWorkId = null;
+        document.getElementById('w-role').value = '';
+        document.getElementById('w-employer').value = '';
+        document.getElementById('w-start').value = '';
+        document.getElementById('w-end').value = '';
+        document.getElementById('w-desc').value = '';
+        document.getElementById('work-form-status').textContent = '';
+      }
+    }
+
+    function openEditWork(id) {
+      const w = workList.find(x => x.id === id);
+      if (!w) return;
+      editingWorkId = id;
+      document.getElementById('w-role').value = w.role;
+      document.getElementById('w-employer').value = w.employer;
+      document.getElementById('w-start').value = w.start_date || '';
+      document.getElementById('w-end').value = w.end_date || '';
+      document.getElementById('w-desc').value = w.description || '';
+      document.getElementById('work-form-status').textContent = '';
+      const form = document.getElementById('add-work-form');
+      form.classList.add('open');
+      document.getElementById('add-work-toggle-btn').textContent = '✕ Cancel';
+      form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    async function saveWork() {
+      const statusEl = document.getElementById('work-form-status');
+      const payload = {
+        role: document.getElementById('w-role').value.trim(),
+        employer: document.getElementById('w-employer').value.trim(),
+        start_date: document.getElementById('w-start').value,
+        end_date: document.getElementById('w-end').value,
+        description: document.getElementById('w-desc').value.trim()
+      };
+      if (!payload.role && !payload.employer) { statusEl.textContent = 'Please enter at least a role or employer.'; return; }
+      statusEl.textContent = 'Saving...';
+      try {
+        let r;
+        if (editingWorkId) {
+          r = await fetch(`/api/profile/work/${editingWorkId}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin', body: JSON.stringify(payload)
+          });
+        } else {
+          r = await fetch('/api/profile/work', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin', body: JSON.stringify(payload)
+          });
+        }
+        const data = await r.json();
+        if (!r.ok) { statusEl.textContent = data.error || 'Save failed.'; return; }
+        statusEl.textContent = '';
+        toggleAddWork();
+        await loadWork();
+      } catch { statusEl.textContent = 'Network error. Try again.'; }
+    }
+
+    async function deleteWork(id) {
+      if (!confirm('Delete this work entry permanently?')) return;
+      try {
+        const r = await fetch(`/api/profile/work/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+        if (r.ok) await loadWork();
+      } catch {}
+    }
+
+    function escHtml(str) {
+      return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('profile-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeProfileEdit();
+    });
+
+    init();
+  </script>
+</body>
+</html>

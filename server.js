@@ -180,6 +180,32 @@ async function initDatabase() {
     username TEXT NOT NULL,
     expires_at INTEGER NOT NULL
   )`);
+  await dbRun(`CREATE TABLE IF NOT EXISTS profiles (
+    user_id INTEGER PRIMARY KEY,
+    full_name TEXT NOT NULL DEFAULT '',
+    title TEXT NOT NULL DEFAULT '',
+    bio TEXT NOT NULL DEFAULT '',
+    email TEXT NOT NULL DEFAULT '',
+    phone TEXT NOT NULL DEFAULT '',
+    location TEXT NOT NULL DEFAULT '',
+    website TEXT NOT NULL DEFAULT '',
+    photo TEXT NOT NULL DEFAULT '',
+    skills TEXT NOT NULL DEFAULT '',
+    education TEXT NOT NULL DEFAULT '',
+    work_status TEXT NOT NULL DEFAULT '',
+    status_note TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT ''
+  )`);
+  await dbRun(`CREATE TABLE IF NOT EXISTS work_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    employer TEXT NOT NULL DEFAULT '',
+    role TEXT NOT NULL DEFAULT '',
+    start_date TEXT NOT NULL DEFAULT '',
+    end_date TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT ''
+  )`);
   // Clean up expired sessions
   await dbRun('DELETE FROM user_sessions WHERE expires_at < ?', [Date.now()]);
   console.log('Database initialized. Tables:', (await dbAll("SELECT name FROM sqlite_master WHERE type='table'")).map(t => t.name).join(', '));
@@ -630,7 +656,91 @@ app.get('/api/auth/debug', (req, res) => {
   });
 });
 
-// ── Entries Routes ────────────────────────────────────────────────────────��[...]
+// ── Profile / Resume Routes ───────────────────────────────────────────────────
+
+app.get('/api/profile', async (req, res) => {
+  const user = getUserFromRequest(req);
+  if (!user) return res.status(401).json({ error: 'Login required.' });
+  try {
+    const row = await dbGet('SELECT * FROM profiles WHERE user_id = ?', [user.userId]);
+    res.json(row || { user_id: user.userId, full_name: '', title: '', bio: '', email: '', phone: '', location: '', website: '', photo: '', skills: '', education: '' });
+  } catch (err) { res.status(500).json({ error: 'Failed to load profile.' }); }
+});
+
+app.post('/api/profile', async (req, res) => {
+  const user = getUserFromRequest(req);
+  if (!user) return res.status(401).json({ error: 'Login required.' });
+  const { full_name = '', title = '', bio = '', email = '', phone = '', location = '', website = '', photo = '', skills = '', education = '', work_status = '', status_note = '' } = req.body || {};
+  if (photo && photo.length > 5 * 1024 * 1024) return res.status(400).json({ error: 'Photo is too large (max 5 MB).' });
+  const updatedAt = new Date().toISOString();
+  try {
+    await dbRun(
+      `INSERT INTO profiles (user_id, full_name, title, bio, email, phone, location, website, photo, skills, education, work_status, status_note, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(user_id) DO UPDATE SET
+         full_name=excluded.full_name, title=excluded.title, bio=excluded.bio,
+         email=excluded.email, phone=excluded.phone, location=excluded.location,
+         website=excluded.website, photo=excluded.photo, skills=excluded.skills,
+         education=excluded.education, work_status=excluded.work_status,
+         status_note=excluded.status_note, updated_at=excluded.updated_at`,
+      [user.userId, full_name, title, bio, email, phone, location, website, photo, skills, education, work_status, status_note, updatedAt]
+    );
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Failed to save profile.' }); }
+});
+
+app.get('/api/profile/work', async (req, res) => {
+  const user = getUserFromRequest(req);
+  if (!user) return res.status(401).json({ error: 'Login required.' });
+  try {
+    const rows = await dbAll('SELECT * FROM work_history WHERE user_id = ? ORDER BY start_date DESC, id DESC', [user.userId]);
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: 'Failed to load work history.' }); }
+});
+
+app.post('/api/profile/work', async (req, res) => {
+  const user = getUserFromRequest(req);
+  if (!user) return res.status(401).json({ error: 'Login required.' });
+  const { employer = '', role = '', start_date = '', end_date = '', description = '' } = req.body || {};
+  if (!employer && !role) return res.status(400).json({ error: 'Employer or role is required.' });
+  const createdAt = new Date().toISOString();
+  try {
+    const result = await dbRun(
+      'INSERT INTO work_history (user_id, employer, role, start_date, end_date, description, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [user.userId, employer, role, start_date, end_date, description, createdAt]
+    );
+    const newRow = await dbGet('SELECT * FROM work_history WHERE user_id = ? ORDER BY id DESC LIMIT 1', [user.userId]);
+    res.status(201).json(newRow);
+  } catch (err) { res.status(500).json({ error: 'Failed to save work entry.' }); }
+});
+
+app.put('/api/profile/work/:id', async (req, res) => {
+  const user = getUserFromRequest(req);
+  if (!user) return res.status(401).json({ error: 'Login required.' });
+  const id = Number(req.params.id);
+  const { employer = '', role = '', start_date = '', end_date = '', description = '' } = req.body || {};
+  try {
+    const row = await dbGet('SELECT id FROM work_history WHERE id = ? AND user_id = ?', [id, user.userId]);
+    if (!row) return res.status(404).json({ error: 'Record not found.' });
+    await dbRun('UPDATE work_history SET employer=?, role=?, start_date=?, end_date=?, description=? WHERE id=?',
+      [employer, role, start_date, end_date, description, id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Failed to update work entry.' }); }
+});
+
+app.delete('/api/profile/work/:id', async (req, res) => {
+  const user = getUserFromRequest(req);
+  if (!user) return res.status(401).json({ error: 'Login required.' });
+  const id = Number(req.params.id);
+  try {
+    const row = await dbGet('SELECT id FROM work_history WHERE id = ? AND user_id = ?', [id, user.userId]);
+    if (!row) return res.status(404).json({ error: 'Record not found.' });
+    await dbRun('DELETE FROM work_history WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Failed to delete work entry.' }); }
+});
+
+// ── Entries Routes ────────────────────────────────────────────────────────────
 
 app.get('/api/entries', async (req, res) => {
   cleanupAuthState();
@@ -1167,6 +1277,10 @@ app.get('/login', (req, res) => {
 
 app.get('/reset-password', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'reset-password.html'));
+});
+
+app.get('/resume', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'resume.html'));
 });
 
 app.get('/page2', (req, res) => {
