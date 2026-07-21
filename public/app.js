@@ -152,12 +152,28 @@ function downloadDocFile(filename, content) {
   URL.revokeObjectURL(link.href);
 }
 
-function handleWordExport() {
-  const content = entryContent.value.trim() || 'No content yet.';
-  const timestamp = exportTimestamp ? exportTimestamp.textContent : getFormattedTimestamp(new Date());
-  const fileNameSafe = `entry_${Date.now()}`;
-  const documentContent = buildWordDocument('Journal Entry', timestamp, content);
-  downloadDocFile(`${fileNameSafe}.doc`, documentContent);
+async function handleWordExport() {
+  const draft = entryContent ? entryContent.value.trim() : '';
+
+  if (draft) {
+    // Unsaved draft in textarea — export it directly
+    const timestamp = exportTimestamp ? exportTimestamp.textContent : getFormattedTimestamp(new Date());
+    const doc = buildWordDocument('Journal Entry', timestamp, draft);
+    downloadDocFile(`entry_${Date.now()}.doc`, doc);
+    return;
+  }
+
+  // Textarea is empty — download the most recently saved entry
+  try {
+    const r = await fetch('/api/entries?order=desc', { credentials: 'same-origin' });
+    if (!r.ok) { alert('Could not load entries. Make sure you are logged in.'); return; }
+    const entries = await r.json();
+    if (!entries.length) { alert('No saved entries found. Write something and save it first.'); return; }
+    const latest = entries[0];
+    const doc = buildWordDocument('Journal Entry', latest.timestamp || '', latest.content || '');
+    const safe = (latest.timestamp || Date.now()).toString().replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40);
+    downloadDocFile(`entry_${safe}.doc`, doc);
+  } catch { alert('Network error. Try again.'); }
 }
 
 function escapeHtml(value) {
