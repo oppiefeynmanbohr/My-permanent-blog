@@ -504,8 +504,12 @@ app.post('/api/auth/login', async (req, res) => {
   if (!username || !password) return res.status(400).json({ error: 'Username and password are required.' });
 
   try {
-    const user = await dbGet('SELECT * FROM users WHERE username = ?', [username.trim()]);
-    if (!user) return res.status(401).json({ error: 'Invalid username or password.' });
+    const identifier = username.trim();
+    const user = await dbGet(
+      'SELECT * FROM users WHERE username = ? OR email = ?',
+      [identifier, identifier.toLowerCase()]
+    );
+    if (!user) return res.status(401).json({ error: 'No account found with that username or email.' });
     if (isLegacyCodeOnlyUser(user)) {
       return res.status(409).json({
         error: 'This account needs a password. Use the password setup/reset flow first.'

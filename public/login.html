@@ -45,8 +45,8 @@
       <!-- ── Log In panel ── -->
       <div id="panel-login" class="panel active">
         <div class="auth-field">
-          <label for="login-username">Username</label>
-          <input id="login-username" type="text" placeholder="Your username" autocomplete="username" />
+          <label for="login-username">Username or Email</label>
+          <input id="login-username" type="text" placeholder="Your username or email" autocomplete="username" />
         </div>
         <div class="auth-field">
           <label for="login-password">Password</label>
@@ -110,7 +110,7 @@
       const username = document.getElementById('login-username').value.trim();
       const password = document.getElementById('login-password').value;
       const rememberMe = document.getElementById('remember-me').checked;
-      if (!username || !password) { statusEl.textContent = 'Please enter your username and password.'; return; }
+      if (!username || !password) { statusEl.textContent = 'Please enter your username or email, and password.'; return; }
       statusEl.textContent = '';
       loginBtn.disabled = true;
       loginBtn.textContent = 'Logging in…';
