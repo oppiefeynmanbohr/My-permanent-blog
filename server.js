@@ -3,6 +3,7 @@ const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 require('dotenv').config();
 const {
   generateRegistrationOptions,
@@ -42,6 +43,25 @@ const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const REMEMBER_ME_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
 const MFA_TTL_MS = 5 * 60 * 1000;
+const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+const SMTP_HOST = process.env.SMTP_HOST || '';
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
+const SMTP_USER = process.env.SMTP_USER || '';
+const SMTP_PASS = process.env.SMTP_PASS || '';
+const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
+
+const pendingPasswordResets = new Map(); // token -> { userId, expiresAt }
+
+function getMailTransport() {
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
+  return nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS }
+  });
+}
 
 const adminSessions = new Map();
 const pendingChallenges = new Map();
@@ -485,6 +505,63 @@ app.post('/api/auth/logout', (req, res) => {
   const securePart = isProduction ? '; Secure' : '';
   res.setHeader('Set-Cookie', `user_sid=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0${securePart}`);
   res.json({ success: true });
+});
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return res.status(400).json({ error: 'A valid email address is required.' });
+  }
+  try {
+    const user = await dbGet('SELECT id, username FROM users WHERE email = ?', [email]);
+    // Always respond OK to avoid leaking whether the email exists
+    if (!user) return res.json({ success: true });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    pendingPasswordResets.set(token, { userId: user.id, expiresAt: Date.now() + RESET_TTL_MS });
+
+    const transport = getMailTransport();
+    if (!transport) {
+      // Dev fallback: log the reset link
+      const link = `${req.protocol}://${req.get('host')}/reset-password.html?token=${token}`;
+      console.log(`[DEV PASSWORD RESET] ${email} -> ${link}`);
+      return res.json({ success: true, devLink: link });
+    }
+
+    const resetLink = `${req.protocol}://${req.get('host')}/reset-password.html?token=${token}`;
+    await transport.sendMail({
+      from: SMTP_FROM,
+      to: email,
+      subject: 'Reset your My Permanent Blog password',
+      text: `Hi ${user.username},\n\nClick the link below to reset your password (expires in 1 hour):\n\n${resetLink}\n\nIf you didn't request this, you can ignore this email.`,
+      html: `<p>Hi <strong>${user.username}</strong>,</p><p>Click the link below to reset your password (expires in 1 hour):</p><p><a href="${resetLink}">${resetLink}</a></p><p>If you didn't request this, you can ignore this email.</p>`
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to send reset email.' });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  const token = String(req.body.token || '').trim();
+  const password = String(req.body.password || '');
+  if (!token || !password) return res.status(400).json({ error: 'Token and new password are required.' });
+  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+
+  const record = pendingPasswordResets.get(token);
+  if (!record || record.expiresAt < Date.now()) {
+    pendingPasswordResets.delete(token);
+    return res.status(400).json({ error: 'This reset link has expired or is invalid. Please request a new one.' });
+  }
+  try {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = hashPassword(password, salt);
+    await dbRun('UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?', [hash, salt, record.userId]);
+    pendingPasswordResets.delete(token);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to reset password.' });
+  }
 });
 
 app.get('/api/auth/session', (req, res) => {

@@ -11,6 +11,7 @@
     "@simplewebauthn/server": "^13.3.2",
     "dotenv": "^17.4.2",
     "express": "^4.18.4",
+    "nodemailer": "^9.0.3",
     "sqlite3": "^5.1.6"
   }
 }

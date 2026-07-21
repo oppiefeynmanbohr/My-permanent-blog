@@ -14,163 +14,85 @@
     .auth-field label { font-size:0.85em; font-weight:bold; color:#5a3e28; }
     .auth-field input { padding:10px 12px; border:1px solid #ccc; border-radius:6px; font-size:1em; box-sizing:border-box; width:100%; }
     .auth-field input:focus { outline:2px solid #c8a97e; border-color:#c8a97e; }
+    .auth-remember { display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:0.9em; color:#5a3e28; cursor:pointer; }
+    .auth-remember input[type=checkbox] { width:16px; height:16px; accent-color:#c8a97e; cursor:pointer; }
     .auth-submit { width:100%; background:#c8a97e; color:#fff; border:none; border-radius:8px; padding:12px; font-size:1em; font-weight:bold; cursor:pointer; margin-top:4px; }
     .auth-submit:hover { background:#b8936a; }
     .auth-submit:disabled { opacity:0.6; cursor:not-allowed; }
     .auth-status { font-size:0.9em; color:#c62828; text-align:center; min-height:20px; margin-bottom:10px; }
     .auth-status.ok { color:#2e7d32; }
-    .code-box { background:#f0ebe3; border:2px solid #c8a97e; border-radius:10px; padding:18px; text-align:center; margin:14px 0; }
-    .code-value { font-size:2.2rem; font-weight:bold; letter-spacing:0.25em; color:#3a2a1a; font-family:monospace; }
-    .code-warning { font-size:0.85em; color:#c62828; margin-top:8px; }
+    .forgot-link { text-align:right; font-size:0.82em; margin-top:-8px; margin-bottom:14px; }
+    .forgot-link a { color:#c8a97e; text-decoration:none; }
+    .forgot-link a:hover { text-decoration:underline; }
     .back-link { text-align:center; margin-top:18px; font-size:0.9em; color:#888; }
     .back-link a { color:#c8a97e; text-decoration:none; font-weight:bold; }
-    .step { display:none; }
-    .step.active { display:block; }
   </style>
 </head>
 <body>
   <div class="auth-shell">
     <div class="auth-card">
       <h1>My Permanent Blog</h1>
-      <p class="subtitle">Sign in with your email</p>
+      <p class="subtitle">Sign in to your account</p>
 
-      <!-- Step 1: Enter email -->
-      <div id="step-email" class="step active">
-        <div class="auth-field">
-          <label for="email-input">Email address</label>
-          <input id="email-input" type="email" placeholder="your@email.com" autocomplete="email" />
-        </div>
-        <div id="step1-status" class="auth-status"></div>
-        <button class="auth-submit" id="step1-btn">Continue</button>
+      <div class="auth-field">
+        <label for="username-input">Username</label>
+        <input id="username-input" type="text" placeholder="Your username" autocomplete="username" />
       </div>
-
-      <!-- Step 2a: New user — show their assigned code -->
-      <div id="step-newcode" class="step">
-        <p style="color:#5a3e28;margin:0 0 10px;">Your account is set up. Here is your login code:</p>
-        <div class="code-box">
-          <div class="code-value" id="code-display"></div>
-          <div class="code-warning">⚠️ Save this code — you need it every time you log in.</div>
-        </div>
-        <div class="auth-status ok">Logged in! Redirecting to the blog…</div>
+      <div class="auth-field">
+        <label for="password-input">Password</label>
+        <input id="password-input" type="password" placeholder="Your password" autocomplete="current-password" />
       </div>
-
-      <!-- Step 2b: Returning user — enter their code -->
-      <div id="step-entercode" class="step">
-        <p style="color:#5a3e28;margin:0 0 12px;">Enter the 8-character code for <strong id="email-display"></strong>:</p>
-        <div class="auth-field">
-          <label for="code-input">Login code</label>
-          <input id="code-input" type="text" placeholder="e.g. AB3X7K2P" maxlength="8" autocomplete="off" style="text-transform:uppercase;letter-spacing:0.15em;font-size:1.2em;" />
-        </div>
-        <div id="step2-status" class="auth-status"></div>
-        <button class="auth-submit" id="step2-btn">Log In</button>
-        <p style="text-align:center;margin-top:12px;font-size:0.85em;color:#888;">
-          Wrong email? <a href="#" id="new-email-link" style="color:#c8a97e;">Use a different one</a>
-        </p>
-      </div>
+      <div class="forgot-link"><a href="/reset-password.html">Forgot password?</a></div>
+      <label class="auth-remember">
+        <input id="remember-me" type="checkbox" /> Remember me
+      </label>
+      <div id="login-status" class="auth-status"></div>
+      <button class="auth-submit" id="login-btn">Log In</button>
 
       <div class="back-link"><a href="/page1">← Back to blog</a></div>
     </div>
   </div>
 
   <script>
-    let currentEmail = '';
+    const loginBtn = document.getElementById('login-btn');
+    const usernameInput = document.getElementById('username-input');
+    const passwordInput = document.getElementById('password-input');
+    const statusEl = document.getElementById('login-status');
 
-    const step1Btn = document.getElementById('step1-btn');
-    const step2Btn = document.getElementById('step2-btn');
-    const emailInput = document.getElementById('email-input');
-    const codeInput = document.getElementById('code-input');
+    usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') passwordInput.focus(); });
+    passwordInput.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
 
-    function showStep(id) {
-      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-      document.getElementById(id).classList.add('active');
-    }
-
-    // Pre-fill email from localStorage
-    const savedEmail = localStorage.getItem('blog_email');
-    if (savedEmail) emailInput.value = savedEmail;
-
-    emailInput.addEventListener('keydown', e => { if (e.key === 'Enter') step1Btn.click(); });
-    codeInput.addEventListener('input', () => { codeInput.value = codeInput.value.toUpperCase(); });
-    codeInput.addEventListener('keydown', e => { if (e.key === 'Enter') step2Btn.click(); });
-
-    step1Btn.addEventListener('click', async () => {
-      const status = document.getElementById('step1-status');
-      const email = emailInput.value.trim().toLowerCase();
-      if (!email) { status.textContent = 'Please enter your email.'; return; }
-      status.textContent = '';
-      step1Btn.disabled = true;
-      step1Btn.textContent = 'Checking…';
+    loginBtn.addEventListener('click', async () => {
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value;
+      const rememberMe = document.getElementById('remember-me').checked;
+      if (!username || !password) { statusEl.textContent = 'Please enter your username and password.'; return; }
+      statusEl.textContent = '';
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Logging in…';
       try {
-        const r = await fetch('/api/auth/email-setup', {
+        const r = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ email })
+          body: JSON.stringify({ username, password, rememberMe })
         });
         const data = await r.json();
         if (!r.ok) {
-          status.textContent = data.error || 'Something went wrong.';
-          step1Btn.disabled = false;
-          step1Btn.textContent = 'Continue';
-          return;
-        }
-        currentEmail = email;
-        localStorage.setItem('blog_email', email);
-        if (data.registered) {
-          document.getElementById('email-display').textContent = email;
-          showStep('step-entercode');
-          setTimeout(() => codeInput.focus(), 50);
-        } else {
-          document.getElementById('code-display').textContent = data.code;
-          localStorage.setItem('blog_logged_in', '1');
-          showStep('step-newcode');
-          setTimeout(() => { window.location.href = '/page1'; }, 5000);
-        }
-      } catch {
-        status.textContent = 'Network error. Try again.';
-        step1Btn.disabled = false;
-        step1Btn.textContent = 'Continue';
-      }
-    });
-
-    step2Btn.addEventListener('click', async () => {
-      const status = document.getElementById('step2-status');
-      const code = codeInput.value.trim().toUpperCase();
-      if (!code) { status.textContent = 'Please enter your code.'; return; }
-      status.textContent = '';
-      step2Btn.disabled = true;
-      step2Btn.textContent = 'Logging in…';
-      try {
-        const r = await fetch('/api/auth/email-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({ email: currentEmail, code })
-        });
-        const data = await r.json();
-        if (!r.ok) {
-          status.textContent = data.error || 'Login failed.';
-          step2Btn.disabled = false;
-          step2Btn.textContent = 'Log In';
+          statusEl.textContent = data.error || 'Login failed.';
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Log In';
           return;
         }
         localStorage.setItem('blog_logged_in', '1');
-        status.className = 'auth-status ok';
-        status.textContent = 'Logged in! Redirecting…';
+        statusEl.className = 'auth-status ok';
+        statusEl.textContent = 'Logged in! Redirecting…';
         setTimeout(() => { window.location.href = '/page1'; }, 800);
       } catch {
-        status.textContent = 'Network error. Try again.';
-        step2Btn.disabled = false;
-        step2Btn.textContent = 'Log In';
+        statusEl.textContent = 'Network error. Try again.';
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Log In';
       }
-    });
-
-    document.getElementById('new-email-link').addEventListener('click', e => {
-      e.preventDefault();
-      emailInput.value = '';
-      codeInput.value = '';
-      showStep('step-email');
-      emailInput.focus();
     });
 
     // Already logged in? Go straight to blog
