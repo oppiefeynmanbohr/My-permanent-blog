@@ -144,12 +144,16 @@
 
         <div class="entry-panel" id="entry-panel" style="display:none;">
           <h3 id="entry-day-label"></h3>
-          <textarea id="day-entry-content" placeholder="Write your entry for this day..."></textarea>
+
+          <!-- New entry form -->
+          <textarea id="day-entry-content" placeholder="Write a new entry for this day..."></textarea>
           <div class="entry-actions">
-            <button id="save-day-entry">Save Entry</button>
-            <button id="delete-day-entry" class="secondary-button">Delete</button>
+            <button id="save-day-entry">+ Save Entry</button>
             <span class="day-status" id="day-status"></span>
           </div>
+
+          <!-- Existing entries for the day -->
+          <div id="day-entries-list" style="margin-top:18px;"></div>
         </div>
 
       </div>
@@ -164,63 +168,55 @@
     const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     const today = new Date();
     let viewYear = today.getFullYear();
-    let viewMonth = today.getMonth(); // 0-based
+    let viewMonth = today.getMonth();
     let selectedDay = null;
-    let entryMap = {}; // 'YYYY-MM-DD' -> { id, content }
+    // entryMap: 'YYYY-MM-DD' -> [ { id, content, timestamp } ]
+    let entryMap = {};
 
-    function daysInMonth(year, month) {
-      return new Date(year, month + 1, 0).getDate();
-    }
-    function firstDayOfWeek(year, month) {
-      return new Date(year, month, 1).getDay();
-    }
-    function padDate(n) { return String(n).padStart(2,'0'); }
-    function dateKey(year, month, day) {
-      return `${year}-${padDate(month+1)}-${padDate(day)}`;
-    }
+    // Redirect to login if not authenticated
+    fetch('/api/auth/session', { credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(d => { if (!d.authenticated) window.location.href = '/login'; })
+      .catch(() => {});
+
+    function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
+    function firstDayOfWeek(y, m) { return new Date(y, m, 1).getDay(); }
+    function padDate(n) { return String(n).padStart(2, '0'); }
+    function dateKey(y, m, d) { return `${y}-${padDate(m+1)}-${padDate(d)}`; }
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
     async function loadMonthEntries() {
-      const yearStr = viewYear;
-      const monthStr = padDate(viewMonth + 1);
-      try {
-        const r = await fetch(`/api/entries?source=calendar&calmonth=${yearStr}-${monthStr}`, { credentials: 'same-origin' });
-        if (!r.ok) return;
+      const r = await fetch(`/api/entries?source=calendar&calmonth=${viewYear}-${padDate(viewMonth+1)}`, { credentials: 'same-origin' }).catch(() => null);
+      entryMap = {};
+      if (r && r.ok) {
         const entries = await r.json();
-        entryMap = {};
         entries.forEach(e => {
-          const d = e.created_at ? e.created_at.slice(0,10) : '';
-          if (d) entryMap[d] = { id: e.id, content: e.content };
+          const d = (e.created_at || '').slice(0, 10);
+          if (!d) return;
+          if (!entryMap[d]) entryMap[d] = [];
+          entryMap[d].push({ id: e.id, content: e.content, timestamp: e.timestamp });
         });
-      } catch {}
+      }
       renderCalendar();
+      if (selectedDay !== null) renderDayEntries(dateKey(viewYear, viewMonth, selectedDay));
     }
 
     function renderCalendar() {
-      const calTitle = document.getElementById('cal-title');
+      document.getElementById('cal-title').textContent = `${MONTHS[viewMonth]} ${viewYear}`;
       const grid = document.getElementById('day-grid');
-      calTitle.textContent = `${MONTHS[viewMonth]} ${viewYear}`;
       grid.innerHTML = '';
-
       const total = daysInMonth(viewYear, viewMonth);
       const startDow = firstDayOfWeek(viewYear, viewMonth);
       const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
-
-      // Empty cells before first day
-      for (let i = 0; i < startDow; i++) {
-        const blank = document.createElement('div');
-        grid.appendChild(blank);
-      }
-
+      for (let i = 0; i < startDow; i++) grid.appendChild(document.createElement('div'));
       for (let d = 1; d <= total; d++) {
         const key = dateKey(viewYear, viewMonth, d);
         const btn = document.createElement('button');
         btn.className = 'day-btn';
         btn.textContent = d;
         if (key === todayKey) btn.classList.add('today');
-        if (entryMap[key]) btn.classList.add('has-entry');
-        if (selectedDay === d && viewYear === today.getFullYear() || selectedDay === d) {
-          // highlight selected
-        }
+        if (entryMap[key] && entryMap[key].length) btn.classList.add('has-entry');
+        if (selectedDay === d) btn.classList.add('selected');
         btn.addEventListener('click', () => selectDay(d));
         grid.appendChild(btn);
       }
@@ -228,24 +224,78 @@
 
     function selectDay(day) {
       selectedDay = day;
+      renderCalendar();
       const key = dateKey(viewYear, viewMonth, day);
-      const panel = document.getElementById('entry-panel');
-      const label = document.getElementById('entry-day-label');
-      const textarea = document.getElementById('day-entry-content');
-      const status = document.getElementById('day-status');
+      document.getElementById('entry-panel').style.display = 'block';
+      document.getElementById('entry-day-label').textContent = `${MONTHS[viewMonth]} ${day}, ${viewYear}`;
+      document.getElementById('day-entry-content').value = '';
+      document.getElementById('day-status').textContent = '';
+      renderDayEntries(key);
+      document.getElementById('day-entry-content').focus();
+    }
 
-      panel.style.display = 'block';
-      label.textContent = `${MONTHS[viewMonth]} ${day}, ${viewYear}`;
-      textarea.value = entryMap[key] ? entryMap[key].content : '';
-      status.textContent = entryMap[key] ? 'Entry exists — edit and save to update.' : 'No entry yet.';
+    function renderDayEntries(key) {
+      const list = document.getElementById('day-entries-list');
+      const entries = entryMap[key] || [];
+      if (!entries.length) { list.innerHTML = '<p style="color:#888;font-style:italic;font-size:0.9em;">No entries yet for this day.</p>'; return; }
+      list.innerHTML = entries.map((e, i) => `
+        <div class="saved-entry-card" id="entry-card-${e.id}" style="background:#fff;border:1px solid rgba(93,138,168,0.3);border-radius:10px;padding:14px;margin-bottom:12px;">
+          <div style="font-size:0.8em;color:#5D8AA8;margin-bottom:6px;">${esc(e.timestamp)}</div>
+          <div id="entry-view-${e.id}" class="entry-body" style="white-space:pre-wrap;line-height:1.6;color:#1a2a3a;">${esc(e.content)}</div>
+          <textarea id="entry-edit-${e.id}" style="display:none;width:100%;min-height:100px;box-sizing:border-box;border:1px solid #9B1C31;border-radius:6px;padding:10px;font-family:inherit;font-size:1rem;resize:vertical;">${esc(e.content)}</textarea>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+            <button class="secondary-button" onclick="startEdit(${e.id})" id="edit-btn-${e.id}" style="font-size:0.82em;padding:5px 12px;">Edit</button>
+            <button class="secondary-button" onclick="saveEdit(${e.id}, '${esc(key)}')" id="save-edit-btn-${e.id}" style="display:none;font-size:0.82em;padding:5px 12px;background:#9B1C31;color:#fff;border-color:#9B1C31;">Save Edit</button>
+            <button class="secondary-button" onclick="cancelEdit(${e.id})" id="cancel-edit-btn-${e.id}" style="display:none;font-size:0.82em;padding:5px 12px;">Cancel</button>
+            <button onclick="deleteEntry(${e.id}, '${esc(key)}')" style="font-size:0.82em;padding:5px 12px;background:#fff0f0;color:#c62828;border:1px solid #f5c0c0;border-radius:6px;cursor:pointer;">Delete</button>
+          </div>
+          <div id="edit-status-${e.id}" style="font-size:0.82em;color:#c62828;margin-top:4px;"></div>
+        </div>`).join('');
+    }
 
-      // Highlight selected button
-      document.querySelectorAll('.day-btn').forEach((b, i) => {
-        const bDay = parseInt(b.textContent);
-        b.classList.toggle('selected', bDay === day && b.textContent.trim() === String(day));
-      });
-
-      textarea.focus();
+    function startEdit(id) {
+      document.getElementById(`entry-view-${id}`).style.display = 'none';
+      document.getElementById(`entry-edit-${id}`).style.display = 'block';
+      document.getElementById(`edit-btn-${id}`).style.display = 'none';
+      document.getElementById(`save-edit-btn-${id}`).style.display = 'inline-block';
+      document.getElementById(`cancel-edit-btn-${id}`).style.display = 'inline-block';
+      document.getElementById(`entry-edit-${id}`).focus();
+    }
+    function cancelEdit(id) {
+      document.getElementById(`entry-view-${id}`).style.display = 'block';
+      document.getElementById(`entry-edit-${id}`).style.display = 'none';
+      document.getElementById(`edit-btn-${id}`).style.display = 'inline-block';
+      document.getElementById(`save-edit-btn-${id}`).style.display = 'none';
+      document.getElementById(`cancel-edit-btn-${id}`).style.display = 'none';
+    }
+    async function saveEdit(id, key) {
+      const content = document.getElementById(`entry-edit-${id}`).value.trim();
+      const statusEl = document.getElementById(`edit-status-${id}`);
+      if (!content) { statusEl.textContent = 'Entry cannot be empty.'; return; }
+      statusEl.textContent = 'Saving...';
+      try {
+        const r = await fetch(`/api/entries/${id}/content`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin', body: JSON.stringify({ content })
+        });
+        const data = await r.json();
+        if (!r.ok) { statusEl.textContent = data.error || 'Save failed.'; return; }
+        // Update local map
+        const arr = entryMap[key];
+        if (arr) { const e = arr.find(x => x.id === id); if (e) e.content = content; }
+        cancelEdit(id);
+        document.getElementById(`entry-view-${id}`).textContent = content;
+        statusEl.textContent = '';
+      } catch { statusEl.textContent = 'Network error. Try again.'; }
+    }
+    async function deleteEntry(id, key) {
+      if (!confirm('Delete this entry permanently?')) return;
+      const r = await fetch(`/api/entries/${id}`, { method: 'DELETE', credentials: 'same-origin' }).catch(() => null);
+      if (r && r.ok) {
+        if (entryMap[key]) entryMap[key] = entryMap[key].filter(e => e.id !== id);
+        renderCalendar();
+        renderDayEntries(key);
+      }
     }
 
     document.getElementById('save-day-entry').addEventListener('click', async () => {
@@ -253,44 +303,28 @@
       const content = document.getElementById('day-entry-content').value.trim();
       const status = document.getElementById('day-status');
       if (!content) { status.textContent = 'Write something first.'; return; }
-
       status.textContent = 'Saving...';
-      // If entry exists, delete it first then re-create
-      if (entryMap[key]) {
-        await fetch(`/api/entries/${entryMap[key].id}`, { method: 'DELETE', credentials: 'same-origin' });
-      }
-
       const dateStr = `${viewYear}-${padDate(viewMonth+1)}-${padDate(selectedDay)}`;
-      const r = await fetch('/api/entries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          content,
-          source: 'calendar',
-          caldate: dateStr
-        })
-      });
-      if (r.ok) {
+      try {
+        const r = await fetch('/api/entries', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ content, source: 'calendar', caldate: dateStr })
+        });
+        if (r.status === 401) {
+          status.textContent = 'Session expired — redirecting to login...';
+          setTimeout(() => { window.location.href = '/login'; }, 1200); return;
+        }
+        if (!r.ok) { status.textContent = 'Could not save. Try again.'; return; }
+        const newEntry = await r.json();
+        if (!entryMap[key]) entryMap[key] = [];
+        entryMap[key].push({ id: newEntry.id, content: newEntry.content, timestamp: newEntry.timestamp });
+        document.getElementById('day-entry-content').value = '';
         status.textContent = 'Saved!';
-        await loadMonthEntries();
-        selectDay(selectedDay);
-      } else if (r.status === 401) {
-        status.textContent = 'Session expired — redirecting to login...';
-        setTimeout(() => { window.location.href = '/login'; }, 1200);
-      } else {
-        status.textContent = 'Could not save. Try again.';
-      }
-    });
-
-    document.getElementById('delete-day-entry').addEventListener('click', async () => {
-      const key = dateKey(viewYear, viewMonth, selectedDay);
-      if (!entryMap[key]) return;
-      const confirm = prompt('Type "delete permanently" to confirm:');
-      if (!confirm || confirm.trim().toLowerCase() !== 'delete permanently') return;
-      await fetch(`/api/entries/${entryMap[key].id}`, { method: 'DELETE', credentials: 'same-origin' });
-      await loadMonthEntries();
-      document.getElementById('entry-panel').style.display = 'none';
+        setTimeout(() => { status.textContent = ''; }, 2000);
+        renderCalendar();
+        renderDayEntries(key);
+      } catch { status.textContent = 'Network error. Try again.'; }
     });
 
     document.getElementById('prev-month').addEventListener('click', () => {
@@ -306,7 +340,6 @@
       loadMonthEntries();
     });
 
-    // Apply saved fonts/title
     try {
       const t = localStorage.getItem('blogTitle');
       if (t) document.title = `${t} - Calendar Journal`;

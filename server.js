@@ -833,6 +833,25 @@ app.post('/api/entries', async (req, res) => {
   }
 });
 
+app.patch('/api/entries/:id/content', async (req, res) => {
+  cleanupAuthState();
+  const user = getUserFromRequest(req);
+  if (!user) return res.status(401).json({ error: 'Login required.' });
+  const id = Number(req.params.id);
+  const content = String(req.body.content || '').trim();
+  if (!id) return res.status(400).json({ error: 'Invalid entry ID.' });
+  if (!content) return res.status(400).json({ error: 'Content is required.' });
+  try {
+    const row = await dbGet('SELECT id, user_id FROM entries WHERE id = ? AND deleted = 0', [id]);
+    if (!row) return res.status(404).json({ error: 'Entry not found.' });
+    if (row.user_id !== user.userId) return res.status(403).json({ error: 'You can only edit your own entries.' });
+    await dbRun('UPDATE entries SET content = ? WHERE id = ?', [content, id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update entry.' });
+  }
+});
+
 app.patch('/api/entries/:id/publish', async (req, res) => {
   cleanupAuthState();
   const isAdmin = isAdminAuthenticated(req);
