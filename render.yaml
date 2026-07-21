@@ -2,7 +2,7 @@ services:
   - type: web
     name: my-permanent-blog
     runtime: node
-    plan: free
+    plan: starter
     buildCommand: npm install
     startCommand: node server.js
     envVars:
@@ -10,6 +10,22 @@ services:
         value: production
       - key: PORT
         value: 3000
+      # ── Turso cloud DB (recommended — free permanent storage) ──
+      # Create a free database at https://turso.tech and paste your credentials below.
+      # When set, ALL data is stored in the cloud and survives every restart/redeploy.
+      - key: TURSO_URL
+        value: ""
+      - key: TURSO_AUTH_TOKEN
+        value: ""
+      # ── SMTP for password reset emails (optional) ──
+      - key: SMTP_HOST
+        value: ""
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        value: ""
+      - key: SMTP_PASS
+        value: ""
     disk:
       name: blog-data
       mountPath: /opt/render/project/src/data

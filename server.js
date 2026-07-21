@@ -123,6 +123,13 @@ const db = new sqlite3.Database(dbFile, (err) => {
   }
 });
 
+// Enable WAL mode for durability and crash safety
+db.serialize(() => {
+  db.run('PRAGMA journal_mode=WAL');
+  db.run('PRAGMA synchronous=NORMAL');
+  db.run('PRAGMA cache_size=-64000'); // 64 MB cache
+});
+
 const createTableSql = `
 CREATE TABLE IF NOT EXISTS entries (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -208,10 +215,16 @@ async function initDatabase() {
   )`);
   // Clean up expired sessions
   await dbRun('DELETE FROM user_sessions WHERE expires_at < ?', [Date.now()]);
-  console.log('Database initialized. Tables:', (await dbAll("SELECT name FROM sqlite_master WHERE type='table'")).map(t => t.name).join(', '));
+  const tables = (await dbAll("SELECT name FROM sqlite_master WHERE type='table'")).map(t => t.name);
+  console.log('Database initialized. Storage:', tursoClient ? 'Turso cloud (permanent)' : `SQLite at ${dbFile}`);
+  console.log('Tables:', tables.join(', '));
+  if (!tursoClient) {
+    const onDisk = dbFile.startsWith('/opt/render/project/src/data') || !process.env.RENDER;
+    if (process.env.RENDER && !onDisk) {
+      console.warn('WARNING: Database is NOT on a persistent disk. Data will be lost on restart. Set TURSO_URL + TURSO_AUTH_TOKEN for permanent storage.');
+    }
+  }
 }
-
-db.serialize(() => {});
 
 app.use(express.json({ limit: '10mb' }));
 app.use(loadUserSession);
