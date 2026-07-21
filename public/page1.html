@@ -154,13 +154,14 @@
       <aside class="word-export-panel">
         <div class="word-card">
           <h2>Word Export</h2>
-          <p>Connect your timestamped entry to a Word document instantly.</p>
+          <p>Download the current draft or all your saved entries as a Word document.</p>
           <div class="form-row timestamp-row">
             <label>Export timestamp</label>
             <div id="export-timestamp" class="timestamp-display"></div>
           </div>
-          <div class="form-row">
-            <button id="export-word" class="secondary-button">Download Word Document</button>
+          <div class="form-row" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button id="export-word" class="secondary-button">⬇ Download Current Draft</button>
+            <button id="export-all-word" class="secondary-button">⬇ Download All Entries</button>
           </div>
           <div id="admin-dictionary-status" class="admin-dictionary-status" style="display:none;">Admin only: dictionary status unavailable.</div>
           <p class="panel-note">This creates a downloadable .doc file containing the current title, timestamp, and entry content.</p>

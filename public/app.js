@@ -190,15 +190,22 @@ function renderEntries(entries) {
       <div class="entry-actions">
         <button class="publish-button" data-id="${entry.id}">${isPublished ? 'Unpublish' : 'Publish'}</button>
         <button class="archive-button" data-id="${entry.id}">Move to Database</button>
+        <button class="word-export-btn secondary-button" data-id="${entry.id}">⬇ Word</button>
         <button class="delete-button" data-id="${entry.id}">Delete</button>
       </div>
     `;
     const deleteButton = card.querySelector('.delete-button');
     const publishButton = card.querySelector('.publish-button');
     const archiveButton = card.querySelector('.archive-button');
+    const wordBtn = card.querySelector('.word-export-btn');
     deleteButton.addEventListener('click', () => deleteEntry(entry.id));
     publishButton.addEventListener('click', () => togglePublish(entry.id, !isPublished));
     archiveButton.addEventListener('click', () => archiveEntry(entry.id));
+    wordBtn.addEventListener('click', () => {
+      const doc = buildWordDocument('Journal Entry', entry.timestamp || '', entry.content || '');
+      const safe = (entry.timestamp || Date.now()).toString().replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40);
+      downloadDocFile(`entry_${safe}.doc`, doc);
+    });
     entriesList.appendChild(card);
   });
 }
@@ -801,6 +808,21 @@ if (newSiteRemindButton) newSiteRemindButton.addEventListener('click', (e) => {
   hideNewSiteBannerForLater();
 });
 if (exportWordButton) exportWordButton.addEventListener('click', handleWordExport);
+
+const exportAllWordButton = document.getElementById('export-all-word');
+if (exportAllWordButton) {
+  exportAllWordButton.addEventListener('click', async () => {
+    try {
+      const r = await fetch('/api/entries', { credentials: 'same-origin' });
+      if (!r.ok) { alert('Could not load entries. Make sure you are logged in.'); return; }
+      const entries = await r.json();
+      if (!entries.length) { alert('No saved entries to export yet.'); return; }
+      const doc = buildAllEntriesDocument(entries);
+      const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/[, ]+/g, '_');
+      downloadDocFile(`my_journal_entries_${dateStr}.doc`, doc);
+    } catch { alert('Network error. Try again.'); }
+  });
+}
 
 refreshTimestamp();
 loadBlogTitle();
