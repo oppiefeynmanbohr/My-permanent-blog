@@ -1352,6 +1352,10 @@ app.get('/support', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'support.html'));
 });
 
+app.get('/alarm', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'alarm.html'));
+});
+
 app.get('/published', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'public.html'));
 });

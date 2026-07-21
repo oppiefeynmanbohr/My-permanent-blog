@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alarm Clock</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { background: #0a0a12; color: #f0f0ff; font-family: "Book Antiqua", Georgia, serif; margin: 0; }
+    .alarm-shell { display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 24px 16px 60px; }
+
+    /* Nav */
+    .alarm-nav { width: 100%; max-width: 900px; display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 32px; }
+    .alarm-nav a { color: #c8a97e; text-decoration: none; font-size: 0.9em; }
+    .alarm-nav a:hover { text-decoration: underline; }
+    .alarm-nav span { color: #555; }
+
+    /* Giant clock */
+    .clock-block { text-align: center; margin-bottom: 40px; }
+    .clock-time {
+      font-size: clamp(4rem, 18vw, 10rem);
+      font-weight: bold;
+      letter-spacing: 0.04em;
+      color: #f0f0ff;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 40px rgba(200,169,126,0.4);
+      transition: color 0.3s;
+    }
+    .clock-time.ringing { color: #ff4444; animation: ring-flash 0.5s infinite alternate; }
+    @keyframes ring-flash { from { color: #ff4444; text-shadow: 0 0 60px rgba(255,68,68,0.8); } to { color: #ffaa00; text-shadow: 0 0 80px rgba(255,170,0,0.6); } }
+    .clock-date {
+      font-size: clamp(1.5rem, 5vw, 3rem);
+      color: #c8a97e;
+      margin-top: 8px;
+      letter-spacing: 0.06em;
+    }
+    .clock-seconds {
+      font-size: clamp(1rem, 3vw, 1.8rem);
+      color: #888;
+      margin-top: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Cards */
+    .alarm-card {
+      background: #161626;
+      border: 1px solid #2a2a3a;
+      border-radius: 16px;
+      padding: 28px;
+      width: 100%;
+      max-width: 500px;
+      margin-bottom: 24px;
+    }
+    .alarm-card h2 { margin: 0 0 20px; color: #c8a97e; font-size: 1.2rem; letter-spacing: 0.06em; text-transform: uppercase; }
+
+    /* Inputs */
+    .field-row { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .field-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 140px; }
+    .field-group label { font-size: 0.8em; color: #888; letter-spacing: 0.05em; text-transform: uppercase; }
+    .field-group input[type=date],
+    .field-group input[type=time] {
+      padding: 10px 12px; border: 1px solid #2a2a3a; border-radius: 8px;
+      background: #0a0a12; color: #f0f0ff; font-size: 1.1em; font-family: inherit;
+      cursor: pointer;
+    }
+    .field-group input:focus { outline: 2px solid #c8a97e; border-color: #c8a97e; }
+
+    /* Upload */
+    .upload-area {
+      border: 2px dashed #2a2a3a; border-radius: 10px; padding: 20px;
+      text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 16px;
+    }
+    .upload-area:hover { border-color: #c8a97e; background: rgba(200,169,126,0.05); }
+    .upload-area.has-file { border-color: #4caf50; background: rgba(76,175,80,0.05); }
+    .upload-area input { display: none; }
+    .upload-icon { font-size: 2rem; margin-bottom: 8px; }
+    .upload-label { font-size: 0.9em; color: #888; }
+    .upload-filename { font-size: 0.9em; color: #4caf50; margin-top: 4px; font-weight: bold; }
+
+    /* Buttons */
+    .btn-set { width: 100%; background: #c8a97e; color: #0a0a12; border: none; border-radius: 10px; padding: 14px; font-size: 1.1em; font-weight: bold; cursor: pointer; margin-top: 4px; letter-spacing: 0.04em; }
+    .btn-set:hover { background: #b8936a; }
+    .btn-set:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-cancel { width: 100%; background: transparent; color: #888; border: 1px solid #2a2a3a; border-radius: 10px; padding: 12px; font-size: 1em; cursor: pointer; margin-top: 8px; }
+    .btn-cancel:hover { color: #f0f0ff; border-color: #555; }
+    .btn-stop { width: 100%; background: #c62828; color: #fff; border: none; border-radius: 10px; padding: 16px; font-size: 1.2em; font-weight: bold; cursor: pointer; animation: pulse-stop 0.6s infinite alternate; }
+    @keyframes pulse-stop { from { background: #c62828; } to { background: #ff5555; } }
+
+    /* Status */
+    .alarm-status { text-align: center; font-size: 0.95em; padding: 10px; border-radius: 8px; margin-top: 12px; min-height: 20px; }
+    .alarm-status.set { background: rgba(200,169,126,0.1); color: #c8a97e; border: 1px solid rgba(200,169,126,0.2); }
+    .alarm-status.ringing { background: rgba(255,68,68,0.15); color: #ff6666; border: 1px solid rgba(255,68,68,0.3); font-size: 1.1em; font-weight: bold; animation: ring-flash 0.5s infinite alternate; }
+    .alarm-status.done { background: rgba(76,175,80,0.1); color: #4caf50; border: 1px solid rgba(76,175,80,0.2); }
+
+    /* Snooze */
+    .snooze-row { display: flex; gap: 10px; margin-top: 10px; }
+    .btn-snooze { flex: 1; background: #1a1a2e; color: #c8a97e; border: 1px solid #c8a97e; border-radius: 8px; padding: 10px; font-size: 0.9em; cursor: pointer; }
+    .btn-snooze:hover { background: rgba(200,169,126,0.1); }
+
+    .note { font-size: 0.78em; color: #555; margin-top: 12px; text-align: center; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="alarm-shell">
+
+    <div class="alarm-nav">
+      <a href="/page1">← Blog</a>
+      <span>|</span>
+      <a href="/calendar-journal">Calendar</a>
+      <span>|</span>
+      <a href="/alarm">Alarm</a>
+    </div>
+
+    <!-- Giant Clock -->
+    <div class="clock-block">
+      <div class="clock-time" id="clock-time">00:00</div>
+      <div class="clock-date" id="clock-date">Monday, January 1, 2026</div>
+      <div class="clock-seconds" id="clock-seconds">:00</div>
+    </div>
+
+    <!-- Alarm setup card -->
+    <div class="alarm-card" id="setup-card">
+      <h2>⏰ Set Alarm</h2>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label>Date</label>
+          <input type="date" id="alarm-date" />
+        </div>
+        <div class="field-group">
+          <label>Time</label>
+          <input type="time" id="alarm-time" />
+        </div>
+      </div>
+
+      <!-- MP3 Upload -->
+      <label>
+        <div class="upload-area" id="upload-area">
+          <input type="file" id="audio-file" accept=".mp3,.wav,.ogg,.m4a,audio/*" />
+          <div class="upload-icon">🎵</div>
+          <div class="upload-label">Click to upload alarm sound (MP3, WAV, etc.)</div>
+          <div class="upload-filename" id="upload-filename"></div>
+        </div>
+      </label>
+
+      <!-- Volume -->
+      <div class="field-group" style="margin-bottom:16px;">
+        <label>Volume</label>
+        <input type="range" id="alarm-volume" min="0" max="1" step="0.05" value="0.8"
+          style="width:100%;accent-color:#c8a97e;cursor:pointer;" />
+      </div>
+
+      <button class="btn-set" id="btn-set">Set Alarm</button>
+
+      <div class="alarm-status" id="alarm-status"></div>
+      <p class="note">⚠️ Keep this tab open and your volume on for the alarm to sound.<br/>Uploaded audio stays loaded until you leave the page.</p>
+    </div>
+
+    <!-- Active alarm card (shown when alarm is set) -->
+    <div class="alarm-card" id="active-card" style="display:none;">
+      <h2>⏰ Alarm Set</h2>
+      <div style="text-align:center;font-size:2rem;color:#c8a97e;margin-bottom:16px;" id="active-display"></div>
+      <div class="alarm-status set" id="active-status">Alarm is active...</div>
+      <button class="btn-cancel" id="btn-cancel" onclick="cancelAlarm()">Cancel Alarm</button>
+    </div>
+
+    <!-- Ringing card -->
+    <div class="alarm-card" id="ringing-card" style="display:none;border-color:#c62828;">
+      <h2 style="color:#ff6666;text-align:center;">🔔 ALARM RINGING!</h2>
+      <div style="text-align:center;font-size:1.5rem;color:#ff6666;margin-bottom:16px;" id="ringing-display"></div>
+      <button class="btn-stop" id="btn-stop" onclick="stopAlarm()">STOP ALARM</button>
+      <div class="snooze-row">
+        <button class="btn-snooze" onclick="snooze(5)">Snooze 5 min</button>
+        <button class="btn-snooze" onclick="snooze(10)">Snooze 10 min</button>
+        <button class="btn-snooze" onclick="snooze(15)">Snooze 15 min</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let alarmDate = null;   // Date object for when alarm fires
+    let audioEl = null;     // HTMLAudioElement for alarm sound
+    let clockInterval = null;
+    let alarmCheckInterval = null;
+    let isRinging = false;
+
+    // ── Clock ──────────────────────────────────────────────────────────────────
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('clock-time').textContent = `${h}:${m}`;
+      document.getElementById('clock-seconds').textContent = `:${s}`;
+      const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      document.getElementById('clock-date').textContent =
+        `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+
+      // Check alarm
+      if (alarmDate && !isRinging) {
+        if (now >= alarmDate) triggerAlarm();
+      }
+    }
+    clockInterval = setInterval(updateClock, 500);
+    updateClock();
+
+    // ── Set today's date as default ────────────────────────────────────────────
+    const todayStr = new Date().toISOString().slice(0, 10);
+    document.getElementById('alarm-date').value = todayStr;
+    document.getElementById('alarm-date').min = todayStr;
+
+    // ── Audio upload ───────────────────────────────────────────────────────────
+    document.getElementById('audio-file').addEventListener('change', function() {
+      const file = this.files[0];
+      if (!file) return;
+      if (audioEl) { audioEl.pause(); audioEl.src = ''; }
+      audioEl = new Audio(URL.createObjectURL(file));
+      audioEl.loop = true;
+      audioEl.volume = parseFloat(document.getElementById('alarm-volume').value);
+      document.getElementById('upload-filename').textContent = `✓ ${file.name}`;
+      document.getElementById('upload-area').classList.add('has-file');
+    });
+
+    document.getElementById('alarm-volume').addEventListener('input', function() {
+      if (audioEl) audioEl.volume = parseFloat(this.value);
+    });
+
+    // ── Set alarm ─────────────────────────────────────────────────────────────
+    document.getElementById('btn-set').addEventListener('click', () => {
+      const dateVal = document.getElementById('alarm-date').value;
+      const timeVal = document.getElementById('alarm-time').value;
+      if (!dateVal || !timeVal) {
+        showStatus('Please select both a date and time.', '');
+        return;
+      }
+      alarmDate = new Date(`${dateVal}T${timeVal}:00`);
+      if (alarmDate <= new Date()) {
+        showStatus('That time has already passed. Please choose a future time.', '');
+        return;
+      }
+
+      // Show active card
+      document.getElementById('setup-card').style.display = 'none';
+      document.getElementById('active-card').style.display = 'block';
+      const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' };
+      document.getElementById('active-display').textContent = alarmDate.toLocaleString('en-US', opts);
+
+      // Save to localStorage
+      localStorage.setItem('alarmDate', alarmDate.toISOString());
+    });
+
+    function cancelAlarm() {
+      alarmDate = null;
+      localStorage.removeItem('alarmDate');
+      document.getElementById('active-card').style.display = 'none';
+      document.getElementById('setup-card').style.display = 'block';
+      showStatus('Alarm cancelled.', 'done');
+      setTimeout(() => showStatus('', ''), 3000);
+    }
+
+    // ── Trigger alarm ─────────────────────────────────────────────────────────
+    function triggerAlarm() {
+      isRinging = true;
+      alarmDate = null;
+
+      // Flash clock
+      document.getElementById('clock-time').classList.add('ringing');
+
+      // Play audio
+      if (audioEl) {
+        audioEl.volume = parseFloat(document.getElementById('alarm-volume').value);
+        audioEl.currentTime = 0;
+        audioEl.play().catch(() => {});
+      } else {
+        playBeep();
+      }
+
+      // Show ringing card
+      document.getElementById('active-card').style.display = 'none';
+      document.getElementById('setup-card').style.display = 'none';
+      document.getElementById('ringing-card').style.display = 'block';
+      const now = new Date();
+      document.getElementById('ringing-display').textContent =
+        now.toLocaleString('en-US', { weekday:'long', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' });
+
+      // Try to vibrate
+      if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
+
+      localStorage.removeItem('alarmDate');
+    }
+
+    function stopAlarm() {
+      isRinging = false;
+      if (audioEl) { audioEl.pause(); audioEl.currentTime = 0; }
+      stopBeep();
+      document.getElementById('clock-time').classList.remove('ringing');
+      document.getElementById('ringing-card').style.display = 'none';
+      document.getElementById('setup-card').style.display = 'block';
+      showStatus('Alarm stopped.', 'done');
+      setTimeout(() => showStatus('', ''), 3000);
+    }
+
+    function snooze(minutes) {
+      if (audioEl) { audioEl.pause(); audioEl.currentTime = 0; }
+      stopBeep();
+      isRinging = false;
+      document.getElementById('clock-time').classList.remove('ringing');
+      document.getElementById('ringing-card').style.display = 'none';
+
+      alarmDate = new Date(Date.now() + minutes * 60 * 1000);
+      localStorage.setItem('alarmDate', alarmDate.toISOString());
+
+      document.getElementById('active-card').style.display = 'block';
+      const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' };
+      document.getElementById('active-display').textContent = alarmDate.toLocaleString('en-US', opts);
+      document.getElementById('active-status').textContent = `Snoozed — ringing again in ${minutes} min`;
+    }
+
+    // ── Beep fallback (Web Audio API) ─────────────────────────────────────────
+    let beepCtx = null, beepInterval = null;
+    function playBeep() {
+      try {
+        beepCtx = new (window.AudioContext || window.webkitAudioContext)();
+        beepInterval = setInterval(() => {
+          const osc = beepCtx.createOscillator();
+          const gain = beepCtx.createGain();
+          osc.connect(gain); gain.connect(beepCtx.destination);
+          osc.frequency.value = 880;
+          gain.gain.setValueAtTime(0.5, beepCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, beepCtx.currentTime + 0.4);
+          osc.start(); osc.stop(beepCtx.currentTime + 0.4);
+        }, 700);
+      } catch {}
+    }
+    function stopBeep() {
+      if (beepInterval) { clearInterval(beepInterval); beepInterval = null; }
+      if (beepCtx) { beepCtx.close().catch(() => {}); beepCtx = null; }
+    }
+
+    // ── Helper ────────────────────────────────────────────────────────────────
+    function showStatus(msg, cls) {
+      const el = document.getElementById('alarm-status');
+      el.textContent = msg;
+      el.className = 'alarm-status' + (cls ? ` ${cls}` : '');
+    }
+
+    // ── Restore alarm from localStorage ──────────────────────────────────────
+    const savedAlarm = localStorage.getItem('alarmDate');
+    if (savedAlarm) {
+      const d = new Date(savedAlarm);
+      if (d > new Date()) {
+        alarmDate = d;
+        document.getElementById('setup-card').style.display = 'none';
+        document.getElementById('active-card').style.display = 'block';
+        const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' };
+        document.getElementById('active-display').textContent = d.toLocaleString('en-US', opts);
+        document.getElementById('active-status').textContent = 'Alarm restored — still active.';
+      } else {
+        localStorage.removeItem('alarmDate');
+      }
+    }
+  </script>
+</body>
+</html>
