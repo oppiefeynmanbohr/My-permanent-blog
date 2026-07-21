@@ -165,6 +165,7 @@
       </div>
 
       <button class="btn-set" id="btn-set">Set Alarm</button>
+      <button class="btn-cancel" id="btn-test" style="margin-top:8px;">🔊 Test Sound</button>
 
       <div class="alarm-status" id="alarm-status"></div>
       <p class="note">⚠️ Keep this tab open and your volume on for the alarm to sound.<br/>Uploaded audio stays loaded until you leave the page.</p>
@@ -193,10 +194,10 @@
   </div>
 
   <script>
-    let alarmDate = null;   // Date object for when alarm fires
-    let audioEl = null;     // HTMLAudioElement for alarm sound
-    let clockInterval = null;
-    let alarmCheckInterval = null;
+    let alarmDate = null;
+    let audioEl = null;
+    let audioUnlocked = false;   // true once browser has allowed audio
+    let beepCtx = null, beepInterval = null;
     let isRinging = false;
 
     // ── Clock ──────────────────────────────────────────────────────────────────
@@ -214,16 +215,12 @@
       const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
       document.getElementById('clock-date').textContent =
         `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
-
-      // Check alarm
-      if (alarmDate && !isRinging) {
-        if (now >= alarmDate) triggerAlarm();
-      }
+      if (alarmDate && !isRinging && now >= alarmDate) triggerAlarm();
     }
-    clockInterval = setInterval(updateClock, 500);
+    setInterval(updateClock, 500);
     updateClock();
 
-    // ── Set today's date as default ────────────────────────────────────────────
+    // ── Set default date ───────────────────────────────────────────────────────
     const todayStr = new Date().toISOString().slice(0, 10);
     document.getElementById('alarm-date').value = todayStr;
     document.getElementById('alarm-date').min = todayStr;
@@ -232,40 +229,93 @@
     document.getElementById('audio-file').addEventListener('change', function() {
       const file = this.files[0];
       if (!file) return;
-      if (audioEl) { audioEl.pause(); audioEl.src = ''; }
+      if (audioEl) { audioEl.pause(); URL.revokeObjectURL(audioEl.src); }
       audioEl = new Audio(URL.createObjectURL(file));
       audioEl.loop = true;
       audioEl.volume = parseFloat(document.getElementById('alarm-volume').value);
+      audioUnlocked = false;
       document.getElementById('upload-filename').textContent = `✓ ${file.name}`;
       document.getElementById('upload-area').classList.add('has-file');
+      showStatus('Sound loaded. Click "Test Sound" to verify it plays.', 'set');
     });
 
     document.getElementById('alarm-volume').addEventListener('input', function() {
       if (audioEl) audioEl.volume = parseFloat(this.value);
     });
 
-    // ── Set alarm ─────────────────────────────────────────────────────────────
+    // ── Unlock audio — MUST happen during a click event ───────────────────────
+    function unlockAudio() {
+      if (audioUnlocked) return Promise.resolve();
+      if (audioEl) {
+        const savedVol = audioEl.volume;
+        audioEl.volume = 0;
+        return audioEl.play().then(() => {
+          audioEl.pause();
+          audioEl.currentTime = 0;
+          audioEl.volume = savedVol;
+          audioUnlocked = true;
+        }).catch(() => {});
+      }
+      // Unlock Web Audio context for beep fallback
+      return new Promise(resolve => {
+        try {
+          if (!beepCtx) beepCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (beepCtx.state === 'suspended') {
+            beepCtx.resume().then(() => { audioUnlocked = true; resolve(); });
+          } else { audioUnlocked = true; resolve(); }
+        } catch { resolve(); }
+      });
+    }
+
+    // ── Test sound button ──────────────────────────────────────────────────────
+    document.getElementById('btn-test').addEventListener('click', () => {
+      unlockAudio().then(() => {
+        if (audioEl) {
+          audioEl.currentTime = 0;
+          audioEl.volume = parseFloat(document.getElementById('alarm-volume').value);
+          audioEl.play().then(() => {
+            showStatus('🔊 Sound is working! Click Test Sound again to stop.', 'set');
+          }).catch(() => showStatus('⚠️ Browser blocked audio. Try clicking Test Sound again.', ''));
+        } else {
+          // Beep test
+          playBeep();
+          setTimeout(stopBeep, 3000);
+          showStatus('🔊 Beep test playing for 3 seconds.', 'set');
+        }
+      });
+    });
+
+    // Stop test if audio is playing and user clicks again
+    document.getElementById('btn-test').addEventListener('click', () => {
+      if (audioEl && !audioEl.paused && !isRinging) {
+        audioEl.pause();
+        audioEl.currentTime = 0;
+        showStatus('Sound stopped.', 'done');
+      }
+    }, { capture: false });
+
+    // ── Set alarm ──────────────────────────────────────────────────────────────
     document.getElementById('btn-set').addEventListener('click', () => {
       const dateVal = document.getElementById('alarm-date').value;
       const timeVal = document.getElementById('alarm-time').value;
-      if (!dateVal || !timeVal) {
-        showStatus('Please select both a date and time.', '');
-        return;
-      }
+      if (!dateVal || !timeVal) { showStatus('Please select both a date and time.', ''); return; }
       alarmDate = new Date(`${dateVal}T${timeVal}:00`);
-      if (alarmDate <= new Date()) {
-        showStatus('That time has already passed. Please choose a future time.', '');
-        return;
-      }
+      if (alarmDate <= new Date()) { showStatus('That time has already passed. Choose a future time.', ''); return; }
 
-      // Show active card
-      document.getElementById('setup-card').style.display = 'none';
-      document.getElementById('active-card').style.display = 'block';
-      const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' };
-      document.getElementById('active-display').textContent = alarmDate.toLocaleString('en-US', opts);
+      // CRITICAL: unlock audio NOW during this click so browser allows it later
+      unlockAudio().then(() => {
+        // Also pre-create AudioContext for beep fallback
+        if (!beepCtx) {
+          try { beepCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+        }
+        if (beepCtx && beepCtx.state === 'suspended') beepCtx.resume();
 
-      // Save to localStorage
-      localStorage.setItem('alarmDate', alarmDate.toISOString());
+        document.getElementById('setup-card').style.display = 'none';
+        document.getElementById('active-card').style.display = 'block';
+        const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' };
+        document.getElementById('active-display').textContent = alarmDate.toLocaleString('en-US', opts);
+        localStorage.setItem('alarmDate', alarmDate.toISOString());
+      });
     });
 
     function cancelAlarm() {
@@ -277,24 +327,24 @@
       setTimeout(() => showStatus('', ''), 3000);
     }
 
-    // ── Trigger alarm ─────────────────────────────────────────────────────────
+    // ── Trigger alarm ──────────────────────────────────────────────────────────
     function triggerAlarm() {
       isRinging = true;
       alarmDate = null;
-
-      // Flash clock
       document.getElementById('clock-time').classList.add('ringing');
 
-      // Play audio
       if (audioEl) {
         audioEl.volume = parseFloat(document.getElementById('alarm-volume').value);
         audioEl.currentTime = 0;
-        audioEl.play().catch(() => {});
+        audioEl.play().catch(err => {
+          // Audio blocked — fall back to beep
+          console.warn('Audio play blocked, falling back to beep:', err);
+          playBeep();
+        });
       } else {
         playBeep();
       }
 
-      // Show ringing card
       document.getElementById('active-card').style.display = 'none';
       document.getElementById('setup-card').style.display = 'none';
       document.getElementById('ringing-card').style.display = 'block';
@@ -302,9 +352,7 @@
       document.getElementById('ringing-display').textContent =
         now.toLocaleString('en-US', { weekday:'long', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' });
 
-      // Try to vibrate
       if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
-
       localStorage.removeItem('alarmDate');
     }
 
@@ -325,45 +373,43 @@
       isRinging = false;
       document.getElementById('clock-time').classList.remove('ringing');
       document.getElementById('ringing-card').style.display = 'none';
-
       alarmDate = new Date(Date.now() + minutes * 60 * 1000);
       localStorage.setItem('alarmDate', alarmDate.toISOString());
-
       document.getElementById('active-card').style.display = 'block';
       const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' };
       document.getElementById('active-display').textContent = alarmDate.toLocaleString('en-US', opts);
       document.getElementById('active-status').textContent = `Snoozed — ringing again in ${minutes} min`;
     }
 
-    // ── Beep fallback (Web Audio API) ─────────────────────────────────────────
-    let beepCtx = null, beepInterval = null;
+    // ── Beep fallback ──────────────────────────────────────────────────────────
     function playBeep() {
       try {
-        beepCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (!beepCtx) beepCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (beepCtx.state === 'suspended') beepCtx.resume();
         beepInterval = setInterval(() => {
-          const osc = beepCtx.createOscillator();
-          const gain = beepCtx.createGain();
-          osc.connect(gain); gain.connect(beepCtx.destination);
-          osc.frequency.value = 880;
-          gain.gain.setValueAtTime(0.5, beepCtx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, beepCtx.currentTime + 0.4);
-          osc.start(); osc.stop(beepCtx.currentTime + 0.4);
-        }, 700);
+          try {
+            const osc = beepCtx.createOscillator();
+            const gain = beepCtx.createGain();
+            osc.connect(gain); gain.connect(beepCtx.destination);
+            osc.frequency.value = 880;
+            gain.gain.setValueAtTime(0.8, beepCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, beepCtx.currentTime + 0.5);
+            osc.start(); osc.stop(beepCtx.currentTime + 0.5);
+          } catch {}
+        }, 800);
       } catch {}
     }
     function stopBeep() {
       if (beepInterval) { clearInterval(beepInterval); beepInterval = null; }
-      if (beepCtx) { beepCtx.close().catch(() => {}); beepCtx = null; }
     }
 
-    // ── Helper ────────────────────────────────────────────────────────────────
     function showStatus(msg, cls) {
       const el = document.getElementById('alarm-status');
       el.textContent = msg;
       el.className = 'alarm-status' + (cls ? ` ${cls}` : '');
     }
 
-    // ── Restore alarm from localStorage ──────────────────────────────────────
+    // ── Restore alarm from localStorage ───────────────────────────────────────
     const savedAlarm = localStorage.getItem('alarmDate');
     if (savedAlarm) {
       const d = new Date(savedAlarm);
@@ -373,10 +419,8 @@
         document.getElementById('active-card').style.display = 'block';
         const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' };
         document.getElementById('active-display').textContent = d.toLocaleString('en-US', opts);
-        document.getElementById('active-status').textContent = 'Alarm restored — still active.';
-      } else {
-        localStorage.removeItem('alarmDate');
-      }
+        document.getElementById('active-status').textContent = 'Alarm restored. Click the page once to re-enable sound.';
+      } else { localStorage.removeItem('alarmDate'); }
     }
   </script>
 </body>
