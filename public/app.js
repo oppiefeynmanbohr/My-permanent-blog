@@ -256,40 +256,42 @@ async function saveEntry() {
   saveEntryButton.disabled = true;
   saveStatus.textContent = 'Saving...';
 
-  const title = `Entry ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-
-  const response = await fetch('/api/entries', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    credentials: 'same-origin',
-    body: JSON.stringify({ title, content })
-  });
-
-  if (!response.ok) {
-    saveStatus.textContent = 'Could not save entry. Try again.';
-    saveEntryButton.disabled = false;
-    return;
-  }
-
-  entryContent.value = '';
-  refreshTimestamp();
-  saveStatus.textContent = 'Entry saved.';
-  saveEntryButton.disabled = false;
-  await loadEntries();
-  // Scroll to the bottom so the new entry is visible
-  const el = document.getElementById('entries-list');
-  if (el) el.lastElementChild && el.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
   try {
-    const resp = await fetch('/api/entries', { credentials: 'same-origin' });
-    if (resp.ok) {
-      const allEntries = await resp.json();
-      const doc = buildAllEntriesDocument(allEntries);
-      const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/[, ]+/g, '_');
-      downloadDocFile(`my_blog_entries_${dateStr}.doc`, doc);
+    const title = `Entry ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+    const response = await fetch('/api/entries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ title, content })
+    });
+
+    if (response.status === 401 || response.status === 403) {
+      saveStatus.textContent = 'Session expired — please log in again.';
+      saveEntryButton.disabled = false;
+      setTimeout(() => { window.location.href = '/login'; }, 1500);
+      return;
     }
-  } catch { /* ignore export error */ }
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      saveStatus.textContent = errData.error || 'Could not save entry. Try again.';
+      saveEntryButton.disabled = false;
+      return;
+    }
+
+    entryContent.value = '';
+    refreshTimestamp();
+    saveStatus.textContent = 'Entry saved.';
+    saveEntryButton.disabled = false;
+    await loadEntries();
+    // Scroll to the bottom so the new entry is visible
+    const el = document.getElementById('entries-list');
+    if (el && el.lastElementChild) el.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  } catch (err) {
+    saveStatus.textContent = 'Network error — check your connection and try again.';
+    saveEntryButton.disabled = false;
+  }
 }
 
 function applyFontFamily(fontFamily) {
@@ -1222,17 +1224,12 @@ async function checkUserSession() {
       if (userGreeting) userGreeting.textContent = `Logged in as ${data.username}`;
       if (userLoginPrompt) userLoginPrompt.style.display = 'none';
     } else {
-      // Server session gone — fall back to localStorage flag
-      const lsUser = localStorage.getItem('blog_username');
-      const lsLoggedIn = localStorage.getItem('blog_logged_in');
-      if (lsUser && lsLoggedIn) {
-        if (userAccountBar) { userAccountBar.style.display = 'flex'; }
-        if (userGreeting) userGreeting.textContent = `Logged in as ${lsUser}`;
-        if (userLoginPrompt) userLoginPrompt.style.display = 'none';
-      } else {
-        if (userAccountBar) userAccountBar.style.display = 'none';
-        if (userLoginPrompt) userLoginPrompt.style.display = 'block';
-      }
+      // Server session gone — clear stale localStorage and show login prompt
+      localStorage.removeItem('blog_username');
+      localStorage.removeItem('blog_logged_in');
+      localStorage.removeItem('entries_cache');
+      if (userAccountBar) userAccountBar.style.display = 'none';
+      if (userLoginPrompt) userLoginPrompt.style.display = 'block';
     }
   } catch {
     // Network error — still show from localStorage
