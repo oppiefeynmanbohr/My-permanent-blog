@@ -17,6 +17,7 @@
 
     /* Giant clock */
     .clock-block { text-align: center; margin-bottom: 40px; }
+    .clock-row { display: flex; align-items: baseline; justify-content: center; gap: 12px; }
     .clock-time {
       font-size: clamp(4rem, 18vw, 10rem);
       font-weight: bold;
@@ -26,6 +27,14 @@
       font-variant-numeric: tabular-nums;
       text-shadow: 0 0 40px rgba(200,169,126,0.4);
       transition: color 0.3s;
+    }
+    .clock-ampm {
+      font-size: clamp(1.5rem, 5vw, 3rem);
+      font-weight: bold;
+      color: #c8a97e;
+      letter-spacing: 0.08em;
+      align-self: flex-start;
+      margin-top: 0.5em;
     }
     .clock-time.ringing { color: #ff4444; animation: ring-flash 0.5s infinite alternate; }
     @keyframes ring-flash { from { color: #ff4444; text-shadow: 0 0 60px rgba(255,68,68,0.8); } to { color: #ffaa00; text-shadow: 0 0 80px rgba(255,170,0,0.6); } }
@@ -115,7 +124,10 @@
 
     <!-- Giant Clock -->
     <div class="clock-block">
-      <div class="clock-time" id="clock-time">00:00</div>
+      <div class="clock-row">
+        <div class="clock-time" id="clock-time">12:00</div>
+        <div class="clock-ampm" id="clock-ampm">AM</div>
+      </div>
       <div class="clock-date" id="clock-date">Monday, January 1, 2026</div>
       <div class="clock-seconds" id="clock-seconds">:00</div>
     </div>
@@ -190,10 +202,13 @@
     // ── Clock ──────────────────────────────────────────────────────────────────
     function updateClock() {
       const now = new Date();
-      const h = String(now.getHours()).padStart(2, '0');
+      let h = now.getHours();
       const m = String(now.getMinutes()).padStart(2, '0');
       const s = String(now.getSeconds()).padStart(2, '0');
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12 || 12;
       document.getElementById('clock-time').textContent = `${h}:${m}`;
+      document.getElementById('clock-ampm').textContent = ampm;
       document.getElementById('clock-seconds').textContent = `:${s}`;
       const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
       const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
