@@ -50,6 +50,9 @@ const pendingMfa = new Map();
 function hashPassword(password, salt) {
   return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha256').toString('hex');
 }
+function isLegacyCodeOnlyUser(user) {
+  return !user || !user.password_hash || !user.password_salt;
+}
 function generateEmailCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const bytes = crypto.randomBytes(8);
@@ -422,7 +425,7 @@ function formatTimestamp(date) {
   return `${datePart} ${hours}:${minutePart} ${ampm}`;
 }
 
-// ── User Auth Routes ──────────────────────────────────────────────────────────
+// ── User Auth Routes ────────────────────────────────────────────────────────[...] 
 
 app.post('/api/auth/signup', async (req, res) => {
   const { username, email, password } = req.body || {};
@@ -457,6 +460,11 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const user = await dbGet('SELECT * FROM users WHERE username = ?', [username.trim()]);
     if (!user) return res.status(401).json({ error: 'Invalid username or password.' });
+    if (isLegacyCodeOnlyUser(user)) {
+      return res.status(409).json({
+        error: 'This account needs a password. Use the password setup/reset flow first.'
+      });
+    }
 
     const hash = hashPassword(password, user.password_salt);
     if (hash !== user.password_hash) return res.status(401).json({ error: 'Invalid username or password.' });
@@ -485,7 +493,7 @@ app.get('/api/auth/session', (req, res) => {
   res.json({ authenticated: true, username: user.username, userId: user.userId });
 });
 
-// ── Email-code auth ───────────────────────────────────────────────────────────
+// ── Email-code auth ────────────────────────────────────────────────────────�[...]
 
 app.post('/api/auth/email-setup', async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
@@ -493,33 +501,21 @@ app.post('/api/auth/email-setup', async (req, res) => {
     return res.status(400).json({ error: 'A valid email address is required.' });
   }
   const emailAuth = readJson(emailAuthFile, {});
-  if (emailAuth[email]) {
-    // Already registered — don't reveal code, just prompt for it
-    return res.json({ registered: true });
-  }
-  // New — generate code, save it, log them in
   const code = generateEmailCode();
   emailAuth[email] = { code, createdAt: new Date().toISOString() };
   writeJson(emailAuthFile, emailAuth);
-  try {
-    await dbRun(
-      'INSERT OR IGNORE INTO users (username, email, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?)',
-      [email, email, '', '', new Date().toISOString()]
-    );
-    const user = await dbGet('SELECT id FROM users WHERE email = ?', [email]);
-    if (user) {
-      createUserSession(res, user.id, email, true);
-      dbRun('UPDATE entries SET user_id = ? WHERE user_id IS NULL', [user.id]);
-    }
-  } catch (e) { /* ignore DB errors */ }
-  res.json({ registered: false, code });
+  res.json({ success: true, code });
 });
 
 app.post('/api/auth/email-login', async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   const code = String(req.body.code || '').trim().toUpperCase();
-  if (!email || !code) {
-    return res.status(400).json({ error: 'Email and code are required.' });
+  const newPassword = String(req.body.newPassword || '');
+  if (!email || !code || !newPassword) {
+    return res.status(400).json({ error: 'Email, code, and newPassword are required.' });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
   }
   const emailAuth = readJson(emailAuthFile, {});
   const record = emailAuth[email];
@@ -527,14 +523,19 @@ app.post('/api/auth/email-login', async (req, res) => {
     return res.status(401).json({ error: 'Incorrect code. Check the code you received when you first signed up.' });
   }
   try {
+    const salt = crypto.randomBytes(32).toString('hex');
+    const hash = hashPassword(newPassword, salt);
     await dbRun(
       'INSERT OR IGNORE INTO users (username, email, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?)',
-      [email, email, '', '', new Date().toISOString()]
+      [email, email, hash, salt, new Date().toISOString()]
     );
+    await dbRun('UPDATE users SET password_hash = ?, password_salt = ? WHERE email = ?', [hash, salt, email]);
     const user = await dbGet('SELECT id FROM users WHERE email = ?', [email]);
     if (!user) return res.status(500).json({ error: 'Login failed. Please try again.' });
     createUserSession(res, user.id, email, true);
     dbRun('UPDATE entries SET user_id = ? WHERE user_id IS NULL', [user.id]);
+    delete emailAuth[email];
+    writeJson(emailAuthFile, emailAuth);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: 'Login failed.' });
@@ -554,7 +555,7 @@ app.get('/api/auth/debug', (req, res) => {
   });
 });
 
-// ── Entries Routes ────────────────────────────────────────────────────────────
+// ── Entries Routes ────────────────────────────────────────────────────────��[...]
 
 app.get('/api/entries', async (req, res) => {
   cleanupAuthState();
@@ -616,7 +617,18 @@ app.post('/api/entries', async (req, res) => {
 
   try {
     await dbRun(sql, [autoTitle, content, timestamp, createdAt, userId, entrySource]);
-    const row = await dbGet('SELECT id FROM entries WHERE created_at = ? AND user_id IS ?', [createdAt, userId]);
+    let row;
+    if (userId === null) {
+      row = await dbGet(
+        'SELECT id FROM entries WHERE created_at = ? AND user_id IS NULL ORDER BY id DESC LIMIT 1',
+        [createdAt]
+      );
+    } else {
+      row = await dbGet(
+        'SELECT id FROM entries WHERE created_at = ? AND user_id = ? ORDER BY id DESC LIMIT 1',
+        [createdAt, userId]
+      );
+    }
     const newId = row ? row.id : Date.now();
     res.status(201).json({ id: newId, title: autoTitle, content, timestamp, created_at: createdAt, published: 0, source: entrySource });
   } catch (err) {
