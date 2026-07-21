@@ -490,7 +490,6 @@ app.post('/api/auth/login', async (req, res) => {
     if (hash !== user.password_hash) return res.status(401).json({ error: 'Invalid username or password.' });
 
     createUserSession(res, user.id, user.username, !!rememberMe);
-    dbRun('UPDATE entries SET user_id = ? WHERE user_id IS NULL', [user.id]);
     res.json({ success: true, username: user.username });
   } catch (err) {
     res.status(500).json({ error: 'Login failed.' });
@@ -610,7 +609,6 @@ app.post('/api/auth/email-login', async (req, res) => {
     const user = await dbGet('SELECT id FROM users WHERE email = ?', [email]);
     if (!user) return res.status(500).json({ error: 'Login failed. Please try again.' });
     createUserSession(res, user.id, email, true);
-    dbRun('UPDATE entries SET user_id = ? WHERE user_id IS NULL', [user.id]);
     delete emailAuth[email];
     writeJson(emailAuthFile, emailAuth);
     res.json({ success: true });
@@ -651,7 +649,8 @@ app.get('/api/entries', async (req, res) => {
   if (req.query.include_archived !== 'true') clauses.push('archived = 0');
 
   // When a user is logged in, show only their entries (skip filter for public published view)
-  if (user && published !== 'true') { clauses.push('(user_id = ? OR user_id IS NULL)'); params.push(user.userId); }
+  if (user && published !== 'true') { clauses.push('user_id = ?'); params.push(user.userId); }
+  else if (!user && published !== 'true') { clauses.push('1 = 0'); } // not logged in: no private entries
 
   if (source) { clauses.push('source = ?'); params.push(source); }
   if (calmonth) { clauses.push("strftime('%Y-%m', created_at) = ?"); params.push(calmonth); }
