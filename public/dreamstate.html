@@ -239,6 +239,11 @@
           credentials: 'same-origin',
           body: JSON.stringify({ content, source: 'dreamstate' })
         });
+        if (r.status === 401) {
+          setStatus('Session expired — redirecting to login...', 'err');
+          setTimeout(() => { window.location.href = '/login'; }, 1200);
+          return;
+        }
         if (!r.ok) { setStatus('Could not save. Try again.', 'err'); return; }
         const entry = await r.json();
 

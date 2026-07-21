@@ -790,6 +790,8 @@ app.get('/api/entries', async (req, res) => {
 app.post('/api/entries', async (req, res) => {
   cleanupAuthState();
   const user = getUserFromRequest(req);
+  if (!user) return res.status(401).json({ error: 'Please log in to save entries.' });
+
   const { title, content, source, caldate } = req.body;
   if (!content) return res.status(400).json({ error: 'Content is required.' });
 
@@ -803,23 +805,14 @@ app.post('/api/entries', async (req, res) => {
   }
   const timestamp = formatTimestamp(now);
   const createdAt = now.toISOString();
-  const userId = user ? user.userId : null;
   const sql = 'INSERT INTO entries (title, content, timestamp, created_at, published, user_id, source) VALUES (?, ?, ?, ?, 0, ?, ?)';
 
   try {
-    await dbRun(sql, [autoTitle, content, timestamp, createdAt, userId, entrySource]);
-    let row;
-    if (userId === null) {
-      row = await dbGet(
-        'SELECT id FROM entries WHERE created_at = ? AND user_id IS NULL ORDER BY id DESC LIMIT 1',
-        [createdAt]
-      );
-    } else {
-      row = await dbGet(
-        'SELECT id FROM entries WHERE created_at = ? AND user_id = ? ORDER BY id DESC LIMIT 1',
-        [createdAt, userId]
-      );
-    }
+    await dbRun(sql, [autoTitle, content, timestamp, createdAt, user.userId, entrySource]);
+    const row = await dbGet(
+      'SELECT id FROM entries WHERE created_at = ? AND user_id = ? ORDER BY id DESC LIMIT 1',
+      [createdAt, user.userId]
+    );
     const newId = row ? row.id : Date.now();
     res.status(201).json({ id: newId, title: autoTitle, content, timestamp, created_at: createdAt, published: 0, source: entrySource });
   } catch (err) {

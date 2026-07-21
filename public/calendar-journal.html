@@ -275,6 +275,9 @@
         status.textContent = 'Saved!';
         await loadMonthEntries();
         selectDay(selectedDay);
+      } else if (r.status === 401) {
+        status.textContent = 'Session expired — redirecting to login...';
+        setTimeout(() => { window.location.href = '/login'; }, 1200);
       } else {
         status.textContent = 'Could not save. Try again.';
       }

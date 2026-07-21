@@ -118,13 +118,21 @@
           credentials: 'same-origin',
           body: JSON.stringify({ content, source: PAGE_SOURCE })
         });
-        if (!res.ok) throw new Error();
+        if (!res.ok) {
+          if (res.status === 401) {
+            status.textContent = 'Session expired — redirecting to login...';
+            setTimeout(() => { window.location.href = '/login'; }, 1200);
+          } else {
+            status.textContent = 'Could not save entry. Try again.';
+          }
+          btn.disabled = false; return;
+        }
         document.getElementById('entry-content').value = '';
         status.textContent = 'Entry saved.';
         refreshTimestamp();
         await loadEntries();
       } catch {
-        status.textContent = 'Could not save entry. Try again.';
+        status.textContent = 'Network error. Try again.';
       } finally {
         btn.disabled = false;
       }

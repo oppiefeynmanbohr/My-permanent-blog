@@ -196,6 +196,11 @@
           credentials: 'same-origin',
           body: JSON.stringify({ content, source: 'page4' })
         });
+        if (r.status === 401) {
+          saveStatus.textContent = 'Session expired — redirecting to login...';
+          setTimeout(() => { window.location.href = '/login'; }, 1200);
+          saveBtn.disabled = false; return;
+        }
         if (!r.ok) { saveStatus.textContent = 'Could not save. Try again.'; saveBtn.disabled = false; return; }
         entryContent.value = '';
         refreshTimestamp();
