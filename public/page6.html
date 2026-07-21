@@ -73,7 +73,7 @@
 
     async function loadEntries() {
       try {
-        const res = await fetch(`/api/entries?source=${PAGE_SOURCE}`);
+        const res = await fetch(`/api/entries?source=${PAGE_SOURCE}`, { credentials: 'same-origin' });
         if (!res.ok) return;
         const entries = await res.json();
         const list = document.getElementById('entries-list');
@@ -115,6 +115,7 @@
         const res = await fetch('/api/entries', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
           body: JSON.stringify({ content, source: PAGE_SOURCE })
         });
         if (!res.ok) throw new Error();
