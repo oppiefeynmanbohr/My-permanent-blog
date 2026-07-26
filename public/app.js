@@ -1349,6 +1349,26 @@ function getSavedCredentials() {
   return { savedUser, savedPassword };
 }
 
+function getAuthHeaders() {
+  const { savedUser, savedPassword } = getSavedCredentials();
+  const headers = {};
+  if (savedUser) headers['X-Auth-Username'] = savedUser;
+  if (savedPassword) headers['X-Auth-Password'] = savedPassword;
+  return headers;
+}
+
+function buildSavedCredentialCookieValue(name, value) {
+  const expiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+  const parts = [`${name}=${encodeURIComponent(value)}`, `expires=${expiry}`, 'path=/', 'Max-Age=31536000'];
+  if (window.location.protocol === 'https:') {
+    parts.push('Secure');
+    parts.push('SameSite=None');
+  } else {
+    parts.push('SameSite=Lax');
+  }
+  return parts.join('; ');
+}
+
 function persistSavedBrowserCredentials(username, password) {
   const safeUser = String(username || '').trim();
   const safePassword = String(password || '');
@@ -1358,17 +1378,19 @@ function persistSavedBrowserCredentials(username, password) {
     localStorage.setItem('blog_password', safePassword);
   }
   if (safeUser || safePassword) {
-    const expiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
-    document.cookie = `blog_username=${encodeURIComponent(safeUser)}; expires=${expiry}; path=/; SameSite=Lax`;
+    document.cookie = buildSavedCredentialCookieValue('blog_username', safeUser);
     if (safePassword) {
-      document.cookie = `blog_saved_password=${encodeURIComponent(safePassword)}; expires=${expiry}; path=/; SameSite=Lax`;
+      document.cookie = buildSavedCredentialCookieValue('blog_saved_password', safePassword);
     }
   }
 }
 
 async function ensureAuthenticatedSession() {
   try {
-    const sessionResp = await fetch('/api/auth/session', { credentials: 'same-origin' });
+    const sessionResp = await fetch('/api/auth/session', {
+      credentials: 'same-origin',
+      headers: getAuthHeaders()
+    });
     const sessionData = await sessionResp.json().catch(() => ({}));
     if (sessionData.authenticated) return true;
   } catch {}
@@ -1377,7 +1399,10 @@ async function ensureAuthenticatedSession() {
   if (!restored) return false;
 
   try {
-    const sessionResp = await fetch('/api/auth/session', { credentials: 'same-origin' });
+    const sessionResp = await fetch('/api/auth/session', {
+      credentials: 'same-origin',
+      headers: getAuthHeaders()
+    });
     const sessionData = await sessionResp.json().catch(() => ({}));
     return Boolean(sessionData.authenticated);
   } catch {
@@ -1388,14 +1413,14 @@ async function ensureAuthenticatedSession() {
 async function fetchWithSessionRecovery(url, options = {}) {
   const ready = await ensureAuthenticatedSession();
   if (!ready) {
-    return fetch(url, { credentials: 'same-origin', ...options });
+    return fetch(url, { credentials: 'same-origin', ...options, headers: { ...(options.headers || {}), ...getAuthHeaders() } });
   }
 
-  const response = await fetch(url, { credentials: 'same-origin', ...options });
+  const response = await fetch(url, { credentials: 'same-origin', ...options, headers: { ...(options.headers || {}), ...getAuthHeaders() } });
   if ((response.status === 401 || response.status === 403) && !options._retried) {
     const restored = await tryStoredLoginFromBrowser();
     if (restored) {
-      return fetch(url, { credentials: 'same-origin', ...options, _retried: true });
+      return fetch(url, { credentials: 'same-origin', ...options, _retried: true, headers: { ...(options.headers || {}), ...getAuthHeaders() } });
     }
   }
   return response;

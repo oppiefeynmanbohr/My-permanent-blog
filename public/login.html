@@ -113,15 +113,26 @@
       return browserId;
     }
 
+    function buildSavedCredentialCookieValue(name, value) {
+      const expiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+      const parts = [`${name}=${encodeURIComponent(value)}`, `expires=${expiry}`, 'path=/', 'Max-Age=31536000'];
+      if (window.location.protocol === 'https:') {
+        parts.push('Secure');
+        parts.push('SameSite=None');
+      } else {
+        parts.push('SameSite=Lax');
+      }
+      return parts.join('; ');
+    }
+
     function persistSavedCredentials(username, password) {
       if (username) localStorage.setItem('blog_username', username);
       if (password) localStorage.setItem('blog_saved_password', password);
       if (password) localStorage.setItem('blog_password', password);
       if (username || password) {
-        const expiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
-        document.cookie = `blog_username=${encodeURIComponent(username || localStorage.getItem('blog_username') || '')}; expires=${expiry}; path=/; SameSite=Lax`;
+        document.cookie = buildSavedCredentialCookieValue('blog_username', username || localStorage.getItem('blog_username') || '');
         if (password) {
-          document.cookie = `blog_saved_password=${encodeURIComponent(password)}; expires=${expiry}; path=/; SameSite=Lax`;
+          document.cookie = buildSavedCredentialCookieValue('blog_saved_password', password);
         }
       }
       if (!username && !password) return;
