@@ -200,6 +200,7 @@ function escapeHtml(value) {
 
 function renderEntries(entries) {
   entriesList.innerHTML = '';
+  const useDirectEntryActionHandlers = Boolean(window.__mpbUseDirectEntryActionHandlers);
 
   if (!entries.length) {
     entriesList.innerHTML = '<p>No entries found yet.</p>';
@@ -226,9 +227,11 @@ function renderEntries(entries) {
     const publishButton = card.querySelector('.publish-button');
     const archiveButton = card.querySelector('.archive-button');
     const wordBtn = card.querySelector('.word-export-btn');
-    deleteButton.addEventListener('click', () => deleteEntry(entry.id));
-    publishButton.addEventListener('click', () => togglePublish(entry.id, !isPublished));
-    archiveButton.addEventListener('click', () => archiveEntry(entry.id));
+    if (!useDirectEntryActionHandlers) {
+      deleteButton.addEventListener('click', () => deleteEntry(entry.id));
+      publishButton.addEventListener('click', () => togglePublish(entry.id, !isPublished));
+      archiveButton.addEventListener('click', () => archiveEntry(entry.id));
+    }
     wordBtn.addEventListener('click', () => {
       const doc = buildWordDocument('Journal Entry', entry.timestamp || '', entry.content || '');
       const safe = (entry.timestamp || Date.now()).toString().replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40);

@@ -280,6 +280,9 @@
   </script>
   <script>
     (function () {
+      window.__mpbUseDirectEntryActionHandlers = true;
+      var inFlightActions = new Set();
+
       function setStatus(message) {
         var el = document.getElementById('save-status');
         if (el) {
@@ -317,6 +320,10 @@
         if (event.stopImmediatePropagation) event.stopImmediatePropagation();
         var entryId = btn.getAttribute('data-id');
         if (!entryId) return;
+        var actionKey = entryId + '::' + (btn.className || btn.textContent || 'action');
+        if (inFlightActions.has(actionKey)) return;
+        inFlightActions.add(actionKey);
+        btn.disabled = true;
 
         var label = (btn.textContent || '').trim();
         var isDelete = btn.classList.contains('delete-button') || /delete/i.test(label);
@@ -330,6 +337,8 @@
           var ok = window.confirm('Delete this entry permanently?');
           if (!ok) {
             setStatus('Deletion cancelled.');
+            btn.disabled = false;
+            inFlightActions.delete(actionKey);
             return;
           }
 
@@ -354,6 +363,8 @@
             window.location.reload();
           } catch (err) {
             setStatus('Network error. Could not delete entry.');
+            btn.disabled = false;
+            inFlightActions.delete(actionKey);
           }
           return;
         }
@@ -377,6 +388,8 @@
             window.location.reload();
           } catch (err) {
             setStatus('Network error. Could not move entry.');
+            btn.disabled = false;
+            inFlightActions.delete(actionKey);
           }
           return;
         }
@@ -405,11 +418,13 @@
             window.location.reload();
           } catch (err) {
             setStatus('Network error. Could not update publish status.');
+            btn.disabled = false;
+            inFlightActions.delete(actionKey);
           }
         }
       }, true);
     })();
   </script>
-  <script src="app.js?v=20260726b"></script>
+  <script src="app.js?v=20260726c"></script>
 </body>
 </html>
