@@ -1529,6 +1529,10 @@ app.get('/library', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'library.html'));
 });
 
+app.get('/encyclopedia', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'encyclopedia.html'));
+});
+
 app.get('/support', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'support.html'));
 });
