@@ -391,6 +391,44 @@
       return compressed;
     }
 
+    async function savePublicPhoto(photoDataUrl) {
+      const statusEl = document.getElementById('profile-save-status');
+      const payload = {
+        full_name: profileData.full_name || '',
+        title: profileData.title || '',
+        bio: profileData.bio || '',
+        email: profileData.email || '',
+        phone: profileData.phone || '',
+        location: profileData.location || '',
+        website: profileData.website || '',
+        skills: profileData.skills || '',
+        education: profileData.education || '',
+        work_status: profileData.work_status || '',
+        status_note: profileData.status_note || '',
+        photo: photoDataUrl
+      };
+
+      const r = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'omit',
+        body: JSON.stringify(payload)
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        throw new Error(data.error || 'Photo save failed.');
+      }
+
+      profileData = { ...profileData, ...payload };
+      pendingPhotoDataUrl = null;
+      renderProfile();
+      if (statusEl) {
+        statusEl.className = 'status-msg ok';
+        statusEl.textContent = 'Photo saved!';
+        setTimeout(() => { statusEl.textContent = ''; }, 1800);
+      }
+    }
+
     function renderWork() {
       const container = document.getElementById('work-list');
       const empty = document.getElementById('work-empty');
@@ -431,7 +469,8 @@
         if (statusEl) statusEl.textContent = 'Preparing photo...';
         pendingPhotoDataUrl = await fileToCompressedDataUrl(file);
         renderProfile();
-        if (statusEl) statusEl.textContent = 'Photo ready to save.';
+        if (statusEl) statusEl.textContent = 'Saving photo...';
+        await savePublicPhoto(pendingPhotoDataUrl);
       } catch (error) {
         pendingPhotoDataUrl = null;
         if (statusEl) statusEl.textContent = error.message || 'Could not process photo.';
