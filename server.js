@@ -152,10 +152,18 @@ function getBrowserIdFromRequest(req) {
   return cookies.client_id || '';
 }
 
+function getAuthHeaders(req) {
+  const headers = req.headers || {};
+  const username = String(headers['x-auth-username'] || headers['x-auth-user'] || '').trim();
+  const password = String(headers['x-auth-password'] || headers['x-auth-pass'] || '').trim();
+  return { username, password };
+}
+
 async function tryRehydrateUserSession(req, res) {
   const cookies = parseCookies(req);
-  const storedUser = String(cookies.blog_username || '').trim();
-  const storedPassword = String(cookies.blog_saved_password || '').trim();
+  const authHeaders = getAuthHeaders(req);
+  const storedUser = authHeaders.username || String(cookies.blog_username || '').trim();
+  const storedPassword = authHeaders.password || String(cookies.blog_saved_password || '').trim();
   if (!storedUser || !storedPassword) return null;
 
   try {
@@ -949,9 +957,10 @@ app.get('/api/entries', async (req, res) => {
   // Exclude archived entries unless caller opts in (page7 uses include_archived=true)
   if (req.query.include_archived !== 'true') clauses.push('archived = 0');
 
-  // When a user is logged in, show only their entries (skip filter for public published view)
+  // When a user is logged in, show only their entries. If no session is available,
+  // fall back to showing entries that were saved without a user account so work remains visible.
   if (user && published !== 'true') { clauses.push('user_id = ?'); params.push(user.userId); }
-  else if (!user && published !== 'true') { clauses.push('1 = 0'); } // not logged in: no private entries
+  else if (!user && published !== 'true') { clauses.push('user_id IS NULL'); }
 
   if (source) { clauses.push('source = ?'); params.push(source); }
   if (calmonth) { clauses.push("strftime('%Y-%m', created_at) = ?"); params.push(calmonth); }
@@ -976,7 +985,6 @@ app.get('/api/entries', async (req, res) => {
 app.post('/api/entries', async (req, res) => {
   cleanupAuthState();
   const user = await getAuthenticatedUser(req, res);
-  if (!user) return res.status(401).json({ error: 'Please log in to save entries.' });
 
   const { title, content, source, caldate } = req.body;
   if (!content) return res.status(400).json({ error: 'Content is required.' });
@@ -992,12 +1000,15 @@ app.post('/api/entries', async (req, res) => {
   const timestamp = formatTimestamp(now);
   const createdAt = now.toISOString();
   const sql = 'INSERT INTO entries (title, content, timestamp, created_at, published, user_id, source) VALUES (?, ?, ?, ?, 0, ?, ?)';
+  const userId = user ? user.userId : null;
 
   try {
-    await dbRun(sql, [autoTitle, content, timestamp, createdAt, user.userId, entrySource]);
+    await dbRun(sql, [autoTitle, content, timestamp, createdAt, userId, entrySource]);
     const row = await dbGet(
-      'SELECT id FROM entries WHERE created_at = ? AND user_id = ? ORDER BY id DESC LIMIT 1',
-      [createdAt, user.userId]
+      userId === null
+        ? 'SELECT id FROM entries WHERE created_at = ? AND user_id IS NULL ORDER BY id DESC LIMIT 1'
+        : 'SELECT id FROM entries WHERE created_at = ? AND user_id = ? ORDER BY id DESC LIMIT 1',
+      userId === null ? [createdAt] : [createdAt, userId]
     );
     const newId = row ? row.id : Date.now();
     res.status(201).json({ id: newId, title: autoTitle, content, timestamp, created_at: createdAt, published: 0, source: entrySource });
