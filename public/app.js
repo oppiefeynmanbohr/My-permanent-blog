@@ -335,9 +335,8 @@ async function saveEntry() {
     });
 
     if (response.status === 401 || response.status === 403) {
-      saveStatus.textContent = 'Session expired — please log in again.';
+      saveStatus.textContent = 'Your session needs to be refreshed. Please try again in a moment.';
       saveEntryButton.disabled = false;
-      setTimeout(() => { window.location.href = '/login'; }, 1500);
       return;
     }
 
@@ -1349,15 +1348,36 @@ function getSavedCredentials() {
   return { savedUser, savedPassword };
 }
 
+async function ensureAuthenticatedSession() {
+  try {
+    const sessionResp = await fetch('/api/auth/session', { credentials: 'same-origin' });
+    const sessionData = await sessionResp.json().catch(() => ({}));
+    if (sessionData.authenticated) return true;
+  } catch {}
+
+  const restored = await tryStoredLoginFromBrowser();
+  if (!restored) return false;
+
+  try {
+    const sessionResp = await fetch('/api/auth/session', { credentials: 'same-origin' });
+    const sessionData = await sessionResp.json().catch(() => ({}));
+    return Boolean(sessionData.authenticated);
+  } catch {
+    return false;
+  }
+}
+
 async function fetchWithSessionRecovery(url, options = {}) {
+  const ready = await ensureAuthenticatedSession();
+  if (!ready) {
+    return fetch(url, { credentials: 'same-origin', ...options });
+  }
+
   const response = await fetch(url, { credentials: 'same-origin', ...options });
   if ((response.status === 401 || response.status === 403) && !options._retried) {
-    const { savedUser, savedPassword } = getSavedCredentials();
-    if (savedUser && savedPassword) {
-      const restored = await tryStoredLoginFromBrowser();
-      if (restored) {
-        return fetch(url, { credentials: 'same-origin', ...options, _retried: true });
-      }
+    const restored = await tryStoredLoginFromBrowser();
+    if (restored) {
+      return fetch(url, { credentials: 'same-origin', ...options, _retried: true });
     }
   }
   return response;
