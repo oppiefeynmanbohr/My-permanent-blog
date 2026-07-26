@@ -251,8 +251,7 @@
 
     function buildSingleDoc(content, timestamp) {
       const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br/>');
-      return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Daily Journal Entry</title><style>body{font-family:'Book Antiqua',Georgia,serif;max-width:720px;margin:40px auto;line-height:1.7;}</style></head><body><h1>Daily Journal</h1><p><em>${esc(timestamp)}</em></p><hr/><br/><div>${esc(content)}</div>  <script src="/global-nav.js"></script>
-</body></html>`;
+      return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Daily Journal Entry</title><style>body{font-family:'Book Antiqua',Georgia,serif;max-width:720px;margin:40px auto;line-height:1.7;}</style></head><body><h1>Daily Journal</h1><p><em>${esc(timestamp)}</em></p><hr/><br/><div>${esc(content)}</div></body></html>`;
     }
 
     function buildEntriesDoc(entries, dateStr) {
