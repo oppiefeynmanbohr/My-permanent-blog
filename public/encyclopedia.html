@@ -226,7 +226,8 @@
           "Einstein, A. (1916) The Foundation of the General Theory of Relativity.",
           "Harvard University Department of Physics (2024) Relativity and Cosmology."
         ],
-        keywords: ['relativity', 'spacetime', 'gravity', 'einstein', 'physics']
+        keywords: ['relativity', 'spacetime', 'gravity', 'einstein', 'physics'],
+        searchTerms: ['space', 'time', 'motion', 'light', 'speed', 'observer', 'curvature', 'black hole', 'black holes', 'gps', 'satellite', 'astronomy', 'cosmos', 'universe', 'mass', 'energy', 'geometry', 'planetary', 'nebula']
       },
       {
         term: 'quantum',
@@ -239,7 +240,8 @@
           'Griffiths, D. J. and Schroeter, D. F. (2018) Introduction to Quantum Mechanics.',
           'Harvard University Department of Physics (2024) Quantum Physics.'
         ],
-        keywords: ['quantum', 'mechanics', 'particles', 'waves', 'physics']
+        keywords: ['quantum', 'mechanics', 'particles', 'waves', 'physics'],
+        searchTerms: ['atom', 'electron', 'photon', 'nucleus', 'molecule', 'microscopic', 'probability', 'uncertainty', 'laser', 'semiconductor', 'chemistry', 'superconductors', 'measurement', 'spin', 'energy level', 'subatomic', 'field']
       },
       {
         term: 'cosmology',
@@ -252,7 +254,8 @@
           'Ryden, B. and Peterson, B. M. (2020) Foundations of Astrophysics.',
           'Harvard University Center for Astrophysics (2024) Cosmology and Astrophysics.'
         ],
-        keywords: ['cosmology', 'universe', 'big bang', 'galaxies', 'astronomy']
+        keywords: ['cosmology', 'universe', 'big bang', 'galaxies', 'astronomy'],
+        searchTerms: ['expansion', 'dark matter', 'dark energy', 'galaxy', 'stars', 'star', 'cosmic', 'radiation', 'astrophysics', 'observatory', 'telescope', 'nebulae', 'luminous', 'singularity', 'multiverse', 'evolution']
       }
     ];
 
@@ -298,8 +301,17 @@
       }
 
       const matched = entries.filter((entry) => {
-        const haystack = `${entry.title} ${entry.intro} ${entry.body} ${entry.details} ${entry.keywords.join(' ')}`.toLowerCase();
-        return haystack.includes(query);
+        const haystack = [
+          entry.title,
+          entry.intro,
+          entry.body,
+          entry.details,
+          entry.references.join(' '),
+          entry.keywords.join(' '),
+          entry.searchTerms.join(' ')
+        ].join(' ').toLowerCase();
+        const queryTokens = query.split(/\s+/).filter(Boolean);
+        return haystack.includes(query) || queryTokens.some((token) => haystack.includes(token));
       });
 
       if (matched.length) {
