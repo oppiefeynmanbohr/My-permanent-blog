@@ -869,17 +869,20 @@ app.get('/api/profile', async (req, res) => {
       return res.json(row || { user_id: user.userId, full_name: '', title: '', bio: '', email: '', phone: '', location: '', website: '', photo: '', skills: '', education: '' });
     }
 
-    const row = await dbGet('SELECT * FROM profiles ORDER BY updated_at DESC, user_id DESC LIMIT 1');
-    res.json(row || { user_id: null, full_name: '', title: '', bio: '', email: '', phone: '', location: '', website: '', photo: '', skills: '', education: '' });
+    const row = await dbGet('SELECT * FROM profiles WHERE user_id = 0 LIMIT 1');
+    if (row) return res.json(row);
+
+    const fallback = await dbGet('SELECT * FROM profiles ORDER BY updated_at DESC, user_id DESC LIMIT 1');
+    res.json(fallback || { user_id: 0, full_name: '', title: '', bio: '', email: '', phone: '', location: '', website: '', photo: '', skills: '', education: '' });
   } catch (err) { res.status(500).json({ error: 'Failed to load profile.' }); }
 });
 
 app.post('/api/profile', async (req, res) => {
   const user = getUserFromRequest(req);
-  if (!user) return res.status(401).json({ error: 'Login required.' });
   const { full_name = '', title = '', bio = '', email = '', phone = '', location = '', website = '', photo = '', skills = '', education = '', work_status = '', status_note = '' } = req.body || {};
   if (photo && photo.length > 5 * 1024 * 1024) return res.status(400).json({ error: 'Photo is too large (max 5 MB).' });
   const updatedAt = new Date().toISOString();
+  const ownerId = user ? user.userId : 0;
   try {
     await dbRun(
       `INSERT INTO profiles (user_id, full_name, title, bio, email, phone, location, website, photo, skills, education, work_status, status_note, updated_at)
@@ -890,7 +893,7 @@ app.post('/api/profile', async (req, res) => {
          website=excluded.website, photo=excluded.photo, skills=excluded.skills,
          education=excluded.education, work_status=excluded.work_status,
          status_note=excluded.status_note, updated_at=excluded.updated_at`,
-      [user.userId, full_name, title, bio, email, phone, location, website, photo, skills, education, work_status, status_note, updatedAt]
+      [ownerId, full_name, title, bio, email, phone, location, website, photo, skills, education, work_status, status_note, updatedAt]
     );
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Failed to save profile.' }); }
@@ -904,36 +907,34 @@ app.get('/api/profile/work', async (req, res) => {
       return res.json(rows);
     }
 
-    const owner = await dbGet('SELECT user_id FROM profiles ORDER BY updated_at DESC, user_id DESC LIMIT 1');
-    if (!owner || owner.user_id == null) return res.json([]);
-    const rows = await dbAll('SELECT * FROM work_history WHERE user_id = ? ORDER BY start_date DESC, id DESC', [owner.user_id]);
+    const rows = await dbAll('SELECT * FROM work_history WHERE user_id = 0 ORDER BY start_date DESC, id DESC');
     res.json(rows);
   } catch (err) { res.status(500).json({ error: 'Failed to load work history.' }); }
 });
 
 app.post('/api/profile/work', async (req, res) => {
   const user = getUserFromRequest(req);
-  if (!user) return res.status(401).json({ error: 'Login required.' });
   const { employer = '', role = '', start_date = '', end_date = '', description = '' } = req.body || {};
   if (!employer && !role) return res.status(400).json({ error: 'Employer or role is required.' });
   const createdAt = new Date().toISOString();
+  const ownerId = user ? user.userId : 0;
   try {
     const result = await dbRun(
       'INSERT INTO work_history (user_id, employer, role, start_date, end_date, description, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [user.userId, employer, role, start_date, end_date, description, createdAt]
+      [ownerId, employer, role, start_date, end_date, description, createdAt]
     );
-    const newRow = await dbGet('SELECT * FROM work_history WHERE user_id = ? ORDER BY id DESC LIMIT 1', [user.userId]);
+    const newRow = await dbGet('SELECT * FROM work_history WHERE user_id = ? ORDER BY id DESC LIMIT 1', [ownerId]);
     res.status(201).json(newRow);
   } catch (err) { res.status(500).json({ error: 'Failed to save work entry.' }); }
 });
 
 app.put('/api/profile/work/:id', async (req, res) => {
   const user = getUserFromRequest(req);
-  if (!user) return res.status(401).json({ error: 'Login required.' });
   const id = Number(req.params.id);
   const { employer = '', role = '', start_date = '', end_date = '', description = '' } = req.body || {};
+  const ownerId = user ? user.userId : 0;
   try {
-    const row = await dbGet('SELECT id FROM work_history WHERE id = ? AND user_id = ?', [id, user.userId]);
+    const row = await dbGet('SELECT id FROM work_history WHERE id = ? AND user_id = ?', [id, ownerId]);
     if (!row) return res.status(404).json({ error: 'Record not found.' });
     await dbRun('UPDATE work_history SET employer=?, role=?, start_date=?, end_date=?, description=? WHERE id=?',
       [employer, role, start_date, end_date, description, id]);
@@ -943,10 +944,10 @@ app.put('/api/profile/work/:id', async (req, res) => {
 
 app.delete('/api/profile/work/:id', async (req, res) => {
   const user = getUserFromRequest(req);
-  if (!user) return res.status(401).json({ error: 'Login required.' });
   const id = Number(req.params.id);
+  const ownerId = user ? user.userId : 0;
   try {
-    const row = await dbGet('SELECT id FROM work_history WHERE id = ? AND user_id = ?', [id, user.userId]);
+    const row = await dbGet('SELECT id FROM work_history WHERE id = ? AND user_id = ?', [id, ownerId]);
     if (!row) return res.status(404).json({ error: 'Record not found.' });
     await dbRun('DELETE FROM work_history WHERE id = ?', [id]);
     res.json({ success: true });

@@ -299,10 +299,6 @@
       }
       await loadProfile();
       await loadWork();
-      if (!resumeAuthenticated) {
-        const editButton = document.querySelector('.resume-sidebar .btn-secondary');
-        if (editButton) editButton.style.display = 'none';
-      }
     }
 
     async function loadProfile() {
@@ -432,10 +428,6 @@
     }
 
     async function saveProfile() {
-      if (!resumeAuthenticated) {
-        document.getElementById('profile-save-status').textContent = 'Sign in to edit this resume.';
-        return;
-      }
       const statusEl = document.getElementById('profile-save-status');
       statusEl.textContent = 'Saving...';
       statusEl.className = 'status-msg';
@@ -503,10 +495,6 @@
     }
 
     async function saveWork() {
-      if (!resumeAuthenticated) {
-        document.getElementById('work-form-status').textContent = 'Sign in to edit this resume.';
-        return;
-      }
       const statusEl = document.getElementById('work-form-status');
       const payload = {
         role: document.getElementById('w-role').value.trim(),
@@ -539,10 +527,6 @@
     }
 
     async function deleteWork(id) {
-      if (!resumeAuthenticated) {
-        document.getElementById('work-form-status').textContent = 'Sign in to edit this resume.';
-        return;
-      }
       if (!confirm('Delete this work entry permanently?')) return;
       try {
         const r = await fetch(`/api/profile/work/${id}`, { method: 'DELETE', credentials: 'same-origin' });
