@@ -871,8 +871,10 @@ async function deleteEntry(entryId) {
   try {
     const userId = localStorage.getItem('blog_user_id') || 'guest';
     localStorage.removeItem(`entries_cache:${userId}`);
+    localStorage.removeItem('blog_pending_entries');
   } catch {}
   await loadEntries();
+  window.location.reload();
 }
 
 async function togglePublish(entryId, publish) {
