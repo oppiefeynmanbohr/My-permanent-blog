@@ -101,6 +101,19 @@
     .scientific-btn.clear { background: #dc2626; color: #fff; }
     .scientific-btn.equal { background: #16a34a; color: #fff; }
     .scientific-hint { margin-top: 12px; color: #e5e7eb; font-size: 0.92rem; }
+    .fraction-input-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    .fraction-input-group { display: flex; flex-direction: column; gap: 6px; }
+    .fraction-input-group label { font-size: 0.8rem; font-weight: 700; color: #e5e7eb; }
+    .fraction-input-group input { width: 70px; padding: 8px; border: 1px solid #c8a97e; border-radius: 8px; text-align: center; font-size: 1rem; }
+    .fraction-input-group select { width: 74px; padding: 8px; border: 1px solid #c8a97e; border-radius: 8px; text-align: center; font-size: 1rem; }
+    .stored-fraction-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .stored-fraction-btn {
+      border: 1px solid #d1d5db; border-radius: 999px; padding: 8px 12px; background: #f9fafb; color: #111827; font-size: 0.9rem; cursor: pointer; font-weight: 700;
+    }
+    .stored-fraction-btn:hover { background: #e5e7eb; }
+    .scientific-fraction-result {
+      margin-top: 10px; color: #fef3c7; font-size: 0.95rem; font-weight: 700; background: rgba(255,255,255,0.12); border: 1px dashed #c8a97e; border-radius: 10px; padding: 10px 12px;
+    }
     @media (max-width: 720px) { .calc-grid { grid-template-columns: repeat(4, 1fr); } .fraction-grid { grid-template-columns: 1fr; } .scientific-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   </style>
 </head>
@@ -254,6 +267,34 @@
           <button class="scientific-btn operator" data-value="+">+</button>
           <button class="scientific-btn equal" data-action="equals">=</button>
         </div>
+        <div class="fraction-input-row">
+          <div class="fraction-input-group">
+            <label for="sci-frac-a">Fraction A</label>
+            <input id="sci-frac-a" type="text" value="8/4/4" />
+          </div>
+          <div class="fraction-input-group">
+            <label for="sci-frac-op">Operation</label>
+            <select id="sci-frac-op">
+              <option value="*">×</option>
+              <option value="+">+</option>
+              <option value="-">−</option>
+              <option value="/">÷</option>
+            </select>
+          </div>
+          <div class="fraction-input-group">
+            <label for="sci-frac-b">Fraction B</label>
+            <input id="sci-frac-b" type="text" value="3/4" />
+          </div>
+          <button id="sci-frac-calc" class="scientific-btn operator">Calc</button>
+        </div>
+        <div class="stored-fraction-row">
+          <button class="stored-fraction-btn" data-frac="8/4/4">8/4/4</button>
+          <button class="stored-fraction-btn" data-frac="3/4">3/4</button>
+          <button class="stored-fraction-btn" data-frac="1/2">1/2</button>
+          <button class="stored-fraction-btn" data-frac="3/8">3/8</button>
+          <button class="stored-fraction-btn" data-frac="5/16">5/16</button>
+        </div>
+        <div id="scientific-fraction-result" class="scientific-fraction-result">Result: 8/4/4 × 3/4 = 1 1/2</div>
         <div class="scientific-hint">Tip: use the same keyboard input as the standard calculator, plus the scientific buttons above.</div>
       </div>
     </div>
@@ -548,6 +589,26 @@
       }
     });
 
+    function parseFractionInput(value) {
+      const text = String(value || '').trim();
+      if (!text) return null;
+      const parts = text.split('/').map((part) => Number(part.trim())).filter((part) => Number.isFinite(part));
+      if (!parts.length || parts.some((part) => part === 0)) return null;
+      if (parts.length === 1) {
+        return { decimal: parts[0], numerator: parts[0], denominator: 1 };
+      }
+      if (parts.length === 2) {
+        const [numerator, denominator] = parts;
+        return { decimal: numerator / denominator, numerator, denominator };
+      }
+      if (parts.length === 3) {
+        const [whole, numerator, denominator] = parts;
+        const decimal = whole + numerator / denominator;
+        return { decimal, numerator: whole * denominator + numerator, denominator };
+      }
+      return null;
+    }
+
     function gcd(a, b) {
       a = Math.abs(a);
       b = Math.abs(b);
@@ -623,6 +684,59 @@
       resultEl.textContent = `Result: ${fractionText} = ${mixedText}`;
     }
 
+    function decimalToFraction(value) {
+      if (!Number.isFinite(value)) return null;
+      const rounded = Math.round(value * 1000000) / 1000000;
+      if (Math.abs(rounded - Math.round(rounded)) < 1e-9) {
+        return { numerator: Math.round(rounded), denominator: 1 };
+      }
+      const tolerance = 1e-8;
+      let best = null;
+      for (let denominator = 1; denominator <= 10000; denominator += 1) {
+        const numerator = Math.round(rounded * denominator);
+        const error = Math.abs(rounded - numerator / denominator);
+        if (error < tolerance) {
+          best = { numerator, denominator };
+          break;
+        }
+      }
+      return best;
+    }
+
+    function calculateScientificFractionResult() {
+      const left = parseFractionInput(document.getElementById('sci-frac-a').value);
+      const right = parseFractionInput(document.getElementById('sci-frac-b').value);
+      const operator = document.getElementById('sci-frac-op').value;
+      const resultEl = document.getElementById('scientific-fraction-result');
+      if (!left || !right) {
+        resultEl.textContent = 'Result: Enter valid fractions like 8/4/4 or 3/4';
+        return;
+      }
+      let decimalValue;
+      if (operator === '+') {
+        decimalValue = left.decimal + right.decimal;
+      } else if (operator === '-') {
+        decimalValue = left.decimal - right.decimal;
+      } else if (operator === '*') {
+        decimalValue = left.decimal * right.decimal;
+      } else {
+        decimalValue = right.decimal === 0 ? null : left.decimal / right.decimal;
+      }
+      if (decimalValue === null || !Number.isFinite(decimalValue)) {
+        resultEl.textContent = 'Result: Invalid fractions';
+        return;
+      }
+      const simplified = decimalToFraction(decimalValue);
+      if (!simplified) {
+        resultEl.textContent = 'Result: Invalid fractions';
+        return;
+      }
+      const mixed = formatFraction({ numerator: simplified.numerator, denominator: simplified.denominator });
+      const leftText = formatFraction(left);
+      const rightText = formatFraction(right);
+      resultEl.textContent = `Result: ${leftText} ${operator} ${rightText} = ${simplified.numerator}/${simplified.denominator} (${mixed})`;
+    }
+
     document.getElementById('frac-calc-btn').addEventListener('click', calculateFractionResult);
     document.getElementById('frac-clear-btn').addEventListener('click', () => {
       document.getElementById('frac-a-num').value = '1';
@@ -632,6 +746,13 @@
       document.getElementById('frac-op').value = '+';
       document.getElementById('fraction-result').textContent = 'Result: 5/4 = 1 1/4';
     });
+    document.getElementById('sci-frac-calc').addEventListener('click', calculateScientificFractionResult);
+    document.querySelectorAll('.stored-fraction-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.getElementById('sci-frac-a').value = btn.getAttribute('data-frac');
+        calculateScientificFractionResult();
+      });
+    });
     ['frac-a-num', 'frac-a-den', 'frac-b-num', 'frac-b-den', 'frac-op'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
@@ -639,10 +760,18 @@
         el.addEventListener('change', calculateFractionResult);
       }
     });
+    ['sci-frac-a', 'sci-frac-b', 'sci-frac-op'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('input', calculateScientificFractionResult);
+        el.addEventListener('change', calculateScientificFractionResult);
+      }
+    });
 
     updateDisplay();
     updateScientificDisplay();
     calculateFractionResult();
+    calculateScientificFractionResult();
   </script>
 </body>
 </html>
