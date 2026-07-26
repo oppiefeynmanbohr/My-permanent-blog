@@ -3,108 +3,92 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TI-84 Style Calculator</title>
+  <title>Machinist Calculator</title>
   <link rel="stylesheet" href="style.css" />
   <style>
-    body { background: linear-gradient(135deg, #ece3d0, #d8c7a0); }
-    .calc-shell { max-width: 900px; margin: 24px auto; padding: 20px; }
-    .calc-card {
-      background: linear-gradient(180deg, #3b3b3b 0%, #242424 100%);
-      color: #f9fafb;
-      border-radius: 24px;
+    :root {
+      --panel: #1f2937;
+      --panel-2: #111827;
+      --ink: #f9fafb;
+      --muted: #9ca3af;
+      --accent: #f59e0b;
+      --accent-2: #2563eb;
+      --danger: #dc2626;
+      --ok: #16a34a;
+      --screen: #dfe9c8;
+      --screen-text: #1f2937;
+      --wood: #c8a97e;
+    }
+    body { background: linear-gradient(135deg, #efe4c9, #d9c08f); }
+    .app-shell { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+    .calc-shell { display: grid; gap: 18px; grid-template-columns: 1.15fr 0.85fr; align-items: start; }
+    .calc-card, .fraction-card {
+      border-radius: 26px;
       padding: 20px;
-      box-shadow: 0 20px 45px rgba(0,0,0,0.3);
+      box-shadow: 0 20px 45px rgba(0,0,0,0.28);
       border: 3px solid #111827;
     }
+    .calc-card {
+      background: linear-gradient(180deg, #374151 0%, #111827 100%);
+      color: var(--ink);
+    }
+    .calc-title { margin: 0 0 4px; font-size: 1.95rem; color: #fff; }
+    .calc-subtitle { margin: 0 0 14px; color: #d1d5db; font-size: 0.98rem; }
     .calc-screen {
-      background: #dfe9c8;
-      color: #1f2937;
-      border-radius: 10px;
+      background: var(--screen);
+      color: var(--screen-text);
+      border-radius: 14px;
       padding: 16px;
-      min-height: 92px;
+      min-height: 100px;
       margin-bottom: 14px;
-      font-family: "Courier New", monospace;
       border: 2px solid #6b7280;
-      box-shadow: inset 0 0 8px rgba(0,0,0,0.15);
+      font-family: "Courier New", monospace;
+      box-shadow: inset 0 0 8px rgba(0,0,0,0.14);
     }
-    .calc-screen .expression { font-size: 1rem; color: #374151; word-break: break-all; }
-    .calc-screen .result { font-size: 2rem; font-weight: bold; margin-top: 8px; }
-    .calc-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .calc-expression { font-size: 1rem; min-height: 1.4rem; word-break: break-all; color: #374151; }
+    .calc-result { font-size: 2.1rem; font-weight: 700; margin-top: 8px; }
+    .calc-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
     .calc-btn {
-      border: 1px solid #111827;
-      border-radius: 8px;
-      padding: 12px;
-      font-size: 0.95rem;
-      font-weight: 700;
-      cursor: pointer;
-      background: #f3f4f6;
-      color: #111827;
-      box-shadow: 0 2px 0 #6b7280;
+      border: 1px solid #111827; border-radius: 12px; min-height: 64px; padding: 10px; font-size: 1rem; font-weight: 800; cursor: pointer; background: #f3f4f6; color: #111827; box-shadow: 0 3px 0 #6b7280;
     }
-    .calc-btn:hover { filter: brightness(0.96); }
+    .calc-btn:hover { filter: brightness(0.97); }
     .calc-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 #6b7280; }
-    .calc-btn.operator { background: #f59e0b; color: #fff; }
-    .calc-btn.func { background: #2563eb; color: #fff; }
-    .calc-btn.clear { background: #dc2626; color: #fff; }
-    .calc-btn.equal { background: #16a34a; color: #fff; }
-    .calc-btn.small { font-size: 0.9rem; padding: 11px; }
-    .calc-hint { margin-top: 16px; color: #e5e7eb; font-size: 0.95rem; }
-    .calc-row { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
-    .calc-pill { background: rgba(255,255,255,0.12); padding: 8px 12px; border-radius: 999px; font-size: 0.9rem; }
-    .calc-title { font-size: 1.8rem; margin: 0; color: #fff; }
-    .calc-subtitle { color: #d1d5db; margin-top: 4px; }
+    .calc-btn.operator { background: var(--accent); color: #fff; }
+    .calc-btn.func { background: var(--accent-2); color: #fff; }
+    .calc-btn.clear { background: var(--danger); color: #fff; }
+    .calc-btn.equal { background: var(--ok); color: #fff; }
+    .calc-btn.wide { grid-column: span 2; }
+    .calc-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .calc-pill { display: inline-block; padding: 8px 12px; border-radius: 999px; background: rgba(255,255,255,0.12); font-size: 0.9rem; color: #f3f4f6; }
     .fraction-card {
-      margin-top: 18px;
-      background: rgba(255,255,255,0.95);
-      color: #1f2937;
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 10px 24px rgba(0,0,0,0.15);
-      border: 2px solid #c8a97e;
+      background: linear-gradient(180deg, #fdf7ea 0%, #f2e2c5 100%);
+      color: #2b2217;
+      border-color: var(--wood);
     }
-    .fraction-title { font-size: 1.2rem; font-weight: 800; margin-bottom: 4px; color: #3b2a1a; }
-    .fraction-subtitle { color: #6b4f34; font-size: 0.95rem; margin-bottom: 12px; }
-    .fraction-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: end; }
-    .fraction-entry label { display: block; font-size: 0.82rem; font-weight: 700; margin-bottom: 6px; color: #5a3e28; }
-    .fraction-inputs {
-      display: grid; grid-template-columns: 70px 70px 14px 70px; gap: 6px; align-items: center;
+    .fraction-title { margin: 0 0 4px; font-size: 1.3rem; }
+    .fraction-subtitle { margin: 0 0 14px; color: #6b4f34; font-size: 0.95rem; }
+    .fraction-grid { display: grid; gap: 12px; }
+    .fraction-entry label { display: block; margin-bottom: 6px; font-size: 0.82rem; font-weight: 800; color: #5a3e28; }
+    .fraction-row {
+      display: grid; grid-template-columns: 90px 70px 14px 70px; gap: 6px; align-items: center;
     }
-    .fraction-inputs input, .fraction-actions select {
-      width: 100%; padding: 8px; border: 1px solid #c8a97e; border-radius: 8px; font-size: 1rem; text-align: center;
+    .fraction-row input, .fraction-actions select {
+      width: 100%; padding: 10px; border: 1px solid #c8a97e; border-radius: 10px; font-size: 1rem; text-align: center; background: #fffdf9;
     }
-    .fraction-inputs .fraction-slash { font-size: 1rem; font-weight: 800; color: #5a3e28; text-align: center; }
-    .fraction-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    .fraction-row .slash { text-align: center; font-weight: 800; color: #5a3e28; }
+    .fraction-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
     .fraction-result {
-      margin-top: 12px; font-size: 1.05rem; font-weight: 700; color: #2f4f4f; background: #f8efe0; border: 1px dashed #c8a97e; border-radius: 10px; padding: 10px 12px;
+      margin-top: 12px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.7); border: 1px dashed #b99258; font-weight: 700; color: #4b2e17;
     }
-    .scientific-card {
-      margin-top: 18px;
-      background: linear-gradient(180deg, #111827 0%, #1f2937 100%);
-      color: #f9fafb;
-      border-radius: 22px;
-      padding: 18px;
-      box-shadow: 0 14px 28px rgba(0,0,0,0.25);
-      border: 3px solid #374151;
+    .hint { margin-top: 10px; color: #4b5563; font-size: 0.92rem; }
+    @media (max-width: 900px) {
+      .calc-shell { grid-template-columns: 1fr; }
     }
-    .scientific-title { font-size: 1.25rem; font-weight: 800; margin-bottom: 4px; color: #f9fafb; }
-    .scientific-subtitle { color: #d1d5db; font-size: 0.95rem; margin-bottom: 12px; }
-    .scientific-screen {
-      background: #dfe9c8; color: #1f2937; border-radius: 12px; padding: 14px; min-height: 94px; margin-bottom: 12px; font-family: "Courier New", monospace; border: 2px solid #6b7280; box-shadow: inset 0 0 8px rgba(0,0,0,0.15);
+    @media (max-width: 640px) {
+      .calc-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .calc-btn.wide { grid-column: span 4; }
+      .fraction-row { grid-template-columns: 1fr 1fr 14px 1fr; }
     }
-    .scientific-screen .expression { font-size: 1rem; color: #374151; word-break: break-all; }
-    .scientific-screen .result { font-size: 2rem; font-weight: bold; margin-top: 8px; }
-    .scientific-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
-    .scientific-btn {
-      border: 1px solid #111827; border-radius: 12px; padding: 15px 10px; font-size: 1rem; font-weight: 700; cursor: pointer; background: #f9fafb; color: #111827; box-shadow: 0 3px 0 #4b5563; min-height: 56px;
-    }
-    .scientific-btn:hover { filter: brightness(0.97); }
-    .scientific-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 #4b5563; }
-    .scientific-btn.operator { background: #f59e0b; color: #fff; }
-    .scientific-btn.func { background: #2563eb; color: #fff; }
-    .scientific-btn.clear { background: #dc2626; color: #fff; }
-    .scientific-btn.equal { background: #16a34a; color: #fff; }
-    .scientific-hint { margin-top: 12px; color: #e5e7eb; font-size: 0.92rem; }
-    @media (max-width: 720px) { .calc-grid { grid-template-columns: repeat(4, 1fr); } .fraction-grid { grid-template-columns: 1fr; } .scientific-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   </style>
 </head>
 <body>
@@ -112,8 +96,8 @@
     <header>
       <div class="header-top">
         <div>
-          <h1 class="calc-title">TI-83 Plus Style Calculator</h1>
-          <p class="calc-subtitle">A familiar graphing-calculator-inspired keypad</p>
+          <h1 class="calc-title">Machinist’s Calculator</h1>
+          <p class="calc-subtitle">Big buttons, strong layout, and full arithmetic for shop work and everyday math.</p>
         </div>
         <a class="support-button" href="/page1">Back to Blog</a>
       </div>
@@ -133,21 +117,21 @@
 
     <div class="calc-shell">
       <div class="calc-card">
-        <div class="calc-row">
-          <span class="calc-pill">Mode: Standard</span>
-          <span class="calc-pill">TI-84 inspired</span>
-          <span class="calc-pill">Expressions supported</span>
+        <div class="calc-meta">
+          <span class="calc-pill">Standard</span>
+          <span class="calc-pill">Scientific</span>
+          <span class="calc-pill">Fractions</span>
         </div>
         <div class="calc-screen">
-          <div id="calc-expression" class="expression">0</div>
-          <div id="calc-result" class="result">0</div>
+          <div id="calc-expression" class="calc-expression">0</div>
+          <div id="calc-result" class="calc-result">0</div>
         </div>
         <div class="calc-grid">
           <button class="calc-btn clear" data-action="clear">AC</button>
-          <button class="calc-btn small" data-action="delete">DEL</button>
+          <button class="calc-btn" data-action="parenthesis-open">(</button>
+          <button class="calc-btn" data-action="parenthesis-close">)</button>
           <button class="calc-btn func" data-action="sqrt">√</button>
-          <button class="calc-btn func" data-action="pi">π</button>
-          <button class="calc-btn func" data-action="percent">%</button>
+          <button class="calc-btn operator" data-action="delete">DEL</button>
 
           <button class="calc-btn" data-value="7">7</button>
           <button class="calc-btn" data-value="8">8</button>
@@ -169,23 +153,29 @@
 
           <button class="calc-btn" data-value="0">0</button>
           <button class="calc-btn" data-value=".">.</button>
-          <button class="calc-btn equal" data-action="equals">=</button>
+          <button class="calc-btn func" data-action="toggle-sign">±</button>
           <button class="calc-btn operator" data-value="+">+</button>
           <button class="calc-btn func" data-action="tan">tan</button>
+
+          <button class="calc-btn func" data-action="pi">π</button>
+          <button class="calc-btn func" data-action="e">e</button>
+          <button class="calc-btn func" data-action="log">log</button>
+          <button class="calc-btn func" data-action="ln">ln</button>
+          <button class="calc-btn equal" data-action="equals">=</button>
         </div>
-        <div class="calc-hint">Tip: use the buttons above or type directly using + - * / and parentheses.</div>
+        <div class="hint">Use the big keys above, or type directly on your keyboard with + - * / and parentheses.</div>
       </div>
 
       <div class="fraction-card">
-        <div class="fraction-title">Carpenter's Fraction Calculator</div>
-        <div class="fraction-subtitle">Add, subtract, multiply, and divide common fractional measurements for trim, boards, and layout work.</div>
+        <h2 class="fraction-title">Machinist Fraction Mode</h2>
+        <p class="fraction-subtitle">Enter whole + fractional measurements and calculate them like a shop calculator.</p>
         <div class="fraction-grid">
           <div class="fraction-entry">
-            <label for="frac-a-whole">First fraction</label>
-            <div class="fraction-inputs">
-              <input id="frac-a-whole" type="number" value="0" min="-9999" />
-              <input id="frac-a-num" type="number" value="1" min="-9999" />
-              <span class="fraction-slash">/</span>
+            <label for="frac-a-whole">First measurement</label>
+            <div class="fraction-row">
+              <input id="frac-a-whole" type="number" value="0" />
+              <input id="frac-a-num" type="number" value="1" />
+              <span class="slash">/</span>
               <input id="frac-a-den" type="number" value="2" min="1" />
             </div>
           </div>
@@ -199,67 +189,21 @@
             </select>
           </div>
           <div class="fraction-entry">
-            <label for="frac-b-whole">Second fraction</label>
-            <div class="fraction-inputs">
-              <input id="frac-b-whole" type="number" value="0" min="-9999" />
-              <input id="frac-b-num" type="number" value="3" min="-9999" />
-              <span class="fraction-slash">/</span>
+            <label for="frac-b-whole">Second measurement</label>
+            <div class="fraction-row">
+              <input id="frac-b-whole" type="number" value="0" />
+              <input id="frac-b-num" type="number" value="3" />
+              <span class="slash">/</span>
               <input id="frac-b-den" type="number" value="4" min="1" />
             </div>
           </div>
         </div>
         <div class="fraction-actions">
           <button id="frac-calc-btn" class="calc-btn operator">Calculate</button>
-          <button id="frac-clear-btn" class="calc-btn small">Clear</button>
+          <button id="frac-clear-btn" class="calc-btn">Clear</button>
         </div>
-        <div id="fraction-result" class="fraction-result">Result: 5/4 = 1 1/4</div>
-      </div>
-
-      <div class="scientific-card">
-        <div class="scientific-title">Scientific Calculator</div>
-        <div class="scientific-subtitle">A larger scientific keypad with common functions for schoolwork, engineering, and quick math.</div>
-        <div class="scientific-screen">
-          <div id="sci-expression" class="expression">0</div>
-          <div id="sci-result" class="result">0</div>
-        </div>
-        <div class="scientific-grid">
-          <button class="scientific-btn clear" data-action="clear">AC</button>
-          <button class="scientific-btn" data-action="parenthesis-open">(</button>
-          <button class="scientific-btn" data-action="parenthesis-close">)</button>
-          <button class="scientific-btn operator" data-action="power">xʸ</button>
-          <button class="scientific-btn func" data-action="sqrt">√</button>
-
-          <button class="scientific-btn func" data-action="sin">sin</button>
-          <button class="scientific-btn func" data-action="cos">cos</button>
-          <button class="scientific-btn func" data-action="tan">tan</button>
-          <button class="scientific-btn func" data-action="log">log</button>
-          <button class="scientific-btn func" data-action="ln">ln</button>
-
-          <button class="scientific-btn" data-value="7">7</button>
-          <button class="scientific-btn" data-value="8">8</button>
-          <button class="scientific-btn" data-value="9">9</button>
-          <button class="scientific-btn operator" data-value="/">÷</button>
-          <button class="scientific-btn func" data-action="square">x²</button>
-
-          <button class="scientific-btn" data-value="4">4</button>
-          <button class="scientific-btn" data-value="5">5</button>
-          <button class="scientific-btn" data-value="6">6</button>
-          <button class="scientific-btn operator" data-value="*">×</button>
-          <button class="scientific-btn func" data-action="pi">π</button>
-
-          <button class="scientific-btn" data-value="1">1</button>
-          <button class="scientific-btn" data-value="2">2</button>
-          <button class="scientific-btn" data-value="3">3</button>
-          <button class="scientific-btn operator" data-value="-">−</button>
-          <button class="scientific-btn func" data-action="e">e</button>
-
-          <button class="scientific-btn" data-value="0">0</button>
-          <button class="scientific-btn" data-value=".">.</button>
-          <button class="scientific-btn func" data-action="toggle-sign">±</button>
-          <button class="scientific-btn operator" data-value="+">+</button>
-          <button class="scientific-btn equal" data-action="equals">=</button>
-        </div>
-        <div class="scientific-hint">Tip: use the same keyboard input as the standard calculator, plus the scientific buttons above.</div>
+        <div id="fraction-result" class="fraction-result">Result: 1/2 + 3/4 = 5/4 (1 1/4)</div>
+        <div class="hint">Works for mixed fractions such as 1 1/2 and 3/4.</div>
       </div>
     </div>
   </div>
@@ -267,10 +211,7 @@
   <script>
     const expressionEl = document.getElementById('calc-expression');
     const resultEl = document.getElementById('calc-result');
-    const sciExpressionEl = document.getElementById('sci-expression');
-    const sciResultEl = document.getElementById('sci-result');
     let expression = '0';
-    let scientificExpression = '0';
 
     function isIncompleteExpression(value) {
       const trimmed = String(value || '').trim();
@@ -301,7 +242,6 @@
           .replace(/\blog\(/g, 'Math.log10(')
           .replace(/\bln\(/g, 'Math.log(')
           .replace(/\bsqrt\(/g, 'Math.sqrt(')
-          .replace(/\bexp\(/g, 'Math.exp(')
           .replace(/\babs\(/g, 'Math.abs(');
         const result = Function(`"use strict"; return (${safe})`)();
         return Number.isFinite(result) ? result : null;
@@ -339,21 +279,6 @@
       updateDisplay();
     }
 
-    function appendScientificValue(value) {
-      const operators = ['+', '-', '*', '/'];
-      const lastChar = scientificExpression.slice(-1);
-      if (scientificExpression === '0' && !operators.includes(value) && value !== '.') {
-        scientificExpression = value;
-      } else if (operators.includes(value) && operators.includes(lastChar)) {
-        scientificExpression = scientificExpression.slice(0, -1) + value;
-      } else if (value === '.' && lastChar === '.') {
-        return;
-      } else {
-        scientificExpression += value;
-      }
-      updateScientificDisplay();
-    }
-
     function handleAction(action) {
       if (action === 'clear') {
         expression = '0';
@@ -368,6 +293,27 @@
       if (action === 'equals') {
         const result = evaluateExpression(expression);
         expression = result === null ? 'Error' : String(result);
+        updateDisplay();
+        return;
+      }
+      if (action === 'parenthesis-open') {
+        expression = expression === '0' ? '(' : `${expression}(`;
+        updateDisplay();
+        return;
+      }
+      if (action === 'parenthesis-close') {
+        expression = `${expression})`;
+        updateDisplay();
+        return;
+      }
+      if (action === 'toggle-sign') {
+        if (expression === '0') {
+          expression = '-';
+        } else if (expression.startsWith('-')) {
+          expression = expression.slice(1);
+        } else {
+          expression = `-${expression}`;
+        }
         updateDisplay();
         return;
       }
@@ -386,8 +332,8 @@
         updateDisplay();
         return;
       }
-      if (action === 'percent') {
-        expression = `${expression}%`;
+      if (action === 'e') {
+        expression = expression === '0' ? 'e' : `${expression}e`;
         updateDisplay();
         return;
       }
@@ -406,108 +352,14 @@
         updateDisplay();
         return;
       }
-    }
-
-    function updateScientificDisplay() {
-      sciExpressionEl.textContent = scientificExpression || '0';
-      if (scientificExpression === '0') {
-        sciResultEl.textContent = '0';
-        return;
-      }
-      if (isIncompleteExpression(scientificExpression)) {
-        sciResultEl.textContent = '—';
-        return;
-      }
-      const result = evaluateExpression(scientificExpression);
-      sciResultEl.textContent = result === null ? 'Error' : result.toString();
-    }
-
-    function handleScientificAction(action) {
-      if (action === 'clear') {
-        scientificExpression = '0';
-        updateScientificDisplay();
-        return;
-      }
-      if (action === 'delete') {
-        scientificExpression = scientificExpression.length <= 1 ? '0' : scientificExpression.slice(0, -1);
-        updateScientificDisplay();
-        return;
-      }
-      if (action === 'equals') {
-        const result = evaluateExpression(scientificExpression);
-        scientificExpression = result === null ? 'Error' : String(result);
-        updateScientificDisplay();
-        return;
-      }
-      if (action === 'parenthesis-open') {
-        scientificExpression = scientificExpression === '0' ? '(' : `${scientificExpression}(`;
-        updateScientificDisplay();
-        return;
-      }
-      if (action === 'parenthesis-close') {
-        scientificExpression = `${scientificExpression})`;
-        updateScientificDisplay();
-        return;
-      }
-      if (action === 'power') {
-        scientificExpression = `${scientificExpression}^`;
-        updateScientificDisplay();
-        return;
-      }
-      if (action === 'square') {
-        scientificExpression = `${scientificExpression}^2`;
-        updateScientificDisplay();
-        return;
-      }
-      if (action === 'sqrt') {
-        scientificExpression = scientificExpression === '0' ? 'sqrt(' : `${scientificExpression}sqrt(`;
-        updateScientificDisplay();
-        return;
-      }
-      if (action === 'pi') {
-        scientificExpression = scientificExpression === '0' ? 'π' : `${scientificExpression}π`;
-        updateScientificDisplay();
-        return;
-      }
-      if (action === 'e') {
-        scientificExpression = scientificExpression === '0' ? 'e' : `${scientificExpression}e`;
-        updateScientificDisplay();
-        return;
-      }
-      if (action === 'toggle-sign') {
-        if (scientificExpression === '0') {
-          scientificExpression = '-';
-        } else if (scientificExpression.startsWith('-')) {
-          scientificExpression = scientificExpression.slice(1);
-        } else {
-          scientificExpression = `-${scientificExpression}`;
-        }
-        updateScientificDisplay();
-        return;
-      }
-      if (action === 'sin') {
-        scientificExpression = `${scientificExpression}sin(`;
-        updateScientificDisplay();
-        return;
-      }
-      if (action === 'cos') {
-        scientificExpression = `${scientificExpression}cos(`;
-        updateScientificDisplay();
-        return;
-      }
-      if (action === 'tan') {
-        scientificExpression = `${scientificExpression}tan(`;
-        updateScientificDisplay();
-        return;
-      }
       if (action === 'log') {
-        scientificExpression = `${scientificExpression}log(`;
-        updateScientificDisplay();
+        expression = `${expression}log(`;
+        updateDisplay();
         return;
       }
       if (action === 'ln') {
-        scientificExpression = `${scientificExpression}ln(`;
-        updateScientificDisplay();
+        expression = `${expression}ln(`;
+        updateDisplay();
         return;
       }
     }
@@ -520,18 +372,6 @@
           appendValue(value);
         } else if (action) {
           handleAction(action);
-        }
-      });
-    });
-
-    document.querySelectorAll('.scientific-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const value = btn.getAttribute('data-value');
-        const action = btn.getAttribute('data-action');
-        if (value !== null) {
-          appendScientificValue(value);
-        } else if (action) {
-          handleScientificAction(action);
         }
       });
     });
@@ -552,15 +392,6 @@
         event.preventDefault();
       }
     });
-
-    function parseFractionInput(whole, numerator, denominator) {
-      const wholeValue = Number(whole);
-      const numeratorValue = Number(numerator);
-      const denominatorValue = Number(denominator);
-      if (!Number.isFinite(wholeValue) || !Number.isFinite(numeratorValue) || !Number.isFinite(denominatorValue) || denominatorValue === 0) return null;
-      const normalized = wholeValue * denominatorValue + numeratorValue;
-      return { decimal: normalized / denominatorValue, numerator: normalized, denominator: denominatorValue };
-    }
 
     function gcd(a, b) {
       a = Math.abs(a);
@@ -596,6 +427,15 @@
         return String(whole);
       }
       return `${numerator}/${denominator}`;
+    }
+
+    function parseFractionInput(whole, numerator, denominator) {
+      const wholeValue = Number(whole);
+      const numeratorValue = Number(numerator);
+      const denominatorValue = Number(denominator);
+      if (!Number.isFinite(wholeValue) || !Number.isFinite(numeratorValue) || !Number.isFinite(denominatorValue) || denominatorValue === 0) return null;
+      const normalized = wholeValue * denominatorValue + numeratorValue;
+      return { decimal: normalized / denominatorValue, numerator: normalized, denominator: denominatorValue };
     }
 
     function decimalToFraction(value) {
@@ -655,6 +495,7 @@
         resultEl.textContent = 'Result: Invalid fractions';
         return;
       }
+
       const mixedText = formatFraction({ numerator: simplified.numerator, denominator: simplified.denominator });
       const leftText = formatFraction(left);
       const rightText = formatFraction(right);
@@ -672,6 +513,7 @@
       document.getElementById('frac-op').value = '+';
       document.getElementById('fraction-result').textContent = 'Result: 1/2 + 3/4 = 5/4 (1 1/4)';
     });
+
     ['frac-a-whole', 'frac-a-num', 'frac-a-den', 'frac-b-whole', 'frac-b-num', 'frac-b-den', 'frac-op'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
@@ -681,7 +523,6 @@
     });
 
     updateDisplay();
-    updateScientificDisplay();
     calculateFractionResult();
   </script>
 </body>
