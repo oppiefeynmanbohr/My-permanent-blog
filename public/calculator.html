@@ -3,184 +3,354 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Machinist Calculator</title>
+  <title>Machinist Calc Pro 2</title>
   <link rel="stylesheet" href="style.css" />
   <style>
     :root {
-      --panel: #1f2937;
-      --panel-2: #111827;
-      --ink: #f9fafb;
-      --muted: #9ca3af;
-      --accent: #f59e0b;
-      --accent-2: #2563eb;
-      --danger: #dc2626;
-      --ok: #16a34a;
-      --screen: #dfe9c8;
-      --screen-text: #1f2937;
+      --screen: #dce7c7;
+      --screen-text: #182029;
+      --button: #f4f4f4;
+      --button-accent: #f59e0b;
+      --button-blue: #3b82f6;
+      --button-green: #22c55e;
+      --button-red: #ef4444;
+      --border: #111827;
       --wood: #c8a97e;
     }
-    body { background: linear-gradient(135deg, #efe4c9, #d9c08f); }
-    .app-shell { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
-    .calc-shell { display: grid; gap: 18px; grid-template-columns: 1.15fr 0.85fr; align-items: start; }
-    .calc-card, .fraction-card {
-      border-radius: 26px;
-      padding: 20px;
-      box-shadow: 0 20px 45px rgba(0,0,0,0.28);
-      border: 3px solid #111827;
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #efe1bd, #d7b977);
+      color: #111827;
     }
+
+    .app-shell {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 24px 16px 40px;
+    }
+
+    .page-title {
+      font-size: 2.1rem;
+      margin: 0 0 6px;
+      color: #111827;
+    }
+
+    .page-subtitle {
+      margin: 0 0 16px;
+      color: #4b3420;
+    }
+
+    .calc-shell {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .calc-card,
+    .fraction-card {
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.24);
+    }
+
     .calc-card {
-      background: linear-gradient(180deg, #374151 0%, #111827 100%);
-      color: var(--ink);
+      background: linear-gradient(180deg, #2f2f2f 0%, #101010 100%);
+      color: #fff;
+      border: 3px solid var(--border);
+      position: relative;
+      overflow: hidden;
     }
-    .calc-title { margin: 0 0 4px; font-size: 1.95rem; color: #fff; }
-    .calc-subtitle { margin: 0 0 14px; color: #d1d5db; font-size: 0.98rem; }
-    .calc-screen {
+
+    .calc-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.08), transparent 35%, rgba(255,255,255,0.03));
+      pointer-events: none;
+    }
+
+    .brand-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      font-size: 0.9rem;
+      letter-spacing: 0.01em;
+    }
+
+    .screen {
       background: var(--screen);
       color: var(--screen-text);
-      border-radius: 14px;
-      padding: 16px;
-      min-height: 100px;
+      border-radius: 16px;
+      padding: 16px 18px;
+      min-height: 112px;
       margin-bottom: 14px;
       border: 2px solid #6b7280;
       font-family: "Courier New", monospace;
-      box-shadow: inset 0 0 8px rgba(0,0,0,0.14);
+      box-shadow: inset 0 0 0 2px rgba(24, 32, 41, 0.08);
     }
-    .calc-expression { font-size: 1rem; min-height: 1.4rem; word-break: break-all; color: #374151; }
-    .calc-result { font-size: 2.1rem; font-weight: 700; margin-top: 8px; }
-    .calc-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
-    .calc-btn {
-      border: 1px solid #111827; border-radius: 12px; min-height: 64px; padding: 10px; font-size: 1rem; font-weight: 800; cursor: pointer; background: #f3f4f6; color: #111827; box-shadow: 0 3px 0 #6b7280;
+
+    .screen .expr {
+      font-size: 1rem;
+      color: #374151;
+      min-height: 1.35rem;
+      word-break: break-all;
     }
-    .calc-btn:hover { filter: brightness(0.97); }
-    .calc-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 #6b7280; }
-    .calc-btn.operator { background: var(--accent); color: #fff; }
-    .calc-btn.func { background: var(--accent-2); color: #fff; }
-    .calc-btn.clear { background: var(--danger); color: #fff; }
-    .calc-btn.equal { background: var(--ok); color: #fff; }
-    .calc-btn.wide { grid-column: span 2; }
-    .calc-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-    .calc-pill { display: inline-block; padding: 8px 12px; border-radius: 999px; background: rgba(255,255,255,0.12); font-size: 0.9rem; color: #f3f4f6; }
+
+    .screen .result {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .btn {
+      border: 1px solid #4b5563;
+      border-radius: 14px;
+      min-height: 58px;
+      font-size: 1.02rem;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #525252;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.15s ease;
+      letter-spacing: 0.01em;
+    }
+
+    .btn:hover {
+      filter: brightness(1.03);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+      box-shadow: 0 2px 0 #525252;
+    }
+
+    .btn.num {
+      background: linear-gradient(180deg, #fdfdfd 0%, #dedede 100%);
+      color: #111827;
+    }
+
+    .btn.op {
+      background: linear-gradient(180deg, #f7b54f 0%, #d98f1c 100%);
+      color: #fff;
+    }
+
+    .btn.func {
+      background: linear-gradient(180deg, #6aa2ff 0%, #2d69dd 100%);
+      color: #fff;
+    }
+
+    .btn.eq {
+      background: linear-gradient(180deg, #45d16f 0%, #1e9f4d 100%);
+      color: #fff;
+    }
+
+    .btn.ac {
+      background: linear-gradient(180deg, #ff6d6d 0%, #d43b3b 100%);
+      color: #fff;
+    }
+
     .fraction-card {
-      background: linear-gradient(180deg, #fdf7ea 0%, #f2e2c5 100%);
-      color: #2b2217;
-      border-color: var(--wood);
+      background: linear-gradient(180deg, #fdf7e8 0%, #f1e0be 100%);
+      border: 3px solid var(--wood);
+      color: #3b2a1a;
     }
-    .fraction-title { margin: 0 0 4px; font-size: 1.3rem; }
-    .fraction-subtitle { margin: 0 0 14px; color: #6b4f34; font-size: 0.95rem; }
-    .fraction-grid { display: grid; gap: 12px; }
-    .fraction-entry label { display: block; margin-bottom: 6px; font-size: 0.82rem; font-weight: 800; color: #5a3e28; }
+
+    .fraction-title {
+      margin: 0 0 6px;
+      font-size: 1.2rem;
+    }
+
+    .fraction-subtitle {
+      margin: 0 0 12px;
+      color: #6b4f34;
+      font-size: 0.95rem;
+    }
+
     .fraction-row {
-      display: grid; grid-template-columns: 90px 70px 14px 70px; gap: 6px; align-items: center;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 10px;
+      align-items: end;
     }
-    .fraction-row input, .fraction-actions select {
-      width: 100%; padding: 10px; border: 1px solid #c8a97e; border-radius: 10px; font-size: 1rem; text-align: center; background: #fffdf9;
+
+    .fraction-box label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 700;
+      font-size: 0.82rem;
     }
-    .fraction-row .slash { text-align: center; font-weight: 800; color: #5a3e28; }
-    .fraction-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+    .fraction-inputs {
+      display: grid;
+      grid-template-columns: 70px 70px 14px 70px;
+      gap: 6px;
+    }
+
+    .fraction-inputs input,
+    .fraction-box select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #c8a97e;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 1rem;
+      background: #fffdf8;
+    }
+
+    .fraction-inputs .slash {
+      text-align: center;
+      font-weight: 800;
+      color: #5a3e28;
+    }
+
+    .fraction-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
     .fraction-result {
-      margin-top: 12px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.7); border: 1px dashed #b99258; font-weight: 700; color: #4b2e17;
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.75);
+      border: 1px dashed #b48a4d;
+      font-weight: 700;
     }
-    .hint { margin-top: 10px; color: #4b5563; font-size: 0.92rem; }
+
+    .hint {
+      margin-top: 10px;
+      color: #d9d9d9;
+      font-size: 0.92rem;
+    }
+
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
     @media (max-width: 900px) {
       .calc-shell { grid-template-columns: 1fr; }
     }
+
     @media (max-width: 640px) {
-      .calc-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .calc-btn.wide { grid-column: span 4; }
-      .fraction-row { grid-template-columns: 1fr 1fr 14px 1fr; }
+      .btn-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .fraction-row { grid-template-columns: 1fr; }
+      .fraction-inputs { grid-template-columns: 1fr 1fr 14px 1fr; }
     }
   </style>
 </head>
 <body>
   <div class="app-shell">
-    <header>
-      <div class="header-top">
-        <div>
-          <h1 class="calc-title">Machinist’s Calculator</h1>
-          <p class="calc-subtitle">Big buttons, strong layout, and full arithmetic for shop work and everyday math.</p>
-        </div>
-        <a class="support-button" href="/page1">Back to Blog</a>
+    <div class="top-row">
+      <div>
+        <h1 class="page-title">Machinist Calc Pro 2</h1>
+        <p class="page-subtitle">A faithful machinist-style calculator with the same large buttons and scientific functions.</p>
       </div>
-      <nav class="page-nav">
-        <a class="page-button" href="/page1">Blog Page 1</a>
-        <a class="page-button" href="/page2">Blog Page 2</a>
-        <a class="page-button" href="/page3">Blog Page 3</a>
-        <a class="page-button" href="/page5">Blog Page 5</a>
-        <a class="page-button" href="/page6">Blog Page 6</a>
-        <a class="page-button" href="/page7">Database</a>
-        <a class="page-button" href="/library">Library</a>
-        <a class="page-button" href="/dreamstate">Dream State</a>
-        <a class="page-button" href="/calendar-journal">Calendar</a>
-        <a class="page-button active" href="/calculator">Calculator</a>
-      </nav>
-    </header>
+      <a class="support-button" href="/page1">Back to Blog</a>
+    </div>
+    <nav class="page-nav">
+      <a class="page-button" href="/page1">Blog Page 1</a>
+      <a class="page-button" href="/page2">Blog Page 2</a>
+      <a class="page-button" href="/page3">Blog Page 3</a>
+      <a class="page-button" href="/page5">Blog Page 5</a>
+      <a class="page-button" href="/page6">Blog Page 6</a>
+      <a class="page-button" href="/page7">Database</a>
+      <a class="page-button" href="/library">Library</a>
+      <a class="page-button" href="/dreamstate">Dream State</a>
+      <a class="page-button" href="/calendar-journal">Calendar</a>
+      <a class="page-button active" href="/calculator">Calculator</a>
+    </nav>
 
     <div class="calc-shell">
       <div class="calc-card">
-        <div class="calc-meta">
-          <span class="calc-pill">Standard</span>
-          <span class="calc-pill">Scientific</span>
-          <span class="calc-pill">Fractions</span>
+        <div class="brand-row">
+          <div class="pill">Standard • Scientific • Fraction</div>
+          <div class="pill">Calc ind 4088</div>
         </div>
-        <div class="calc-screen">
-          <div id="calc-expression" class="calc-expression">0</div>
-          <div id="calc-result" class="calc-result">0</div>
+        <div class="screen">
+          <div id="calc-expression" class="expr">0</div>
+          <div id="calc-result" class="result">0</div>
         </div>
-        <div class="calc-grid">
-          <button class="calc-btn clear" data-action="clear">AC</button>
-          <button class="calc-btn" data-action="parenthesis-open">(</button>
-          <button class="calc-btn" data-action="parenthesis-close">)</button>
-          <button class="calc-btn func" data-action="sqrt">√</button>
-          <button class="calc-btn operator" data-action="delete">DEL</button>
+        <div class="btn-grid">
+          <button class="btn ac" data-action="clear">AC</button>
+          <button class="btn func" data-action="parenthesis-open">(</button>
+          <button class="btn func" data-action="parenthesis-close">)</button>
+          <button class="btn func" data-action="sqrt">√</button>
+          <button class="btn op" data-action="delete">DEL</button>
 
-          <button class="calc-btn" data-value="7">7</button>
-          <button class="calc-btn" data-value="8">8</button>
-          <button class="calc-btn" data-value="9">9</button>
-          <button class="calc-btn operator" data-value="/">÷</button>
-          <button class="calc-btn func" data-action="power">x²</button>
+          <button class="btn num" data-value="7">7</button>
+          <button class="btn num" data-value="8">8</button>
+          <button class="btn num" data-value="9">9</button>
+          <button class="btn op" data-value="/">÷</button>
+          <button class="btn func" data-action="power">x²</button>
 
-          <button class="calc-btn" data-value="4">4</button>
-          <button class="calc-btn" data-value="5">5</button>
-          <button class="calc-btn" data-value="6">6</button>
-          <button class="calc-btn operator" data-value="*">×</button>
-          <button class="calc-btn func" data-action="sin">sin</button>
+          <button class="btn num" data-value="4">4</button>
+          <button class="btn num" data-value="5">5</button>
+          <button class="btn num" data-value="6">6</button>
+          <button class="btn op" data-value="*">×</button>
+          <button class="btn func" data-action="sin">sin</button>
 
-          <button class="calc-btn" data-value="1">1</button>
-          <button class="calc-btn" data-value="2">2</button>
-          <button class="calc-btn" data-value="3">3</button>
-          <button class="calc-btn operator" data-value="-">−</button>
-          <button class="calc-btn func" data-action="cos">cos</button>
+          <button class="btn num" data-value="1">1</button>
+          <button class="btn num" data-value="2">2</button>
+          <button class="btn num" data-value="3">3</button>
+          <button class="btn op" data-value="-">−</button>
+          <button class="btn func" data-action="cos">cos</button>
 
-          <button class="calc-btn" data-value="0">0</button>
-          <button class="calc-btn" data-value=".">.</button>
-          <button class="calc-btn func" data-action="toggle-sign">±</button>
-          <button class="calc-btn operator" data-value="+">+</button>
-          <button class="calc-btn func" data-action="tan">tan</button>
+          <button class="btn num" data-value="0">0</button>
+          <button class="btn num" data-value=".">.</button>
+          <button class="btn func" data-action="toggle-sign">±</button>
+          <button class="btn op" data-value="+">+</button>
+          <button class="btn eq" data-action="equals">=</button>
 
-          <button class="calc-btn func" data-action="pi">π</button>
-          <button class="calc-btn func" data-action="e">e</button>
-          <button class="calc-btn func" data-action="log">log</button>
-          <button class="calc-btn func" data-action="ln">ln</button>
-          <button class="calc-btn equal" data-action="equals">=</button>
+          <button class="btn func" data-action="pi">π</button>
+          <button class="btn func" data-action="e">e</button>
+          <button class="btn func" data-action="log">log</button>
+          <button class="btn func" data-action="ln">ln</button>
+          <button class="btn func" data-action="percent">%</button>
         </div>
-        <div class="hint">Use the big keys above, or type directly on your keyboard with + - * / and parentheses.</div>
+        <div class="hint">Use the same keypad layout and scientific buttons as the reference calculator.</div>
       </div>
 
       <div class="fraction-card">
         <h2 class="fraction-title">Machinist Fraction Mode</h2>
         <p class="fraction-subtitle">Enter whole + fractional measurements and calculate them like a shop calculator.</p>
-        <div class="fraction-grid">
-          <div class="fraction-entry">
-            <label for="frac-a-whole">First measurement</label>
-            <div class="fraction-row">
+        <div class="fraction-row">
+          <div class="fraction-box">
+            <label for="frac-a-whole">First</label>
+            <div class="fraction-inputs">
               <input id="frac-a-whole" type="number" value="0" />
               <input id="frac-a-num" type="number" value="1" />
               <span class="slash">/</span>
               <input id="frac-a-den" type="number" value="2" min="1" />
             </div>
           </div>
-          <div class="fraction-entry">
-            <label for="frac-op">Operation</label>
+          <div class="fraction-box">
+            <label for="frac-op">Op</label>
             <select id="frac-op">
               <option value="+">+</option>
               <option value="-">−</option>
@@ -188,9 +358,9 @@
               <option value="/">÷</option>
             </select>
           </div>
-          <div class="fraction-entry">
-            <label for="frac-b-whole">Second measurement</label>
-            <div class="fraction-row">
+          <div class="fraction-box">
+            <label for="frac-b-whole">Second</label>
+            <div class="fraction-inputs">
               <input id="frac-b-whole" type="number" value="0" />
               <input id="frac-b-num" type="number" value="3" />
               <span class="slash">/</span>
@@ -199,8 +369,8 @@
           </div>
         </div>
         <div class="fraction-actions">
-          <button id="frac-calc-btn" class="calc-btn operator">Calculate</button>
-          <button id="frac-clear-btn" class="calc-btn">Clear</button>
+          <button id="frac-calc-btn" class="btn op">Calculate</button>
+          <button id="frac-clear-btn" class="btn">Clear</button>
         </div>
         <div id="fraction-result" class="fraction-result">Result: 1/2 + 3/4 = 5/4 (1 1/4)</div>
         <div class="hint">Works for mixed fractions such as 1 1/2 and 3/4.</div>
@@ -213,8 +383,12 @@
     const resultEl = document.getElementById('calc-result');
     let expression = '0';
 
+    function normalizeValue(value) {
+      return String(value || '').trim();
+    }
+
     function isIncompleteExpression(value) {
-      const trimmed = String(value || '').trim();
+      const trimmed = normalizeValue(value);
       if (!trimmed || trimmed === '0') return false;
       const lastChar = trimmed.slice(-1);
       if (['+', '-', '*', '/', '.', '^'].includes(lastChar)) return true;
@@ -223,27 +397,34 @@
       return opens > closes;
     }
 
+    function tokenizeExpression(value) {
+      let safe = normalizeValue(value)
+        .replace(/π/g, 'Math.PI')
+        .replace(/e/g, 'Math.E')
+        .replace(/×/g, '*')
+        .replace(/÷/g, '/')
+        .replace(/%/g, '/100')
+        .replace(/\^2/g, '**2')
+        .replace(/\^/g, '**');
+
+      safe = safe
+        .replace(/sin\(/g, 'Math.sin(')
+        .replace(/cos\(/g, 'Math.cos(')
+        .replace(/tan\(/g, 'Math.tan(')
+        .replace(/log\(/g, 'Math.log10(')
+        .replace(/ln\(/g, 'Math.log(')
+        .replace(/sqrt\(/g, 'Math.sqrt(')
+        .replace(/abs\(/g, 'Math.abs(');
+
+      return safe;
+    }
+
     function evaluateExpression(value) {
-      const trimmed = String(value || '').trim();
+      const trimmed = normalizeValue(value);
       if (!trimmed || trimmed === '0' || isIncompleteExpression(trimmed)) return null;
       try {
-        let safe = trimmed
-          .replace(/π/g, 'Math.PI')
-          .replace(/e/g, 'Math.E')
-          .replace(/×/g, '*')
-          .replace(/÷/g, '/')
-          .replace(/%/g, '/100')
-          .replace(/\^2/g, '**2')
-          .replace(/\^/g, '**');
-        safe = safe
-          .replace(/\bsin\(/g, 'Math.sin(')
-          .replace(/\bcos\(/g, 'Math.cos(')
-          .replace(/\btan\(/g, 'Math.tan(')
-          .replace(/\blog\(/g, 'Math.log10(')
-          .replace(/\bln\(/g, 'Math.log(')
-          .replace(/\bsqrt\(/g, 'Math.sqrt(')
-          .replace(/\babs\(/g, 'Math.abs(');
-        const result = Function(`"use strict"; return (${safe})`)();
+        const safe = tokenizeExpression(trimmed);
+        const result = Function('"use strict"; return (' + safe + ')')();
         return Number.isFinite(result) ? result : null;
       } catch {
         return null;
@@ -338,33 +519,38 @@
         return;
       }
       if (action === 'sin') {
-        expression = `${expression}sin(`;
+        expression = expression === '0' ? 'sin(' : `${expression}sin(`;
         updateDisplay();
         return;
       }
       if (action === 'cos') {
-        expression = `${expression}cos(`;
+        expression = expression === '0' ? 'cos(' : `${expression}cos(`;
         updateDisplay();
         return;
       }
       if (action === 'tan') {
-        expression = `${expression}tan(`;
+        expression = expression === '0' ? 'tan(' : `${expression}tan(`;
         updateDisplay();
         return;
       }
       if (action === 'log') {
-        expression = `${expression}log(`;
+        expression = expression === '0' ? 'log(' : `${expression}log(`;
         updateDisplay();
         return;
       }
       if (action === 'ln') {
-        expression = `${expression}ln(`;
+        expression = expression === '0' ? 'ln(' : `${expression}ln(`;
+        updateDisplay();
+        return;
+      }
+      if (action === 'percent') {
+        expression = `${expression}%`;
         updateDisplay();
         return;
       }
     }
 
-    document.querySelectorAll('.calc-btn').forEach((btn) => {
+    document.querySelectorAll('.btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const value = btn.getAttribute('data-value');
         const action = btn.getAttribute('data-action');
@@ -420,12 +606,8 @@
       if (denominator === 1) return String(numerator);
       const whole = Math.trunc(numerator / denominator);
       const remainder = numerator % denominator;
-      if (whole !== 0 && remainder !== 0) {
-        return `${whole} ${Math.abs(remainder)}/${Math.abs(denominator)}`;
-      }
-      if (whole !== 0) {
-        return String(whole);
-      }
+      if (whole !== 0 && remainder !== 0) return `${whole} ${Math.abs(remainder)}/${Math.abs(denominator)}`;
+      if (whole !== 0) return String(whole);
       return `${numerator}/${denominator}`;
     }
 
@@ -441,61 +623,39 @@
     function decimalToFraction(value) {
       if (!Number.isFinite(value)) return null;
       const rounded = Math.round(value * 1000000) / 1000000;
-      if (Math.abs(rounded - Math.round(rounded)) < 1e-9) {
-        return { numerator: Math.round(rounded), denominator: 1 };
-      }
+      if (Math.abs(rounded - Math.round(rounded)) < 1e-9) return { numerator: Math.round(rounded), denominator: 1 };
       const tolerance = 1e-8;
       for (let denominator = 1; denominator <= 10000; denominator += 1) {
         const numerator = Math.round(rounded * denominator);
         const error = Math.abs(rounded - numerator / denominator);
-        if (error < tolerance) {
-          return { numerator, denominator };
-        }
+        if (error < tolerance) return { numerator, denominator };
       }
       return null;
     }
 
     function calculateFractionResult() {
-      const left = parseFractionInput(
-        document.getElementById('frac-a-whole').value,
-        document.getElementById('frac-a-num').value,
-        document.getElementById('frac-a-den').value
-      );
-      const right = parseFractionInput(
-        document.getElementById('frac-b-whole').value,
-        document.getElementById('frac-b-num').value,
-        document.getElementById('frac-b-den').value
-      );
+      const left = parseFractionInput(document.getElementById('frac-a-whole').value, document.getElementById('frac-a-num').value, document.getElementById('frac-a-den').value);
+      const right = parseFractionInput(document.getElementById('frac-b-whole').value, document.getElementById('frac-b-num').value, document.getElementById('frac-b-den').value);
       const operator = document.getElementById('frac-op').value;
       const resultEl = document.getElementById('fraction-result');
-
       if (!left || !right) {
         resultEl.textContent = 'Result: Enter valid fractions like 0 1/2 or 1 3/4';
         return;
       }
-
       let decimalValue;
-      if (operator === '+') {
-        decimalValue = left.decimal + right.decimal;
-      } else if (operator === '-') {
-        decimalValue = left.decimal - right.decimal;
-      } else if (operator === '*') {
-        decimalValue = left.decimal * right.decimal;
-      } else {
-        decimalValue = right.decimal === 0 ? null : left.decimal / right.decimal;
-      }
-
+      if (operator === '+') decimalValue = left.decimal + right.decimal;
+      else if (operator === '-') decimalValue = left.decimal - right.decimal;
+      else if (operator === '*') decimalValue = left.decimal * right.decimal;
+      else decimalValue = right.decimal === 0 ? null : left.decimal / right.decimal;
       if (decimalValue === null || !Number.isFinite(decimalValue)) {
         resultEl.textContent = 'Result: Invalid fractions';
         return;
       }
-
       const simplified = decimalToFraction(decimalValue);
       if (!simplified) {
         resultEl.textContent = 'Result: Invalid fractions';
         return;
       }
-
       const mixedText = formatFraction({ numerator: simplified.numerator, denominator: simplified.denominator });
       const leftText = formatFraction(left);
       const rightText = formatFraction(right);
