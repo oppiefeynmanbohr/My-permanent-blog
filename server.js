@@ -25,7 +25,10 @@ if (TURSO_URL) {
 }
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+app.set('trust proxy', true);
+const PORT = Number(process.env.PORT || process.env.PORT_NUMBER || 10000);
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '';
+const COOKIE_SAME_SITE = process.env.COOKIE_SAME_SITE || '';
 const dataDir = path.join(__dirname, 'data');
 const dbFile = path.join(dataDir, 'blog.db');
 const settingsFile = path.join(dataDir, 'settings.json');
@@ -83,15 +86,40 @@ function generateEmailCode() {
   for (let i = 0; i < 8; i++) code += chars[bytes[i] % chars.length];
   return code;
 }
-function createUserSession(res, userId, username, rememberMe = false, browserId = '') {
+function isSecureRequest(req) {
+  if (!req) return process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true';
+  const forwardedProto = req.headers['x-forwarded-proto'];
+  if (forwardedProto) {
+    const first = String(forwardedProto).split(',')[0].trim().toLowerCase();
+    if (first === 'https') return true;
+    if (first === 'http') return false;
+  }
+  return Boolean(req.secure || process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true');
+}
+
+function getCookieAttributes(req) {
+  const secure = isSecureRequest(req);
+  const parts = ['Path=/', 'HttpOnly'];
+  if (COOKIE_DOMAIN) parts.push(`Domain=${COOKIE_DOMAIN}`);
+  if (secure) parts.push('Secure');
+  const sameSite = COOKIE_SAME_SITE || (secure ? 'None' : 'Lax');
+  parts.push(`SameSite=${sameSite}`);
+  return parts;
+}
+
+function buildCookieValue(name, value, req, maxAgeMs) {
+  const parts = [`${name}=${encodeURIComponent(value)}`, ...getCookieAttributes(req)];
+  if (typeof maxAgeMs === 'number') parts.push(`Max-Age=${Math.floor(maxAgeMs / 1000)}`);
+  return parts.join('; ');
+}
+
+async function createUserSession(req, res, userId, username, rememberMe = false, browserId = '') {
   const token = crypto.randomBytes(32).toString('hex');
   const ttl = rememberMe ? REMEMBER_ME_TTL_MS : SESSION_TTL_MS;
   const expiresAt = Date.now() + ttl;
-  const isProduction = process.env.NODE_ENV === 'production';
-  const securePart = isProduction ? '; Secure' : '';
-  dbRun('INSERT OR REPLACE INTO user_sessions (token, user_id, username, expires_at, browser_id) VALUES (?,?,?,?,?)',
+  await dbRun('INSERT OR REPLACE INTO user_sessions (token, user_id, username, expires_at, browser_id) VALUES (?,?,?,?,?)',
     [token, userId, username, expiresAt, browserId || '']);
-  appendSetCookie(res, `user_sid=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${ttl / 1000}${securePart}`);
+  appendSetCookie(res, buildCookieValue('user_sid', token, req, ttl));
   return token;
 }
 
@@ -114,22 +142,31 @@ function getBrowserIdFromRequest(req) {
 }
 
 // Middleware: load user session from DB before each request
-async function loadUserSession(req, res, next) {
+function loadUserSession(req, res, next) {
   const cookies = parseCookies(req);
   req.cookies = cookies;
-  const token = cookies['user_sid'];
-  if (!token) { req._userSession = null; return next(); }
-  try {
-    const row = await dbGet('SELECT * FROM user_sessions WHERE token = ?', [token]);
-    if (!row || row.expires_at < Date.now()) {
-      if (row) dbRun('DELETE FROM user_sessions WHERE token = ?', [token]);
-      req._userSession = null;
-    } else {
+  const token = cookies['user_sid'] || req.headers['x-user-sid'] || '';
+  req._userSession = null;
+
+  if (!token) {
+    return next();
+  }
+
+  dbGet('SELECT * FROM user_sessions WHERE token = ?', [token])
+    .then((row) => {
+      if (!row || row.expires_at < Date.now()) {
+        if (row) {
+          return dbRun('DELETE FROM user_sessions WHERE token = ?', [token]).then(() => next());
+        }
+        return next();
+      }
+
       req._userSession = { userId: row.user_id, username: row.username, browserId: row.browser_id || '' };
-      await refreshUserSession(req, res, row);
-    }
-  } catch { req._userSession = null; }
-  next();
+      return refreshUserSession(req, res, row)
+        .then(() => next())
+        .catch(() => next());
+    })
+    .catch(() => next());
 }
 
 if (!fs.existsSync(dataDir)) {
@@ -205,8 +242,13 @@ async function initDatabase() {
     token TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL,
     username TEXT NOT NULL,
-    expires_at INTEGER NOT NULL
+    expires_at INTEGER NOT NULL,
+    browser_id TEXT NOT NULL DEFAULT ''
   )`);
+  const sessionColumns = await dbAll('PRAGMA table_info(user_sessions)');
+  if (!sessionColumns.some(c => c.name === 'browser_id')) {
+    await dbRun('ALTER TABLE user_sessions ADD COLUMN browser_id TEXT NOT NULL DEFAULT ""');
+  }
   await dbRun(`CREATE TABLE IF NOT EXISTS profiles (
     user_id INTEGER PRIMARY KEY,
     full_name TEXT NOT NULL DEFAULT '',
@@ -344,21 +386,12 @@ function appendSetCookie(res, cookieValue) {
   res.setHeader('Set-Cookie', arr);
 }
 
-function setCookie(res, name, value, maxAgeMs) {
-  const parts = [
-    `${name}=${encodeURIComponent(value)}`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax'
-  ];
-  if (typeof maxAgeMs === 'number') {
-    parts.push(`Max-Age=${Math.floor(maxAgeMs / 1000)}`);
-  }
-  appendSetCookie(res, parts.join('; '));
+function setCookie(res, name, value, maxAgeMs, req) {
+  appendSetCookie(res, buildCookieValue(name, value, req, maxAgeMs));
 }
 
-function clearCookie(res, name) {
-  appendSetCookie(res, `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+function clearCookie(res, name, req) {
+  appendSetCookie(res, buildCookieValue(name, '', req, 0));
 }
 
 function randomToken(size = 24) {
@@ -370,15 +403,15 @@ function getOrCreateClientId(req, res) {
   let cid = cookies.client_id;
   if (!cid) {
     cid = randomToken(16);
-    setCookie(res, 'client_id', cid, 365 * 24 * 60 * 60 * 1000);
+    setCookie(res, 'client_id', cid, 365 * 24 * 60 * 60 * 1000, req);
   }
   return cid;
 }
 
-function createAdminSession(res) {
+function createAdminSession(req, res) {
   const sid = randomToken(24);
   adminSessions.set(sid, { expiresAt: Date.now() + SESSION_TTL_MS });
-  setCookie(res, 'admin_sid', sid, SESSION_TTL_MS);
+  setCookie(res, 'admin_sid', sid, SESSION_TTL_MS, req);
   return sid;
 }
 
@@ -530,7 +563,7 @@ app.post('/api/auth/signup', async (req, res) => {
     );
     const newUser = await dbGet('SELECT id FROM users WHERE username = ?', [username.trim()]);
     const browserId = getBrowserIdFromRequest(req);
-    createUserSession(res, newUser.id, username.trim(), true, browserId);
+    await createUserSession(req, res, newUser.id, username.trim(), true, browserId);
     res.status(201).json({ success: true, username: username.trim() });
   } catch (err) {
     console.error('Signup DB error:', err.message);
@@ -560,20 +593,18 @@ app.post('/api/auth/login', async (req, res) => {
     if (hash !== user.password_hash) return res.status(401).json({ error: 'Invalid username or password.' });
 
     const browserId = getBrowserIdFromRequest(req);
-    createUserSession(res, user.id, user.username, !!rememberMe, browserId);
+    await createUserSession(req, res, user.id, user.username, !!rememberMe, browserId);
     res.json({ success: true, username: user.username });
   } catch (err) {
     res.status(500).json({ error: 'Login failed.' });
   }
 });
 
-app.post('/api/auth/logout', (req, res) => {
+app.post('/api/auth/logout', async (req, res) => {
   const cookies = parseCookies(req);
   const token = cookies['user_sid'];
-  if (token) dbRun('DELETE FROM user_sessions WHERE token = ?', [token]);
-  const isProduction = process.env.NODE_ENV === 'production';
-  const securePart = isProduction ? '; Secure' : '';
-  res.setHeader('Set-Cookie', `user_sid=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0${securePart}`);
+  if (token) await dbRun('DELETE FROM user_sessions WHERE token = ?', [token]);
+  res.setHeader('Set-Cookie', buildCookieValue('user_sid', '', req, 0));
   res.json({ success: true });
 });
 
@@ -634,10 +665,38 @@ app.post('/api/auth/reset-password', async (req, res) => {
   }
 });
 
-app.get('/api/auth/session', (req, res) => {
+app.get('/api/auth/session', async (req, res) => {
   const user = getUserFromRequest(req);
-  if (!user) return res.json({ authenticated: false });
-  res.json({ authenticated: true, username: user.username, userId: user.userId });
+  if (user) {
+    return res.json({ authenticated: true, username: user.username, userId: user.userId });
+  }
+
+  const cookies = parseCookies(req);
+  const storedUser = String(cookies.blog_username || '').trim();
+  const storedPassword = String(cookies.blog_saved_password || '').trim();
+  if (!storedUser || !storedPassword) return res.json({ authenticated: false });
+
+  try {
+    const identifier = normalizeIdentifier(storedUser);
+    const candidate = await dbGet(
+      'SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?',
+      [identifier, identifier]
+    );
+    if (!candidate || isLegacyCodeOnlyUser(candidate)) {
+      return res.json({ authenticated: false });
+    }
+
+    const hash = hashPassword(storedPassword, candidate.password_salt);
+    if (hash !== candidate.password_hash) {
+      return res.json({ authenticated: false });
+    }
+
+    const browserId = getBrowserIdFromRequest(req);
+    await createUserSession(req, res, candidate.id, candidate.username, true, browserId);
+    return res.json({ authenticated: true, username: candidate.username, userId: candidate.id });
+  } catch (err) {
+    return res.json({ authenticated: false });
+  }
 });
 
 // ── Email-code auth ────────────────────────────────────────────────────────�[...]
@@ -680,7 +739,7 @@ app.post('/api/auth/email-login', async (req, res) => {
     const user = await dbGet('SELECT id FROM users WHERE email = ?', [email]);
     if (!user) return res.status(500).json({ error: 'Login failed. Please try again.' });
     const browserId = getBrowserIdFromRequest(req);
-    createUserSession(res, user.id, email, true, browserId);
+    await createUserSession(req, res, user.id, email, true, browserId);
     delete emailAuth[email];
     writeJson(emailAuthFile, emailAuth);
     res.json({ success: true });
@@ -696,7 +755,12 @@ app.get('/api/auth/debug', (req, res) => {
       res.json({
         tables: tables.map(t => t.name),
         usersTableExists: tables.some(t => t.name === 'users'),
-        userCount: err2 ? `error: ${err2.message}` : rows[0].count
+        userCount: err2 ? `error: ${err2.message}` : rows[0].count,
+        protocol: req.protocol,
+        secure: req.secure,
+        forwardedProto: req.headers['x-forwarded-proto'],
+        host: req.get('host'),
+        isSecureRequest: isSecureRequest(req)
       });
     });
   });
@@ -1039,7 +1103,7 @@ app.post('/api/admin/logout', (req, res) => {
   const cookies = parseCookies(req);
   const sid = cookies.admin_sid;
   if (sid) adminSessions.delete(sid);
-  clearCookie(res, 'admin_sid');
+  clearCookie(res, 'admin_sid', req);
   res.json({ success: true });
 });
 
@@ -1055,7 +1119,7 @@ app.post('/api/admin/login/venmo-qr', (req, res) => {
     return res.status(400).json({ error: 'Set your Venmo link or Venmo QR on the support/admin settings first.' });
   }
 
-  createAdminSession(res);
+  createAdminSession(req, res);
   res.json({ success: true, authenticated: true });
 });
 
@@ -1317,7 +1381,7 @@ app.post('/api/admin/sms/verify', (req, res) => {
   }
 
   pendingMfa.delete(mfaToken);
-  createAdminSession(res);
+  createAdminSession(req, res);
   res.json({ success: true, authenticated: true });
 });
 
@@ -1391,8 +1455,9 @@ app.get('/published', (req, res) => {
 
 initDatabase()
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`My Permanent Blog running at http://localhost:${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`My Permanent Blog running at http://0.0.0.0:${PORT}`);
+      console.log(`Open http://127.0.0.1:${PORT} in your browser.`);
     });
   })
   .catch((err) => {

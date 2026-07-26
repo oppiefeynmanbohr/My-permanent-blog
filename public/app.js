@@ -226,12 +226,34 @@ function renderEntries(entries) {
   });
 }
 
+function restoreDraft() {
+  if (!entryContent) return;
+  const draftKey = getActiveUserStorageKey('main_entry_draft');
+  const savedDraft = localStorage.getItem(draftKey);
+  if (savedDraft !== null) {
+    entryContent.value = savedDraft;
+    if (saveStatus) saveStatus.textContent = 'Restored your saved draft.';
+  }
+}
+
+function saveDraft() {
+  if (!entryContent) return;
+  const draftKey = getActiveUserStorageKey('main_entry_draft');
+  try {
+    localStorage.setItem(draftKey, entryContent.value);
+  } catch (err) {
+    console.warn('Draft storage limit reached; keeping the current draft in the textarea only.', err);
+  }
+}
+
 async function loadEntries() {
   const search = searchInput.value.trim();
   const date = calendarInput.value;
   const params = new URLSearchParams();
   if (search) params.set('search', search);
   if (date) params.set('date', date);
+  const userId = localStorage.getItem('blog_user_id') || 'guest';
+  const cacheKey = `entries_cache:${userId}`;
   const url = `/api/entries?${params.toString()}`;
   try {
     const response = await fetch(url, { credentials: 'same-origin' });
@@ -239,13 +261,13 @@ async function loadEntries() {
     if (Array.isArray(entries) && entries.length > 0) {
       // Cache entries in localStorage for resilience
       if (!search && !date) {
-        try { localStorage.setItem('entries_cache', JSON.stringify(entries)); } catch {}
+        try { localStorage.setItem(cacheKey, JSON.stringify(entries)); } catch {}
       }
       renderEntries(entries);
     } else if (!search && !date) {
       // Server returned nothing — try local cache
       try {
-        const cached = localStorage.getItem('entries_cache');
+        const cached = localStorage.getItem(cacheKey);
         if (cached) {
           const cachedEntries = JSON.parse(cached);
           if (cachedEntries.length > 0) {
@@ -262,7 +284,7 @@ async function loadEntries() {
   } catch {
     // Network error — try cache
     try {
-      const cached = localStorage.getItem('entries_cache');
+      const cached = localStorage.getItem(cacheKey);
       if (cached) renderEntries(JSON.parse(cached));
     } catch {}
   }
@@ -303,6 +325,8 @@ async function saveEntry() {
       return;
     }
 
+    const draftKey = getActiveUserStorageKey('main_entry_draft');
+    localStorage.removeItem(draftKey);
     entryContent.value = '';
     refreshTimestamp();
     saveStatus.textContent = 'Entry saved.';
@@ -402,11 +426,17 @@ function hideNewSiteBannerForLater() {
   newSiteBanner.style.display = 'none';
 }
 
+function getActiveUserStorageKey(prefix) {
+  const browserId = localStorage.getItem('blog_browser_id') || 'browser-guest';
+  const userId = localStorage.getItem('blog_user_id') || 'guest';
+  return `${prefix}:${browserId}:${userId}`;
+}
+
 function saveBlogTitle() {
   if (!blogTitleInput) return;
   try {
     const title = blogTitleInput.value.trim();
-    localStorage.setItem('blogTitle', title);
+    localStorage.setItem(getActiveUserStorageKey('blogTitle'), title);
     applyBlogTitle(title);
   } catch (e) {
     // ignore storage errors
@@ -416,7 +446,7 @@ function saveBlogTitle() {
 function loadBlogTitle() {
   if (!blogTitleInput) return;
   try {
-    const savedTitle = localStorage.getItem('blogTitle');
+    const savedTitle = localStorage.getItem(getActiveUserStorageKey('blogTitle'));
     if (savedTitle) {
       blogTitleInput.value = savedTitle;
       applyBlogTitle(savedTitle);
@@ -432,8 +462,20 @@ function savePreferences() {
   try {
     const appliedFont = getComputedStyle(document.documentElement).getPropertyValue('--blog-font-family').trim();
     const appliedSize = getComputedStyle(document.documentElement).getPropertyValue('--blog-font-size').trim();
-    localStorage.setItem('blogFontFamily', appliedFont);
-    localStorage.setItem('blogFontSize', appliedSize);
+    localStorage.setItem(getActiveUserStorageKey('blogFontFamily'), appliedFont);
+    localStorage.setItem(getActiveUserStorageKey('blogFontSize'), appliedSize);
+  } catch (e) {
+    // ignore storage errors
+  }
+}
+
+function applyStoredPreferences() {
+  try {
+    const userId = localStorage.getItem('blog_user_id') || 'guest';
+    const savedFont = localStorage.getItem(`blogFontFamily:${userId}`);
+    const savedSize = localStorage.getItem(`blogFontSize:${userId}`);
+    if (savedFont) document.documentElement.style.setProperty('--blog-font-family', savedFont);
+    if (savedSize) document.documentElement.style.setProperty('--blog-font-size', savedSize);
   } catch (e) {
     // ignore storage errors
   }
@@ -799,6 +841,7 @@ async function togglePublish(entryId, publish) {
   }
 }
 
+entryContent.addEventListener('input', saveDraft);
 saveEntryButton.addEventListener('click', saveEntry);
 searchInput.addEventListener('input', loadEntries);
 calendarInput.addEventListener('change', loadEntries);
@@ -841,7 +884,14 @@ if (exportAllWordButton) {
 }
 
 refreshTimestamp();
+restoreDraft();
+
+window.addEventListener('pageshow', () => {
+  if (!entryContent || entryContent.value.trim()) return;
+  restoreDraft();
+});
 loadBlogTitle();
+applyStoredPreferences();
 // load preferences (server first, then local) and then entries
 loadPreferences().then(() => {
   if (supportUrlInput) applySupportLink(supportUrlInput.value.trim());
@@ -1250,32 +1300,85 @@ const userGreeting = document.getElementById('user-greeting');
 const userLogoutBtn = document.getElementById('user-logout-btn');
 const userLoginPrompt = document.getElementById('user-login-prompt');
 
+async function tryStoredLoginFromBrowser() {
+  const savedUser = localStorage.getItem('blog_username') || (() => {
+    const match = document.cookie.match(/(?:^|; )blog_username=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  })();
+  const savedPassword = localStorage.getItem('blog_saved_password') || localStorage.getItem('blog_password') || (() => {
+    const match = document.cookie.match(/(?:^|; )blog_saved_password=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  })();
+  if (!savedUser || !savedPassword) return false;
+  try {
+    let browserId = localStorage.getItem('blog_browser_id');
+    if (!browserId) {
+      browserId = 'browser-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem('blog_browser_id', browserId);
+    }
+    const r = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ username: savedUser, password: savedPassword, rememberMe: true, browserId })
+    });
+    if (!r.ok) return false;
+    const data = await r.json().catch(() => ({}));
+    localStorage.setItem('blog_logged_in', '1');
+    localStorage.setItem('blog_username', data.username || savedUser);
+    localStorage.setItem('blog_saved_password', savedPassword);
+    localStorage.setItem('blog_password', savedPassword);
+    localStorage.setItem('blog_browser_id', browserId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function applyAuthState(username, userId) {
+  if (!username) return;
+  localStorage.setItem('blog_logged_in', '1');
+  localStorage.setItem('blog_username', username);
+  localStorage.setItem('blog_user_id', String(userId || ''));
+  const expiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `blog_username=${encodeURIComponent(username)}; expires=${expiry}; path=/; SameSite=Lax`;
+  if (userAccountBar) userAccountBar.style.display = 'flex';
+  if (userGreeting) userGreeting.textContent = `Logged in as ${username}`;
+  if (userLoginPrompt) userLoginPrompt.style.display = 'none';
+}
+
 async function checkUserSession() {
   try {
     const r = await fetch('/api/auth/session', { credentials: 'same-origin' });
     if (!r.ok) throw new Error('no session endpoint');
     const data = await r.json();
     if (data.authenticated) {
-      localStorage.setItem('blog_username', data.username);
-      localStorage.setItem('blog_logged_in', '1');
-      if (userAccountBar) { userAccountBar.style.display = 'flex'; }
-      if (userGreeting) userGreeting.textContent = `Logged in as ${data.username}`;
-      if (userLoginPrompt) userLoginPrompt.style.display = 'none';
+      applyAuthState(data.username, data.userId);
     } else {
-      // Server session gone — clear stale localStorage and show login prompt
-      localStorage.removeItem('blog_username');
-      localStorage.removeItem('blog_logged_in');
-      localStorage.removeItem('entries_cache');
-      if (userAccountBar) userAccountBar.style.display = 'none';
-      if (userLoginPrompt) userLoginPrompt.style.display = 'block';
+      const lsUser = localStorage.getItem('blog_username');
+      if (lsUser && localStorage.getItem('blog_logged_in')) {
+        applyAuthState(lsUser, localStorage.getItem('blog_user_id'));
+      } else {
+        const restored = await tryStoredLoginFromBrowser();
+        if (restored) {
+          applyAuthState(localStorage.getItem('blog_username'), localStorage.getItem('blog_user_id'));
+        } else {
+          localStorage.removeItem('blog_logged_in');
+          localStorage.removeItem('blog_user_id');
+          if (userAccountBar) userAccountBar.style.display = 'none';
+          if (userLoginPrompt) userLoginPrompt.style.display = 'block';
+        }
+      }
     }
   } catch {
-    // Network error — still show from localStorage
     const lsUser = localStorage.getItem('blog_username');
     if (lsUser && localStorage.getItem('blog_logged_in')) {
-      if (userAccountBar) { userAccountBar.style.display = 'flex'; }
-      if (userGreeting) userGreeting.textContent = `Logged in as ${lsUser}`;
-      if (userLoginPrompt) userLoginPrompt.style.display = 'none';
+      applyAuthState(lsUser, localStorage.getItem('blog_user_id'));
+      return;
+    }
+    const restored = await tryStoredLoginFromBrowser();
+    if (restored) {
+      applyAuthState(localStorage.getItem('blog_username'), localStorage.getItem('blog_user_id'));
     }
   }
 }
@@ -1283,9 +1386,8 @@ async function checkUserSession() {
 if (userLogoutBtn) {
   userLogoutBtn.addEventListener('click', async () => {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
-    localStorage.removeItem('blog_username');
     localStorage.removeItem('blog_logged_in');
-    localStorage.removeItem('entries_cache');
+    localStorage.removeItem('blog_user_id');
     window.location.reload();
   });
 }

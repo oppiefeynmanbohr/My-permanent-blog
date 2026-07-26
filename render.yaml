@@ -10,6 +10,12 @@ services:
         value: production
       - key: PORT
         value: 3000
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAME_SITE
+        value: "None"
+      - key: COOKIE_DOMAIN
+        value: ""
       # ── Turso cloud DB (recommended — free permanent storage) ──
       # Create a free database at https://turso.tech and paste your credentials below.
       # When set, ALL data is stored in the cloud and survives every restart/redeploy.

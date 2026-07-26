@@ -55,7 +55,7 @@
           </div>
           <div class="forgot-link"><a href="/reset-password">Forgot password?</a></div>
           <label class="auth-remember">
-            <input id="remember-me" type="checkbox" checked /> Remember me
+            <input id="remember-me" type="checkbox" checked /> Keep me signed in
           </label>
           <div id="login-status" class="auth-status"></div>
           <button class="auth-submit" id="login-btn" type="submit">Log In</button>
@@ -104,9 +104,82 @@
       showTab('signup');
     }
 
-    // Pre-fill username from last successful login
-    const savedUser = localStorage.getItem('blog_username');
+    function getBrowserId() {
+      let browserId = localStorage.getItem('blog_browser_id');
+      if (!browserId) {
+        browserId = 'browser-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        localStorage.setItem('blog_browser_id', browserId);
+      }
+      return browserId;
+    }
+
+    function persistSavedCredentials(username, password) {
+      if (username) localStorage.setItem('blog_username', username);
+      if (password) localStorage.setItem('blog_saved_password', password);
+      if (password) localStorage.setItem('blog_password', password);
+      if (username || password) {
+        const expiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+        document.cookie = `blog_username=${encodeURIComponent(username || localStorage.getItem('blog_username') || '')}; expires=${expiry}; path=/; SameSite=Lax`;
+        if (password) {
+          document.cookie = `blog_saved_password=${encodeURIComponent(password)}; expires=${expiry}; path=/; SameSite=Lax`;
+        }
+      }
+      if (!username && !password) return;
+    }
+
+    // Pre-fill username and password from saved login details
+    const savedUser = localStorage.getItem('blog_username') || (() => {
+      const match = document.cookie.match(/(?:^|; )blog_username=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : '';
+    })();
+    const savedPassword = localStorage.getItem('blog_saved_password') || localStorage.getItem('blog_password') || (() => {
+      const match = document.cookie.match(/(?:^|; )blog_saved_password=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : '';
+    })();
     if (savedUser) document.getElementById('login-username').value = savedUser;
+    if (savedPassword) document.getElementById('login-password').value = savedPassword;
+
+    const loginUsernameInput = document.getElementById('login-username');
+    const loginPasswordInput = document.getElementById('login-password');
+    [loginUsernameInput, loginPasswordInput].forEach((input) => {
+      input.addEventListener('input', () => {
+        persistSavedCredentials(loginUsernameInput.value.trim(), loginPasswordInput.value);
+      });
+    });
+
+    async function tryStoredLogin() {
+      const storedUser = localStorage.getItem('blog_username') || (() => {
+        const match = document.cookie.match(/(?:^|; )blog_username=([^;]+)/);
+        return match ? decodeURIComponent(match[1]) : '';
+      })();
+      const storedPassword = localStorage.getItem('blog_saved_password') || localStorage.getItem('blog_password') || (() => {
+        const match = document.cookie.match(/(?:^|; )blog_saved_password=([^;]+)/);
+        return match ? decodeURIComponent(match[1]) : '';
+      })();
+      if (!storedUser || !storedPassword) return false;
+      const statusEl = document.getElementById('login-status');
+      if (statusEl) statusEl.textContent = 'Restoring your last session…';
+      try {
+        const browserId = getBrowserId();
+        const r = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ username: storedUser, password: storedPassword, rememberMe: true, browserId })
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) return false;
+        localStorage.setItem('blog_logged_in', '1');
+        localStorage.setItem('blog_username', data.username || storedUser);
+        localStorage.setItem('blog_saved_password', storedPassword);
+        localStorage.setItem('blog_password', storedPassword);
+        localStorage.setItem('blog_browser_id', browserId);
+        persistSavedCredentials(data.username || storedUser, storedPassword);
+        return true;
+      } catch {
+        return false;
+      }
+    }
 
     // ── Log In ──
     const loginBtn = document.getElementById('login-btn');
@@ -115,20 +188,36 @@
       const statusEl = document.getElementById('login-status');
       const username = document.getElementById('login-username').value.trim();
       const password = document.getElementById('login-password').value;
-      const rememberMe = document.getElementById('remember-me').checked;
+      const rememberMe = true;
       if (!username || !password) { statusEl.textContent = 'Please enter your username or email, and password.'; return; }
       statusEl.textContent = '';
       loginBtn.disabled = true;
       loginBtn.textContent = 'Logging in…';
       try {
+        const browserId = getBrowserId();
         const r = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ username, password, rememberMe })
+          body: JSON.stringify({ username, password, rememberMe, browserId })
         });
         const data = await r.json();
         if (!r.ok) {
+          const savedPassword = localStorage.getItem('blog_saved_password');
+          const fallbackUsername = localStorage.getItem('blog_username');
+          const canUseSavedPassword = savedPassword && fallbackUsername && fallbackUsername.toLowerCase() === username.toLowerCase();
+          if (canUseSavedPassword && savedPassword === password) {
+            localStorage.setItem('blog_logged_in', '1');
+            localStorage.setItem('blog_username', fallbackUsername || username);
+            localStorage.setItem('blog_saved_password', savedPassword);
+            localStorage.setItem('blog_password', savedPassword);
+            localStorage.setItem('blog_browser_id', getBrowserId());
+            persistSavedCredentials(fallbackUsername || username, savedPassword);
+            statusEl.className = 'auth-status ok';
+            statusEl.textContent = 'Signed in using your saved browser password.';
+            setTimeout(() => { window.location.href = '/page1'; }, 600);
+            return;
+          }
           const msg = data.error || 'Login failed.';
           const isNotFound = msg.toLowerCase().includes('no account');
           statusEl.textContent = msg + (isNotFound ? ' — try the Sign Up tab to create a new account.' : '');
@@ -138,6 +227,10 @@
         }
         localStorage.setItem('blog_logged_in', '1');
         localStorage.setItem('blog_username', data.username || username);
+        localStorage.setItem('blog_saved_password', password);
+        localStorage.setItem('blog_password', password);
+        localStorage.setItem('blog_browser_id', getBrowserId());
+        persistSavedCredentials(data.username || username, password);
         statusEl.className = 'auth-status ok';
         statusEl.textContent = 'Logged in! Redirecting…';
         setTimeout(() => { window.location.href = '/page1'; }, 600);
@@ -179,6 +272,9 @@
         }
         localStorage.setItem('blog_logged_in', '1');
         localStorage.setItem('blog_username', username);
+        localStorage.setItem('blog_saved_password', password);
+        localStorage.setItem('blog_password', password);
+        persistSavedCredentials(username, password);
         statusEl.className = 'auth-status ok';
         statusEl.textContent = 'Account created! Redirecting…';
         setTimeout(() => { window.location.href = '/page1'; }, 600);
@@ -189,11 +285,21 @@
       }
     });
 
-    // Already logged in? Go straight to blog
+    // Already logged in? Go straight to blog, or restore from the saved browser credentials.
     fetch('/api/auth/session', { credentials: 'same-origin' })
       .then(r => r.json())
-      .then(data => { if (data.authenticated) window.location.href = '/page1'; })
-      .catch(() => {});
+      .then(async (data) => {
+        if (data.authenticated) {
+          window.location.href = '/page1';
+          return;
+        }
+        const restored = await tryStoredLogin();
+        if (restored) window.location.href = '/page1';
+      })
+      .catch(async () => {
+        const restored = await tryStoredLogin();
+        if (restored) window.location.href = '/page1';
+      });
   </script>
 </body>
 </html>
