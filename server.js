@@ -972,8 +972,8 @@ app.get('/api/entries', async (req, res) => {
   // Exclude archived entries unless caller opts in (page7 uses include_archived=true)
   if (req.query.include_archived !== 'true') clauses.push('archived = 0');
 
-  // When a user is logged in, show their entries plus any anonymous entries from the same browser.
-  // When no session is available, fall back to anonymous entries from the current browser so work remains visible.
+  // When a user is logged in, show their entries and any anonymous entries that were saved from the same browser.
+  // If a user is not signed in, fall back to anonymous entries from the current browser.
   if (user && published !== 'true') {
     clauses.push('(user_id = ? OR (user_id IS NULL AND browser_id = ?))');
     params.push(user.userId, browserId);
@@ -981,6 +981,11 @@ app.get('/api/entries', async (req, res) => {
     clauses.push('user_id IS NULL');
     clauses.push('browser_id = ?');
     params.push(browserId);
+  }
+
+  if (user && published !== 'true') {
+    clauses.push('(user_id = ? OR user_id IS NULL)');
+    params.push(user.userId);
   }
 
   if (source) { clauses.push('source = ?'); params.push(source); }
@@ -1025,7 +1030,10 @@ app.post('/api/entries', async (req, res) => {
   const userId = user ? user.userId : null;
 
   try {
-    if (userId) await migrateAnonymousEntriesToUser(userId, browserId);
+    if (userId) {
+      await migrateAnonymousEntriesToUser(userId, browserId);
+      await dbRun('UPDATE entries SET user_id = ? WHERE user_id IS NULL AND (browser_id = ? OR browser_id = "") AND created_at <= ?', [userId, browserId, createdAt]);
+    }
     await dbRun(sql, [autoTitle, content, timestamp, createdAt, userId, entrySource, browserId]);
     const row = await dbGet(
       userId === null
