@@ -150,22 +150,12 @@
     let allEntries = [];
 
     async function init() {
-      // Check session and show welcome
-      try {
-        const sr = await fetch('/api/auth/session', { credentials: 'same-origin' });
-        const session = await sr.json();
-        const welcome = document.getElementById('db-welcome');
-        if (session.authenticated) {
-          welcome.innerHTML = `<div style="background:#f0f7ee;border:1px solid #a8d5a2;border-radius:8px;padding:12px 16px;color:#2e6b28;font-weight:bold;">
-            Welcome back, ${escapeHtml(session.username)}! These are all your permanently saved entries.
-          </div>`;
-        } else {
-          welcome.innerHTML = `<div style="background:#fff8f0;border:2px solid #e8c99a;border-radius:8px;padding:12px 16px;text-align:center;">
-            <p style="margin:0 0 8px;color:#5a3e28;font-weight:bold;">Sign in to see your own saved entries</p>
-            <a href="/login" style="background:#c8a97e;color:#fff;padding:8px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Log In / Sign Up</a>
-          </div>`;
-        }
-      } catch { /* ignore */ }
+      const welcome = document.getElementById('db-welcome');
+      if (welcome) {
+        welcome.innerHTML = `<div style="background:#f0f7ee;border:1px solid #a8d5a2;border-radius:8px;padding:12px 16px;color:#2e6b28;font-weight:bold;">
+          Public database view. Browse every saved entry without logging in.
+        </div>`;
+      }
       await loadAll();
     }
 
