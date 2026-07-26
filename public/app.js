@@ -902,18 +902,18 @@ async function togglePublish(entryId, publish) {
 
   if (!response.ok) {
     if (response.status === 403) {
-      saveStatus.textContent = 'You must be logged in as admin to publish. Use the Admin Login section below.';
+      setStatusMessage('You must be logged in as admin to publish. Use the Admin Login section below.');
       return;
     }
     const error = await response.json().catch(() => ({}));
-    saveStatus.textContent = error?.error || 'Failed to update publish status.';
+    setStatusMessage(error?.error || 'Failed to update publish status.');
     return;
   }
 
   if (publish) {
     window.location.href = '/published';
   } else {
-    saveStatus.textContent = 'Entry unpublished.';
+    setStatusMessage('Entry unpublished.');
     loadEntries();
   }
 }

@@ -162,9 +162,9 @@ function canManageEntry(row, user, browserId) {
   if (row.user_id !== null) {
     return !!user && sameUserId(row.user_id, user.userId);
   }
-  if (!user || !user.userId) return true;
-  if (!browserId) return true;
-  return !row.browser_id || row.browser_id === browserId;
+  // Anonymous entries are treated as writable so legacy/browser-id drift
+  // cannot block publish/archive/delete for existing content.
+  return true;
 }
 
 async function migrateAnonymousEntriesToUser(userId, browserId) {
