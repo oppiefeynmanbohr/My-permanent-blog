@@ -1349,6 +1349,23 @@ function getSavedCredentials() {
   return { savedUser, savedPassword };
 }
 
+function persistSavedBrowserCredentials(username, password) {
+  const safeUser = String(username || '').trim();
+  const safePassword = String(password || '');
+  if (safeUser) localStorage.setItem('blog_username', safeUser);
+  if (safePassword) {
+    localStorage.setItem('blog_saved_password', safePassword);
+    localStorage.setItem('blog_password', safePassword);
+  }
+  if (safeUser || safePassword) {
+    const expiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+    document.cookie = `blog_username=${encodeURIComponent(safeUser)}; expires=${expiry}; path=/; SameSite=Lax`;
+    if (safePassword) {
+      document.cookie = `blog_saved_password=${encodeURIComponent(safePassword)}; expires=${expiry}; path=/; SameSite=Lax`;
+    }
+  }
+}
+
 async function ensureAuthenticatedSession() {
   try {
     const sessionResp = await fetch('/api/auth/session', { credentials: 'same-origin' });
@@ -1406,6 +1423,7 @@ async function tryStoredLoginFromBrowser() {
     localStorage.setItem('blog_saved_password', savedPassword);
     localStorage.setItem('blog_password', savedPassword);
     localStorage.setItem('blog_browser_id', browserId);
+    persistSavedBrowserCredentials(data.username || savedUser, savedPassword);
     return true;
   } catch {
     return false;
@@ -1417,8 +1435,8 @@ function applyAuthState(username, userId) {
   localStorage.setItem('blog_logged_in', '1');
   localStorage.setItem('blog_username', username);
   localStorage.setItem('blog_user_id', String(userId || ''));
-  const expiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
-  document.cookie = `blog_username=${encodeURIComponent(username)}; expires=${expiry}; path=/; SameSite=Lax`;
+  const savedPassword = localStorage.getItem('blog_saved_password') || localStorage.getItem('blog_password') || '';
+  persistSavedBrowserCredentials(username, savedPassword);
   if (userAccountBar) userAccountBar.style.display = 'flex';
   if (userGreeting) userGreeting.textContent = `Logged in as ${username}`;
   if (userLoginPrompt) userLoginPrompt.style.display = 'none';
