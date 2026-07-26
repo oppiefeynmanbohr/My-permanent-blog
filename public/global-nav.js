@@ -35,8 +35,6 @@
     { href: '/resume', label: 'Resume' },
     { href: '/alarm', label: 'Alarm' },
     { href: '/calculator.html', label: 'Calculator' },
-    { href: '/admin', label: 'Admin' },
-    { href: '/login', label: 'Login' }
   ];
 
   var currentPath = window.location.pathname || '/';
