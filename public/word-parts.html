@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Word Parts | MyPermanentBlog</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: "Book Antiqua", Georgia, serif;
+      background: #f7f3ea;
+      color: #243447;
+    }
+
+    .word-parts-shell {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 18px 40px;
+    }
+
+    .word-parts-header {
+      background: linear-gradient(135deg, #3f4f70, #5a6d98);
+      color: white;
+      border-radius: 16px;
+      padding: 24px 28px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .word-parts-header h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+    }
+
+    .word-parts-header p {
+      margin: 0;
+      opacity: 0.95;
+      max-width: 760px;
+      line-height: 1.6;
+    }
+
+    .word-parts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 22px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .card h2, .card h3 {
+      color: #304a6d;
+      margin-top: 0;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .controls input, .controls select {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #d6c9a8;
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .controls button {
+      padding: 10px 14px;
+      border: none;
+      border-radius: 8px;
+      background: #304a6d;
+      color: white;
+      cursor: pointer;
+    }
+
+    .results {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .entry {
+      border: 1px solid #e4dccb;
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: #fcfaf6;
+    }
+
+    .entry .part {
+      font-weight: 700;
+      color: #304a6d;
+      font-size: 1.05rem;
+      margin-bottom: 4px;
+    }
+
+    .entry .meaning {
+      margin: 4px 0;
+      color: #4b5a6b;
+      line-height: 1.6;
+    }
+
+    .entry .origin {
+      font-size: 0.92rem;
+      color: #7b6a4f;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 20px;
+      color: #304a6d;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    @media (max-width: 800px) {
+      .word-parts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="word-parts-shell">
+    <header class="word-parts-header">
+      <h1>Latin and Greek Word Parts</h1>
+      <p>This reference page collects common prefixes and suffixes drawn from Latin and Greek, with concise meanings and simple examples so they are easier to recognize in academic and literary vocabulary.</p>
+    </header>
+
+    <div class="word-parts-grid">
+      <section class="card">
+        <h2>Find a word part</h2>
+        <div class="controls">
+          <input id="part-search" type="text" placeholder="Search for a prefix or suffix" />
+          <select id="part-type">
+            <option value="all">All parts</option>
+            <option value="prefix">Prefix</option>
+            <option value="suffix">Suffix</option>
+          </select>
+          <button id="search-btn" type="button">Search</button>
+        </div>
+        <div id="results" class="results"></div>
+      </section>
+
+      <section class="card">
+        <h2>Common reference list</h2>
+        <div class="results" id="reference-list"></div>
+        <a class="back-link" href="/page1">← Back to the blog</a>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const parts = [
+      { part: 'anti-', type: 'prefix', meaning: 'against; opposite of', origin: 'Greek', example: 'antibiotic = against life' },
+      { part: 'bio-', type: 'prefix', meaning: 'life', origin: 'Greek', example: 'biology = study of life' },
+      { part: 'geo-', type: 'prefix', meaning: 'earth', origin: 'Greek', example: 'geology = study of the earth' },
+      { part: 'hydro-', type: 'prefix', meaning: 'water', origin: 'Greek', example: 'hydraulic = moved by water' },
+      { part: 'micro-', type: 'prefix', meaning: 'small', origin: 'Greek', example: 'microscope = instrument for seeing small things' },
+      { part: 'macro-', type: 'prefix', meaning: 'large; great', origin: 'Greek', example: 'macroscopic = visible to the naked eye' },
+      { part: 'multi-', type: 'prefix', meaning: 'many', origin: 'Latin', example: 'multilingual = using many languages' },
+      { part: 'pre-', type: 'prefix', meaning: 'before', origin: 'Latin', example: 'preview = view before' },
+      { part: 'post-', type: 'prefix', meaning: 'after', origin: 'Latin', example: 'postscript = writing after' },
+      { part: 'sub-', type: 'prefix', meaning: 'under; below', origin: 'Latin', example: 'submarine = under the sea' },
+      { part: 'super-', type: 'prefix', meaning: 'above; over', origin: 'Latin', example: 'superior = higher' },
+      { part: 'trans-', type: 'prefix', meaning: 'across; through', origin: 'Latin', example: 'transport = carry across' },
+      { part: 'inter-', type: 'prefix', meaning: 'between; among', origin: 'Latin', example: 'international = between nations' },
+      { part: 'intra-', type: 'prefix', meaning: 'within', origin: 'Latin', example: 'intracellular = within a cell' },
+      { part: 'extra-', type: 'prefix', meaning: 'outside', origin: 'Latin', example: 'extracurricular = outside the curriculum' },
+      { part: 'tele-', type: 'prefix', meaning: 'distant; far', origin: 'Greek', example: 'telephone = sound from afar' },
+      { part: 'photo-', type: 'prefix', meaning: 'light', origin: 'Greek', example: 'photograph = writing with light' },
+      { part: 'chron-', type: 'prefix', meaning: 'time', origin: 'Greek', example: 'chronology = arrangement of time' },
+      { part: 'auto-', type: 'prefix', meaning: 'self', origin: 'Greek', example: 'automatic = acting by itself' },
+      { part: 'circum-', type: 'prefix', meaning: 'around', origin: 'Latin', example: 'circumference = distance around' },
+      { part: '-ology', type: 'suffix', meaning: 'study of; science of', origin: 'Greek', example: 'biology = study of life' },
+      { part: '-phobia', type: 'suffix', meaning: 'fear of', origin: 'Greek', example: 'claustrophobia = fear of enclosed spaces' },
+      { part: '-graph', type: 'suffix', meaning: 'writing; recording', origin: 'Greek', example: 'autograph = one’s own writing' },
+      { part: '-gram', type: 'suffix', meaning: 'thing written; record', origin: 'Greek', example: 'telegram = message sent over distance' },
+      { part: '-meter', type: 'suffix', meaning: 'measure', origin: 'Greek', example: 'thermometer = measure of heat' },
+      { part: '-scope', type: 'suffix', meaning: 'instrument for seeing or examining', origin: 'Greek', example: 'microscope = instrument for seeing small things' },
+      { part: '-ic', type: 'suffix', meaning: 'relating to; characteristic of', origin: 'Greek', example: 'electric = relating to electricity' },
+      { part: '-ism', type: 'suffix', meaning: 'belief; practice; condition', origin: 'Greek', example: 'capitalism = economic system' },
+      { part: '-ist', type: 'suffix', meaning: 'one who practices or studies', origin: 'Greek', example: 'scientist = one who studies science' },
+      { part: '-ity', type: 'suffix', meaning: 'state or quality of', origin: 'Latin', example: 'activity = state of acting' },
+      { part: '-ous', type: 'suffix', meaning: 'full of; having the quality of', origin: 'Latin', example: 'dangerous = full of danger' },
+      { part: '-less', type: 'suffix', meaning: 'without', origin: 'English', example: 'careless = without care' },
+      { part: '-able', type: 'suffix', meaning: 'capable of; suitable for', origin: 'Latin', example: 'readable = capable of being read' },
+      { part: '-tion', type: 'suffix', meaning: 'act or process of', origin: 'Latin', example: 'creation = the act of creating' },
+      { part: '-logy', type: 'suffix', meaning: 'study of', origin: 'Greek', example: 'psychology = study of the mind' },
+      { part: '-philic', type: 'suffix', meaning: 'loving; attracted to', origin: 'Greek', example: 'hydrophilic = attracted to water' },
+      { part: '-phobic', type: 'suffix', meaning: 'hating; avoiding', origin: 'Greek', example: 'acrophobic = afraid of heights' }
+    ];
+
+    const resultsEl = document.getElementById('results');
+    const referenceListEl = document.getElementById('reference-list');
+    const searchInput = document.getElementById('part-search');
+    const typeSelect = document.getElementById('part-type');
+    const searchButton = document.getElementById('search-btn');
+
+    function renderEntries(list) {
+      if (!list.length) {
+        resultsEl.innerHTML = '<div class="entry"><div class="meaning">No matching word parts found.</div></div>';
+        return;
+      }
+
+      resultsEl.innerHTML = list.map((item) => `
+        <div class="entry">
+          <div class="part">${item.part}</div>
+          <div class="meaning"><strong>Meaning:</strong> ${item.meaning}</div>
+          <div class="meaning"><strong>Example:</strong> ${item.example}</div>
+          <div class="origin">Origin: ${item.origin}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderReferenceList() {
+      referenceListEl.innerHTML = parts.map((item) => `
+        <div class="entry">
+          <div class="part">${item.part}</div>
+          <div class="meaning"><strong>Meaning:</strong> ${item.meaning}</div>
+          <div class="meaning"><strong>Example:</strong> ${item.example}</div>
+          <div class="origin">Origin: ${item.origin}</div>
+        </div>
+      `).join('');
+    }
+
+    function searchParts() {
+      const query = searchInput.value.trim().toLowerCase();
+      const type = typeSelect.value;
+      const filtered = parts.filter((item) => {
+        const matchesType = type === 'all' || item.type === type;
+        const matchesQuery = !query || item.part.toLowerCase().includes(query) || item.meaning.toLowerCase().includes(query) || item.example.toLowerCase().includes(query);
+        return matchesType && matchesQuery;
+      });
+      renderEntries(filtered);
+    }
+
+    searchButton.addEventListener('click', searchParts);
+    searchInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        searchParts();
+      }
+    });
+    typeSelect.addEventListener('change', searchParts);
+
+    renderReferenceList();
+    renderEntries(parts.slice(0, 6));
+  </script>
+</body>
+</html>

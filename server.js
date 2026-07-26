@@ -1533,6 +1533,10 @@ app.get('/encyclopedia', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'encyclopedia.html'));
 });
 
+app.get('/word-parts', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'word-parts.html'));
+});
+
 app.get('/support', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'support.html'));
 });
