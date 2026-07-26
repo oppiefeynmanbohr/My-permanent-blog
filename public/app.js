@@ -850,8 +850,8 @@ async function archiveEntry(entryId) {
 }
 
 async function deleteEntry(entryId) {
-  const confirmation = prompt('Type "delete permanently" to confirm deletion:');
-  if (!confirmation || confirmation.trim().toLowerCase() !== 'delete permanently') {
+  const confirmation = window.confirm('Delete this entry permanently?');
+  if (!confirmation) {
     saveStatus.textContent = 'Deletion cancelled.';
     return;
   }
