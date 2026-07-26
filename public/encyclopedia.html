@@ -132,6 +132,23 @@
       border-color: #123b70;
     }
 
+    .related-terms {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .related-terms button {
+      border: 1px solid #d8c69b;
+      background: #fffdf8;
+      color: #123b70;
+      padding: 7px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
     .article-entry {
       display: none;
     }
@@ -191,6 +208,7 @@
       <section id="encyclopedia-article" class="card">
         <div class="term-index" id="term-index"></div>
         <div id="encyclopedia-content"></div>
+        <div id="related-topics" class="related-terms"></div>
         <a class="back-link" href="/page1">← Back to the blog</a>
       </section>
 
@@ -212,6 +230,7 @@
     const searchStatus = document.getElementById('encyclopedia-search-status');
     const termIndex = document.getElementById('term-index');
     const content = document.getElementById('encyclopedia-content');
+    const relatedTopics = document.getElementById('related-topics');
 
     const entries = [
       {
@@ -227,7 +246,8 @@
           "Harvard University Department of Physics (2024) Relativity and Cosmology."
         ],
         keywords: ['relativity', 'spacetime', 'gravity', 'einstein', 'physics'],
-        searchTerms: ['space', 'time', 'motion', 'light', 'speed', 'observer', 'curvature', 'black hole', 'black holes', 'gps', 'satellite', 'astronomy', 'cosmos', 'universe', 'mass', 'energy', 'geometry', 'planetary', 'nebula']
+        searchTerms: ['space', 'time', 'motion', 'light', 'speed', 'observer', 'curvature', 'black hole', 'black holes', 'gps', 'satellite', 'astronomy', 'cosmos', 'universe', 'mass', 'energy', 'geometry', 'planetary', 'nebula'],
+        related: ['quantum', 'cosmology', 'electromagnetism']
       },
       {
         term: 'quantum',
@@ -241,7 +261,8 @@
           'Harvard University Department of Physics (2024) Quantum Physics.'
         ],
         keywords: ['quantum', 'mechanics', 'particles', 'waves', 'physics'],
-        searchTerms: ['atom', 'electron', 'photon', 'nucleus', 'molecule', 'microscopic', 'probability', 'uncertainty', 'laser', 'semiconductor', 'chemistry', 'superconductors', 'measurement', 'spin', 'energy level', 'subatomic', 'field']
+        searchTerms: ['atom', 'electron', 'photon', 'nucleus', 'molecule', 'microscopic', 'probability', 'uncertainty', 'laser', 'semiconductor', 'chemistry', 'superconductors', 'measurement', 'spin', 'energy level', 'subatomic', 'field'],
+        related: ['relativity', 'electromagnetism', 'evolution']
       },
       {
         term: 'cosmology',
@@ -255,7 +276,40 @@
           'Harvard University Center for Astrophysics (2024) Cosmology and Astrophysics.'
         ],
         keywords: ['cosmology', 'universe', 'big bang', 'galaxies', 'astronomy'],
-        searchTerms: ['expansion', 'dark matter', 'dark energy', 'galaxy', 'stars', 'star', 'cosmic', 'radiation', 'astrophysics', 'observatory', 'telescope', 'nebulae', 'luminous', 'singularity', 'multiverse', 'evolution']
+        searchTerms: ['expansion', 'dark matter', 'dark energy', 'galaxy', 'stars', 'star', 'cosmic', 'radiation', 'astrophysics', 'observatory', 'telescope', 'nebulae', 'luminous', 'singularity', 'multiverse', 'evolution'],
+        related: ['relativity', 'evolution', 'quantum']
+      },
+      {
+        term: 'evolution',
+        label: 'Evolution',
+        title: 'Evolution by natural selection',
+        intro: 'Evolution is the process by which populations of living things change over generations through variation, inheritance, and selection.',
+        body: 'Natural selection explains how traits that improve survival and reproduction become more common over time, leading to the remarkable diversity of life seen across the planet.',
+        details: 'The theory, developed from the work of Charles Darwin and later reinforced by genetics, connects biology, paleontology, and ecology into a single framework for understanding life.',
+        references: [
+          'Darwin, C. (1859) On the Origin of Species.',
+          'Mayr, E. (2001) What Evolution Is.',
+          'National Academy of Sciences (2024) Evolution and the Tree of Life.'
+        ],
+        keywords: ['evolution', 'biology', 'natural selection', 'species', 'darwin'],
+        searchTerms: ['adaptation', 'genetics', 'mutation', 'inheritance', 'fossils', 'ancestry', 'organisms', 'population', 'ecology', 'biodiversity'],
+        related: ['quantum', 'cosmology', 'relativity']
+      },
+      {
+        term: 'electromagnetism',
+        label: 'Electromagnetism',
+        title: 'Electromagnetism',
+        intro: 'Electromagnetism is the branch of physics that describes the relationship between electric and magnetic fields.',
+        body: 'It explains how light travels, how electric motors operate, and how modern communication systems such as radio, television, and wireless networks function.',
+        details: 'Maxwell’s equations brought electricity and magnetism into a unified theory, transforming both science and technology in the nineteenth and twentieth centuries.',
+        references: [
+          'Maxwell, J. C. (1865) A Dynamical Theory of the Electromagnetic Field.',
+          'Feynman, R. (2011) The Feynman Lectures on Physics.',
+          'MIT OpenCourseWare (2024) Electromagnetism.'
+        ],
+        keywords: ['electromagnetism', 'light', 'magnetic', 'electric', 'fields'],
+        searchTerms: ['charge', 'current', 'wave', 'radio', 'signal', 'circuit', 'induction', 'generator', 'antenna', 'photon', 'spectrum'],
+        related: ['relativity', 'quantum', 'cosmology']
       }
     ];
 
@@ -268,6 +322,30 @@
         button.dataset.term = entry.term;
         button.addEventListener('click', () => showEntry(entry.term));
         termIndex.appendChild(button);
+      });
+    }
+
+    function renderRelatedTopics(entry) {
+      relatedTopics.innerHTML = '';
+      if (!entry.related || !entry.related.length) {
+        return;
+      }
+
+      const heading = document.createElement('strong');
+      heading.textContent = 'Related topics:';
+      relatedTopics.appendChild(heading);
+
+      entry.related.forEach((relatedTerm) => {
+        const relatedEntry = entries.find((item) => item.term === relatedTerm);
+        if (!relatedEntry) {
+          return;
+        }
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = relatedEntry.label;
+        button.addEventListener('click', () => showEntry(relatedEntry.term));
+        relatedTopics.appendChild(button);
       });
     }
 
@@ -289,6 +367,7 @@
       termIndex.querySelectorAll('button').forEach((button) => {
         button.classList.toggle('active', button.dataset.term === entry.term);
       });
+      renderRelatedTopics(entry);
       searchStatus.textContent = `Viewing ${entry.title}.`;
     }
 
@@ -308,7 +387,8 @@
           entry.details,
           entry.references.join(' '),
           entry.keywords.join(' '),
-          entry.searchTerms.join(' ')
+          entry.searchTerms.join(' '),
+          entry.related.join(' ')
         ].join(' ').toLowerCase();
         const queryTokens = query.split(/\s+/).filter(Boolean);
         return haystack.includes(query) || queryTokens.some((token) => haystack.includes(token));
@@ -320,8 +400,9 @@
       } else {
         content.innerHTML = `
           <h2>No matching entry</h2>
-          <p class="lead">No reference entries matched “${query}”. Try another topic such as relativity, quantum, or cosmology.</p>
+          <p class="lead">No reference entries matched “${query}”. Try another topic such as relativity, quantum, cosmology, evolution, or electromagnetism.</p>
         `;
+        relatedTopics.innerHTML = '';
         termIndex.querySelectorAll('button').forEach((button) => button.classList.remove('active'));
         searchStatus.textContent = `No reference entries matched “${query}”.`;
       }
