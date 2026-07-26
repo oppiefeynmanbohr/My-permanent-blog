@@ -956,8 +956,6 @@ app.put('/api/drafts', async (req, res) => {
 
 app.get('/api/entries', async (req, res) => {
   cleanupAuthState();
-  const user = await getAuthenticatedUser(req, res);
-  const browserId = getOrCreateClientId(req, res);
   const search = req.query.search || '';
   const date = req.query.date || '';
   const published = req.query.published;
@@ -969,17 +967,8 @@ app.get('/api/entries', async (req, res) => {
   const params = [];
   const clauses = ['deleted = 0'];
 
-  // Preserve entries by default unless explicitly deleted; only archive hides them from the main lists.
+  // Show every undeleted entry in the archive by default. Login is no longer required to browse them.
   if (req.query.include_archived !== 'true') clauses.push('archived = 0');
-
-  if (user && published !== 'true') {
-    clauses.push('(user_id = ? OR user_id IS NULL OR browser_id = ?)');
-    params.push(user.userId, browserId);
-  } else if (!user && published !== 'true') {
-    clauses.push('user_id IS NULL');
-    clauses.push('browser_id = ?');
-    params.push(browserId);
-  }
 
   if (source) { clauses.push('source = ?'); params.push(source); }
   if (calmonth) { clauses.push("strftime('%Y-%m', created_at) = ?"); params.push(calmonth); }
@@ -1044,15 +1033,17 @@ app.post('/api/entries', async (req, res) => {
 app.patch('/api/entries/:id/content', async (req, res) => {
   cleanupAuthState();
   const user = await getAuthenticatedUser(req, res);
-  if (!user) return res.status(401).json({ error: 'Login required.' });
+  const browserId = getOrCreateClientId(req, res);
   const id = Number(req.params.id);
   const content = String(req.body.content || '').trim();
   if (!id) return res.status(400).json({ error: 'Invalid entry ID.' });
   if (!content) return res.status(400).json({ error: 'Content is required.' });
   try {
-    const row = await dbGet('SELECT id, user_id FROM entries WHERE id = ? AND deleted = 0', [id]);
+    const row = await dbGet('SELECT id, user_id, browser_id FROM entries WHERE id = ? AND deleted = 0', [id]);
     if (!row) return res.status(404).json({ error: 'Entry not found.' });
-    if (row.user_id !== user.userId) return res.status(403).json({ error: 'You can only edit your own entries.' });
+    if (row.user_id !== (user ? user.userId : null) && !(row.user_id === null && row.browser_id === browserId)) {
+      return res.status(403).json({ error: 'You can only edit your own entries.' });
+    }
     await dbRun('UPDATE entries SET content = ? WHERE id = ?', [content, id]);
     res.json({ success: true });
   } catch (err) {
@@ -1064,7 +1055,7 @@ app.patch('/api/entries/:id/publish', async (req, res) => {
   cleanupAuthState();
   const isAdmin = isAdminAuthenticated(req);
   const user = await getAuthenticatedUser(req, res);
-  if (!isAdmin && !user) return res.status(403).json({ error: 'Not authorized.' });
+  const browserId = getOrCreateClientId(req, res);
 
   const { publish } = req.body;
   const id = Number(req.params.id);
@@ -1075,7 +1066,7 @@ app.patch('/api/entries/:id/publish', async (req, res) => {
   try {
     const row = await dbGet('SELECT id, user_id, browser_id FROM entries WHERE id = ? AND deleted = 0', [id]);
     if (!row) return res.status(404).json({ error: 'Entry not found.' });
-    if (!isAdmin && row.user_id !== user.userId && !(row.user_id === null && row.browser_id === getBrowserIdFromRequest(req))) {
+    if (!isAdmin && row.user_id !== (user ? user.userId : null) && !(row.user_id === null && row.browser_id === browserId)) {
       return res.status(403).json({ error: 'You can only publish your own entries.' });
     }
     await dbRun('UPDATE entries SET published = ? WHERE id = ?', [publishedValue, id]);
@@ -1091,11 +1082,11 @@ app.patch('/api/entries/:id/archive', async (req, res) => {
   if (!id) return res.status(400).json({ error: 'Invalid entry ID.' });
   const isAdmin = isAdminAuthenticated(req);
   const user = await getAuthenticatedUser(req, res);
-  if (!isAdmin && !user) return res.status(403).json({ error: 'Authentication required.' });
+  const browserId = getOrCreateClientId(req, res);
   try {
     const row = await dbGet('SELECT id, user_id, browser_id FROM entries WHERE id = ? AND deleted = 0', [id]);
     if (!row) return res.status(404).json({ error: 'Entry not found.' });
-    if (!isAdmin && row.user_id !== user.userId && !(row.user_id === null && row.browser_id === getBrowserIdFromRequest(req))) {
+    if (!isAdmin && row.user_id !== (user ? user.userId : null) && !(row.user_id === null && row.browser_id === browserId)) {
       return res.status(403).json({ error: 'You can only archive your own entries.' });
     }
     await dbRun('UPDATE entries SET archived = 1 WHERE id = ?', [id]);
@@ -1112,15 +1103,17 @@ app.delete('/api/entries/:id', async (req, res) => {
 
   const isAdmin = isAdminAuthenticated(req);
   const user = await getAuthenticatedUser(req, res);
-  if (!isAdmin && !user) return res.status(403).json({ error: 'Authentication required to delete entries.' });
+  const browserId = getOrCreateClientId(req, res);
 
   try {
     // Only allow users to delete their own entries; admins can delete any
     let row;
     if (!isAdmin) {
-      row = await dbGet('SELECT id, user_id FROM entries WHERE id = ? AND deleted = 0', [id]);
+      row = await dbGet('SELECT id, user_id, browser_id FROM entries WHERE id = ? AND deleted = 0', [id]);
       if (!row) return res.status(404).json({ error: 'Entry not found.' });
-      if (row.user_id !== user.userId) return res.status(403).json({ error: 'You can only delete your own entries.' });
+      if (row.user_id !== (user ? user.userId : null) && !(row.user_id === null && row.browser_id === browserId)) {
+        return res.status(403).json({ error: 'You can only delete your own entries.' });
+      }
     }
     await dbRun('UPDATE entries SET deleted = 1 WHERE id = ?', [id]);
     res.json({ success: true });
