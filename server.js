@@ -361,9 +361,6 @@ app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(loadUserSession);
 
-app.get(['/calculator', '/calculator.html'], (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'calculator.html'));
-});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
