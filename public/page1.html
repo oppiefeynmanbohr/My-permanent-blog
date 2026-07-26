@@ -296,10 +296,10 @@
           : (rawTarget && rawTarget.parentElement ? rawTarget.parentElement : null);
         if (!target || !target.closest) return;
 
-        var btn = target.closest('.delete-button');
+        var btn = target.closest('.delete-button, .archive-button, .publish-button');
         if (!btn) {
           var maybeButton = target.closest('button[data-id]');
-          if (maybeButton && /delete/i.test((maybeButton.textContent || '').trim())) {
+          if (maybeButton && /(delete|publish|unpublish|move to database)/i.test((maybeButton.textContent || '').trim())) {
             btn = maybeButton;
           }
         }
@@ -307,34 +307,92 @@
 
         event.preventDefault();
         event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
         var entryId = btn.getAttribute('data-id');
         if (!entryId) return;
 
-        setStatus('Delete clicked. Awaiting confirmation...');
+        var label = (btn.textContent || '').trim();
+        var isDelete = btn.classList.contains('delete-button') || /delete/i.test(label);
+        var isArchive = btn.classList.contains('archive-button') || /move to database/i.test(label);
+        var isPublish = btn.classList.contains('publish-button') || /(publish|unpublish)/i.test(label);
 
-        var ok = window.confirm('Delete this entry permanently?');
-        if (!ok) {
-          setStatus('Deletion cancelled.');
+        if (!isDelete && !isArchive && !isPublish) return;
+
+        if (isDelete) {
+          setStatus('Delete clicked. Awaiting confirmation...');
+          var ok = window.confirm('Delete this entry permanently?');
+          if (!ok) {
+            setStatus('Deletion cancelled.');
+            return;
+          }
+
+          setStatus('Deleting...');
+          try {
+            var delResp = await fetch('/api/entries/' + encodeURIComponent(entryId), {
+              method: 'DELETE',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({})
+            });
+            var delData = await delResp.json().catch(function () { return {}; });
+            if (!delResp.ok) {
+              setStatus(delData.error || 'Failed to delete entry.');
+              return;
+            }
+            setStatus('Entry deleted successfully.');
+            window.location.reload();
+          } catch (err) {
+            setStatus('Network error. Could not delete entry.');
+          }
           return;
         }
 
-        setStatus('Deleting...');
-        try {
-          var resp = await fetch('/api/entries/' + encodeURIComponent(entryId), {
-            method: 'DELETE',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
-          });
-          var data = await resp.json().catch(function () { return {}; });
-          if (!resp.ok) {
-            setStatus(data.error || 'Failed to delete entry.');
-            return;
+        if (isArchive) {
+          setStatus('Moving entry to Database...');
+          try {
+            var arcResp = await fetch('/api/entries/' + encodeURIComponent(entryId) + '/archive', {
+              method: 'PATCH',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({})
+            });
+            var arcData = await arcResp.json().catch(function () { return {}; });
+            if (!arcResp.ok) {
+              setStatus(arcData.error || 'Could not move entry to Database.');
+              return;
+            }
+            setStatus('Entry moved to Database.');
+            window.location.reload();
+          } catch (err) {
+            setStatus('Network error. Could not move entry.');
           }
-          setStatus('Entry deleted successfully.');
-          window.location.reload();
-        } catch (err) {
-          setStatus('Network error. Could not delete entry.');
+          return;
+        }
+
+        if (isPublish) {
+          var shouldPublish = !/unpublish/i.test(label);
+          setStatus(shouldPublish ? 'Publishing entry...' : 'Unpublishing entry...');
+          try {
+            var pubResp = await fetch('/api/entries/' + encodeURIComponent(entryId) + '/publish', {
+              method: 'PATCH',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ publish: shouldPublish })
+            });
+            var pubData = await pubResp.json().catch(function () { return {}; });
+            if (!pubResp.ok) {
+              setStatus(pubData.error || 'Failed to update publish status.');
+              return;
+            }
+            setStatus(shouldPublish ? 'Entry published.' : 'Entry unpublished.');
+            if (shouldPublish) {
+              window.location.href = '/published';
+              return;
+            }
+            window.location.reload();
+          } catch (err) {
+            setStatus('Network error. Could not update publish status.');
+          }
         }
       }, true);
     })();
