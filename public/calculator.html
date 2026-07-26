@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TI-84 Style Calculator</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { background: linear-gradient(135deg, #f7f0e6, #efe0c7); }
+    .calc-shell { max-width: 920px; margin: 24px auto; padding: 20px; }
+    .calc-card { background: #111827; color: #f9fafb; border-radius: 22px; padding: 20px; box-shadow: 0 18px 50px rgba(0,0,0,0.25); }
+    .calc-screen { background: #dce8c7; color: #1f2937; border-radius: 14px; padding: 16px; min-height: 92px; margin-bottom: 14px; font-family: "Courier New", monospace; }
+    .calc-screen .expression { font-size: 1rem; color: #374151; word-break: break-all; }
+    .calc-screen .result { font-size: 2rem; font-weight: bold; margin-top: 8px; }
+    .calc-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .calc-btn { border: none; border-radius: 10px; padding: 14px; font-size: 1rem; font-weight: 700; cursor: pointer; background: #e5e7eb; color: #111827; }
+    .calc-btn:hover { filter: brightness(0.96); }
+    .calc-btn.operator { background: #f59e0b; color: #fff; }
+    .calc-btn.func { background: #3b82f6; color: #fff; }
+    .calc-btn.clear { background: #ef4444; color: #fff; }
+    .calc-btn.equal { background: #10b981; color: #fff; }
+    .calc-btn.small { font-size: 0.9rem; padding: 12px; }
+    .calc-hint { margin-top: 16px; color: #e5e7eb; font-size: 0.95rem; }
+    .calc-row { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+    .calc-pill { background: rgba(255,255,255,0.12); padding: 8px 12px; border-radius: 999px; font-size: 0.9rem; }
+    @media (max-width: 720px) { .calc-grid { grid-template-columns: repeat(4, 1fr); } }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div class="header-top">
+        <div>
+          <h1>TI-84 Style Calculator</h1>
+          <p class="subtitle">Scientific calculator with keyboard-style controls</p>
+        </div>
+        <a class="support-button" href="/page1">Back to Blog</a>
+      </div>
+      <nav class="page-nav">
+        <a class="page-button" href="/page1">Blog Page 1</a>
+        <a class="page-button" href="/page2">Blog Page 2</a>
+        <a class="page-button" href="/page3">Blog Page 3</a>
+        <a class="page-button" href="/page5">Blog Page 5</a>
+        <a class="page-button" href="/page6">Blog Page 6</a>
+        <a class="page-button" href="/page7">Database</a>
+        <a class="page-button" href="/library">Library</a>
+        <a class="page-button" href="/dreamstate">Dream State</a>
+        <a class="page-button" href="/calendar-journal">Calendar</a>
+        <a class="page-button active" href="/calculator">Calculator</a>
+      </nav>
+    </header>
+
+    <div class="calc-shell">
+      <div class="calc-card">
+        <div class="calc-row">
+          <span class="calc-pill">Mode: Standard</span>
+          <span class="calc-pill">TI-84 inspired</span>
+          <span class="calc-pill">Expressions supported</span>
+        </div>
+        <div class="calc-screen">
+          <div id="calc-expression" class="expression">0</div>
+          <div id="calc-result" class="result">0</div>
+        </div>
+        <div class="calc-grid">
+          <button class="calc-btn clear" data-action="clear">AC</button>
+          <button class="calc-btn small" data-action="delete">DEL</button>
+          <button class="calc-btn func" data-action="sqrt">√</button>
+          <button class="calc-btn func" data-action="pi">π</button>
+          <button class="calc-btn func" data-action="percent">%</button>
+
+          <button class="calc-btn" data-value="7">7</button>
+          <button class="calc-btn" data-value="8">8</button>
+          <button class="calc-btn" data-value="9">9</button>
+          <button class="calc-btn operator" data-value="/">÷</button>
+          <button class="calc-btn func" data-action="power">x²</button>
+
+          <button class="calc-btn" data-value="4">4</button>
+          <button class="calc-btn" data-value="5">5</button>
+          <button class="calc-btn" data-value="6">6</button>
+          <button class="calc-btn operator" data-value="*">×</button>
+          <button class="calc-btn func" data-action="sin">sin</button>
+
+          <button class="calc-btn" data-value="1">1</button>
+          <button class="calc-btn" data-value="2">2</button>
+          <button class="calc-btn" data-value="3">3</button>
+          <button class="calc-btn operator" data-value="-">−</button>
+          <button class="calc-btn func" data-action="cos">cos</button>
+
+          <button class="calc-btn" data-value="0">0</button>
+          <button class="calc-btn" data-value=".">.</button>
+          <button class="calc-btn equal" data-action="equals">=</button>
+          <button class="calc-btn operator" data-value="+">+</button>
+          <button class="calc-btn func" data-action="tan">tan</button>
+        </div>
+        <div class="calc-hint">Tip: use the buttons above or type directly using + - * / and parentheses.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const expressionEl = document.getElementById('calc-expression');
+    const resultEl = document.getElementById('calc-result');
+    let expression = '0';
+
+    function updateDisplay() {
+      expressionEl.textContent = expression || '0';
+      try {
+        const safe = expression
+          .replace(/π/g, 'Math.PI')
+          .replace(/×/g, '*')
+          .replace(/÷/g, '/')
+          .replace(/√/g, 'Math.sqrt')
+          .replace(/%/g, '/100');
+        const result = Function(`"use strict"; return (${safe})`)();
+        resultEl.textContent = Number.isFinite(result) ? result.toString() : 'Error';
+      } catch {
+        resultEl.textContent = 'Error';
+      }
+    }
+
+    function appendValue(value) {
+      if (expression === '0') {
+        expression = value;
+      } else {
+        expression += value;
+      }
+      updateDisplay();
+    }
+
+    function handleAction(action) {
+      if (action === 'clear') {
+        expression = '0';
+        updateDisplay();
+        return;
+      }
+      if (action === 'delete') {
+        expression = expression.length <= 1 ? '0' : expression.slice(0, -1);
+        updateDisplay();
+        return;
+      }
+      if (action === 'equals') {
+        try {
+          const safe = expression
+            .replace(/π/g, 'Math.PI')
+            .replace(/×/g, '*')
+            .replace(/÷/g, '/')
+            .replace(/√/g, 'Math.sqrt');
+          const result = Function(`"use strict"; return (${safe})`)();
+          expression = Number.isFinite(result) ? String(result) : 'Error';
+          updateDisplay();
+        } catch {
+          expression = 'Error';
+          updateDisplay();
+        }
+        return;
+      }
+      if (action === 'sqrt') {
+        expression = expression === '0' ? '√(' : `${expression}√(`;
+        updateDisplay();
+        return;
+      }
+      if (action === 'power') {
+        expression = `${expression}^2`;
+        updateDisplay();
+        return;
+      }
+      if (action === 'pi') {
+        expression = expression === '0' ? 'π' : `${expression}π`;
+        updateDisplay();
+        return;
+      }
+      if (action === 'percent') {
+        expression = `${expression}%`;
+        updateDisplay();
+        return;
+      }
+      if (action === 'sin') {
+        expression = `${expression}sin(`;
+        updateDisplay();
+        return;
+      }
+      if (action === 'cos') {
+        expression = `${expression}cos(`;
+        updateDisplay();
+        return;
+      }
+      if (action === 'tan') {
+        expression = `${expression}tan(`;
+        updateDisplay();
+        return;
+      }
+    }
+
+    document.querySelectorAll('.calc-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const value = btn.getAttribute('data-value');
+        const action = btn.getAttribute('data-action');
+        if (value !== null) {
+          appendValue(value);
+        } else if (action) {
+          handleAction(action);
+        }
+      });
+    });
+
+    document.addEventListener('keydown', (event) => {
+      const key = event.key;
+      if (/^[0-9.()+\-*/]$/.test(key)) {
+        appendValue(key);
+        event.preventDefault();
+      } else if (key === 'Enter') {
+        handleAction('equals');
+        event.preventDefault();
+      } else if (key === 'Escape') {
+        handleAction('clear');
+        event.preventDefault();
+      } else if (key === 'Backspace') {
+        handleAction('delete');
+        event.preventDefault();
+      }
+    });
+
+    updateDisplay();
+  </script>
+</body>
+</html>

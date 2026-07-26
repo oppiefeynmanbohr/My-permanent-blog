@@ -40,7 +40,7 @@ const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
 const TWILIO_FROM_NUMBER = process.env.TWILIO_FROM_NUMBER || '';
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const SESSION_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
 const REMEMBER_ME_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
 const MFA_TTL_MS = 5 * 60 * 1000;
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -70,6 +70,9 @@ const pendingMfa = new Map();
 function hashPassword(password, salt) {
   return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha256').toString('hex');
 }
+function normalizeIdentifier(value) {
+  return String(value || '').trim().toLowerCase();
+}
 function isLegacyCodeOnlyUser(user) {
   return !user || !user.password_hash || !user.password_salt;
 }
@@ -80,24 +83,40 @@ function generateEmailCode() {
   for (let i = 0; i < 8; i++) code += chars[bytes[i] % chars.length];
   return code;
 }
-function createUserSession(res, userId, username, rememberMe = false) {
+function createUserSession(res, userId, username, rememberMe = false, browserId = '') {
   const token = crypto.randomBytes(32).toString('hex');
   const ttl = rememberMe ? REMEMBER_ME_TTL_MS : SESSION_TTL_MS;
   const expiresAt = Date.now() + ttl;
   const isProduction = process.env.NODE_ENV === 'production';
   const securePart = isProduction ? '; Secure' : '';
-  dbRun('INSERT OR REPLACE INTO user_sessions (token, user_id, username, expires_at) VALUES (?,?,?,?)',
-    [token, userId, username, expiresAt]);
+  dbRun('INSERT OR REPLACE INTO user_sessions (token, user_id, username, expires_at, browser_id) VALUES (?,?,?,?,?)',
+    [token, userId, username, expiresAt, browserId || '']);
   appendSetCookie(res, `user_sid=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${ttl / 1000}${securePart}`);
   return token;
+}
+
+async function refreshUserSession(req, res, row) {
+  if (!row) return null;
+  const ttl = REMEMBER_ME_TTL_MS;
+  const expiresAt = Date.now() + ttl;
+  try {
+    await dbRun('UPDATE user_sessions SET expires_at = ? WHERE token = ?', [expiresAt, req.cookies?.user_sid || '']);
+  } catch {}
+  return expiresAt;
 }
 function getUserFromRequest(req) {
   return req._userSession || null;
 }
 
+function getBrowserIdFromRequest(req) {
+  const cookies = parseCookies(req);
+  return cookies.client_id || '';
+}
+
 // Middleware: load user session from DB before each request
 async function loadUserSession(req, res, next) {
   const cookies = parseCookies(req);
+  req.cookies = cookies;
   const token = cookies['user_sid'];
   if (!token) { req._userSession = null; return next(); }
   try {
@@ -106,7 +125,8 @@ async function loadUserSession(req, res, next) {
       if (row) dbRun('DELETE FROM user_sessions WHERE token = ?', [token]);
       req._userSession = null;
     } else {
-      req._userSession = { userId: row.user_id, username: row.username };
+      req._userSession = { userId: row.user_id, username: row.username, browserId: row.browser_id || '' };
+      await refreshUserSession(req, res, row);
     }
   } catch { req._userSession = null; }
   next();
@@ -226,8 +246,14 @@ async function initDatabase() {
   }
 }
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(loadUserSession);
+
+app.get(['/calculator', '/calculator.html'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'calculator.html'));
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 function ensureJsonFile(filePath, defaultValue) {
@@ -503,7 +529,8 @@ app.post('/api/auth/signup', async (req, res) => {
       [username.trim(), email.trim().toLowerCase(), hash, salt, createdAt]
     );
     const newUser = await dbGet('SELECT id FROM users WHERE username = ?', [username.trim()]);
-    createUserSession(res, newUser.id, username.trim());
+    const browserId = getBrowserIdFromRequest(req);
+    createUserSession(res, newUser.id, username.trim(), true, browserId);
     res.status(201).json({ success: true, username: username.trim() });
   } catch (err) {
     console.error('Signup DB error:', err.message);
@@ -517,10 +544,10 @@ app.post('/api/auth/login', async (req, res) => {
   if (!username || !password) return res.status(400).json({ error: 'Username and password are required.' });
 
   try {
-    const identifier = username.trim();
+    const identifier = normalizeIdentifier(username);
     const user = await dbGet(
-      'SELECT * FROM users WHERE username = ? OR email = ?',
-      [identifier, identifier.toLowerCase()]
+      'SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?',
+      [identifier, identifier]
     );
     if (!user) return res.status(401).json({ error: 'No account found with that username or email.' });
     if (isLegacyCodeOnlyUser(user)) {
@@ -532,7 +559,8 @@ app.post('/api/auth/login', async (req, res) => {
     const hash = hashPassword(password, user.password_salt);
     if (hash !== user.password_hash) return res.status(401).json({ error: 'Invalid username or password.' });
 
-    createUserSession(res, user.id, user.username, !!rememberMe);
+    const browserId = getBrowserIdFromRequest(req);
+    createUserSession(res, user.id, user.username, !!rememberMe, browserId);
     res.json({ success: true, username: user.username });
   } catch (err) {
     res.status(500).json({ error: 'Login failed.' });
@@ -651,7 +679,8 @@ app.post('/api/auth/email-login', async (req, res) => {
     await dbRun('UPDATE users SET password_hash = ?, password_salt = ? WHERE email = ?', [hash, salt, email]);
     const user = await dbGet('SELECT id FROM users WHERE email = ?', [email]);
     if (!user) return res.status(500).json({ error: 'Login failed. Please try again.' });
-    createUserSession(res, user.id, email, true);
+    const browserId = getBrowserIdFromRequest(req);
+    createUserSession(res, user.id, email, true, browserId);
     delete emailAuth[email];
     writeJson(emailAuthFile, emailAuth);
     res.json({ success: true });
