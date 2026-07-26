@@ -32,6 +32,10 @@
     </header>
 
     <section class="entries-section">
+      <div class="archive-banner">
+        <strong>Permanent Archive</strong>
+        <p>Everything you save here remains in the archive until you delete it. This is your lasting record, preserved for as long as you keep it.</p>
+      </div>
       <h2>Published Entries</h2>
       <div id="entries-list" class="entries-list"></div>
     </section>
@@ -45,9 +49,14 @@
       document.title = `${value} - Personal Blog`;
     }
 
+    function getActiveUserStorageKey(prefix) {
+      const userId = localStorage.getItem('blog_user_id') || 'guest';
+      return `${prefix}:${userId}`;
+    }
+
     function loadBlogTitle() {
       try {
-        const savedTitle = localStorage.getItem('blogTitle');
+        const savedTitle = localStorage.getItem(getActiveUserStorageKey('blogTitle'));
         if (savedTitle) {
           const input = document.getElementById('blog-title-input');
           if (input) input.value = savedTitle;
@@ -65,7 +74,7 @@
         const input = document.getElementById('blog-title-input');
         if (!input) return;
         const value = input.value.trim();
-        localStorage.setItem('blogTitle', value);
+        localStorage.setItem(getActiveUserStorageKey('blogTitle'), value);
         applyBlogTitle(value);
       } catch (e) {
         // ignore storage errors
@@ -75,8 +84,8 @@
     // Apply saved font preferences if present
     (function applySavedPreferences() {
       try {
-        const savedFont = localStorage.getItem('blogFontFamily');
-        const savedSize = localStorage.getItem('blogFontSize');
+        const savedFont = localStorage.getItem(getActiveUserStorageKey('blogFontFamily'));
+        const savedSize = localStorage.getItem(getActiveUserStorageKey('blogFontSize'));
         if (savedFont) document.documentElement.style.setProperty('--blog-font-family', savedFont);
         if (savedSize) document.documentElement.style.setProperty('--blog-font-size', savedSize);
       } catch (e) {
