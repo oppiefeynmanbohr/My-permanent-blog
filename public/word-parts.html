@@ -146,141 +146,184 @@
       <p>This reference page collects common prefixes and suffixes drawn from Latin and Greek, with concise meanings and simple examples so they are easier to recognize in academic and literary vocabulary.</p>
     </header>
 
-    <div class="word-parts-grid">
-      <section class="card">
-        <h2>Find a word part</h2>
-        <div class="controls">
-          <input id="part-search" type="text" placeholder="Search for a prefix or suffix" />
-          <select id="part-type">
-            <option value="all">All parts</option>
-            <option value="prefix">Prefix</option>
-            <option value="suffix">Suffix</option>
-          </select>
-          <button id="search-btn" type="button">Search</button>
+    <section class="card">
+      <h2>Extensive reference lists</h2>
+      <p class="lead">This page now presents a broad glossary of common English prefixes and suffixes, with meanings and examples for each.</p>
+      <div class="split-grid">
+        <div>
+          <h3>Prefixes</h3>
+          <div class="results" id="prefix-list"></div>
         </div>
-        <div id="results" class="results"></div>
-      </section>
-
-      <section class="card">
-        <h2>Reference lists</h2>
-        <div class="split-grid">
-          <div>
-            <h3>Prefixes</h3>
-            <div class="results" id="prefix-list"></div>
-          </div>
-          <div>
-            <h3>Suffixes</h3>
-            <div class="results" id="suffix-list"></div>
-          </div>
+        <div>
+          <h3>Suffixes</h3>
+          <div class="results" id="suffix-list"></div>
         </div>
-        <a class="back-link" href="/page1">← Back to the blog</a>
-      </section>
-    </div>
+      </div>
+      <a class="back-link" href="/page1">← Back to the blog</a>
+    </section>
   </div>
 
   <script>
     const parts = [
+      { part: 'a-', type: 'prefix', meaning: 'without; not', origin: 'Greek', example: 'amoral = without morals' },
+      { part: 'ab-', type: 'prefix', meaning: 'away from; off', origin: 'Latin', example: 'abduct = lead away' },
+      { part: 'ad-', type: 'prefix', meaning: 'toward; to', origin: 'Latin', example: 'adapt = fit to' },
+      { part: 'ambi-', type: 'prefix', meaning: 'both', origin: 'Latin', example: 'ambidextrous = using both hands' },
+      { part: 'ana-', type: 'prefix', meaning: 'up; back; again', origin: 'Greek', example: 'anagram = letters rearranged' },
+      { part: 'ante-', type: 'prefix', meaning: 'before', origin: 'Latin', example: 'antecedent = going before' },
       { part: 'anti-', type: 'prefix', meaning: 'against; opposite of', origin: 'Greek', example: 'antibiotic = against life' },
+      { part: 'apo-', type: 'prefix', meaning: 'away from; separate', origin: 'Greek', example: 'apology = speech away from blame' },
+      { part: 'arch-', type: 'prefix', meaning: 'chief; first', origin: 'Greek', example: 'archenemy = chief enemy' },
       { part: 'auto-', type: 'prefix', meaning: 'self', origin: 'Greek', example: 'automatic = acting by itself' },
+      { part: 'be-', type: 'prefix', meaning: 'make; cause to be', origin: 'Old English', example: 'belittle = make little' },
+      { part: 'bi-', type: 'prefix', meaning: 'two', origin: 'Latin', example: 'bicycle = two wheels' },
       { part: 'bio-', type: 'prefix', meaning: 'life', origin: 'Greek', example: 'biology = study of life' },
-      { part: 'chrono-', type: 'prefix', meaning: 'time', origin: 'Greek', example: 'chronology = arrangement of time' },
+      { part: 'centi-', type: 'prefix', meaning: 'hundred', origin: 'Latin', example: 'centimeter = one hundredth of a meter' },
       { part: 'circum-', type: 'prefix', meaning: 'around', origin: 'Latin', example: 'circumference = distance around' },
       { part: 'co-', type: 'prefix', meaning: 'with; together', origin: 'Latin', example: 'cooperate = work together' },
+      { part: 'com-', type: 'prefix', meaning: 'with; together', origin: 'Latin', example: 'companion = one who eats with' },
+      { part: 'con-', type: 'prefix', meaning: 'with; together', origin: 'Latin', example: 'connect = tie together' },
       { part: 'contra-', type: 'prefix', meaning: 'against', origin: 'Latin', example: 'contradict = speak against' },
+      { part: 'counter-', type: 'prefix', meaning: 'opposite; against', origin: 'Latin', example: 'counteract = act against' },
       { part: 'de-', type: 'prefix', meaning: 'down; away from; reverse', origin: 'Latin', example: 'decrease = make smaller' },
+      { part: 'di-', type: 'prefix', meaning: 'two; twice', origin: 'Greek', example: 'dichotomy = split into two' },
       { part: 'dia-', type: 'prefix', meaning: 'through; across', origin: 'Greek', example: 'diameter = measure through' },
       { part: 'dis-', type: 'prefix', meaning: 'apart; not', origin: 'Latin', example: 'disagree = not agree' },
+      { part: 'em-', type: 'prefix', meaning: 'in; into', origin: 'Latin', example: 'embrace = hold in' },
+      { part: 'en-', type: 'prefix', meaning: 'put into; make', origin: 'French', example: 'encircle = make a circle around' },
       { part: 'electro-', type: 'prefix', meaning: 'electricity', origin: 'Greek', example: 'electromagnet = magnet driven by electricity' },
       { part: 'epi-', type: 'prefix', meaning: 'upon; over', origin: 'Greek', example: 'epilogue = speech after the story' },
+      { part: 'equi-', type: 'prefix', meaning: 'equal', origin: 'Latin', example: 'equilateral = equal sides' },
       { part: 'ex-', type: 'prefix', meaning: 'out of; former', origin: 'Latin', example: 'exclude = shut out' },
       { part: 'extra-', type: 'prefix', meaning: 'outside', origin: 'Latin', example: 'extracurricular = outside the curriculum' },
+      { part: 'fore-', type: 'prefix', meaning: 'before; earlier', origin: 'Old English', example: 'forewarn = warn before' },
       { part: 'geo-', type: 'prefix', meaning: 'earth', origin: 'Greek', example: 'geology = study of the earth' },
       { part: 'hemi-', type: 'prefix', meaning: 'half', origin: 'Greek', example: 'hemisphere = half a sphere' },
+      { part: 'hetero-', type: 'prefix', meaning: 'different', origin: 'Greek', example: 'heterogeneous = different in kind' },
+      { part: 'homo-', type: 'prefix', meaning: 'same', origin: 'Greek', example: 'homonym = same name' },
       { part: 'hydro-', type: 'prefix', meaning: 'water', origin: 'Greek', example: 'hydraulic = moved by water' },
       { part: 'hyper-', type: 'prefix', meaning: 'over; beyond', origin: 'Greek', example: 'hyperactive = overly active' },
       { part: 'hypo-', type: 'prefix', meaning: 'under; less than', origin: 'Greek', example: 'hypothermia = low body temperature' },
+      { part: 'il-', type: 'prefix', meaning: 'not', origin: 'Latin', example: 'illegal = not legal' },
+      { part: 'im-', type: 'prefix', meaning: 'not; into', origin: 'Latin', example: 'impossible = not possible' },
+      { part: 'in-', type: 'prefix', meaning: 'not; into', origin: 'Latin', example: 'invisible = not visible' },
+      { part: 'infra-', type: 'prefix', meaning: 'below; beneath', origin: 'Latin', example: 'infrared = below red light' },
       { part: 'inter-', type: 'prefix', meaning: 'between; among', origin: 'Latin', example: 'international = between nations' },
       { part: 'intra-', type: 'prefix', meaning: 'within', origin: 'Latin', example: 'intracellular = within a cell' },
+      { part: 'intro-', type: 'prefix', meaning: 'within; inward', origin: 'Latin', example: 'introvert = turned inward' },
+      { part: 'iso-', type: 'prefix', meaning: 'equal; same', origin: 'Greek', example: 'isotope = same place in the table' },
+      { part: 'kilo-', type: 'prefix', meaning: 'thousand', origin: 'Greek', example: 'kilogram = a thousand grams' },
       { part: 'macro-', type: 'prefix', meaning: 'large; great', origin: 'Greek', example: 'macroscopic = visible to the naked eye' },
+      { part: 'mal-', type: 'prefix', meaning: 'bad; badly', origin: 'Latin', example: 'malpractice = bad practice' },
+      { part: 'mega-', type: 'prefix', meaning: 'great; large', origin: 'Greek', example: 'megabyte = large unit of data' },
+      { part: 'meta-', type: 'prefix', meaning: 'beyond; about itself', origin: 'Greek', example: 'metaphor = carrying beyond' },
       { part: 'micro-', type: 'prefix', meaning: 'small', origin: 'Greek', example: 'microscope = instrument for seeing small things' },
+      { part: 'mid-', type: 'prefix', meaning: 'middle', origin: 'Old English', example: 'midnight = middle of the night' },
+      { part: 'mini-', type: 'prefix', meaning: 'small', origin: 'Latin', example: 'minibus = small bus' },
+      { part: 'mis-', type: 'prefix', meaning: 'badly; wrongly', origin: 'Old English', example: 'misread = read wrongly' },
       { part: 'mono-', type: 'prefix', meaning: 'one', origin: 'Greek', example: 'monologue = one speech' },
       { part: 'multi-', type: 'prefix', meaning: 'many', origin: 'Latin', example: 'multilingual = using many languages' },
       { part: 'neo-', type: 'prefix', meaning: 'new', origin: 'Greek', example: 'neolithic = new stone age' },
       { part: 'non-', type: 'prefix', meaning: 'not; without', origin: 'Latin', example: 'nonfiction = not fiction' },
+      { part: 'ob-', type: 'prefix', meaning: 'against; over', origin: 'Latin', example: 'obstruct = block against' },
+      { part: 'omni-', type: 'prefix', meaning: 'all', origin: 'Latin', example: 'omnipresent = present everywhere' },
+      { part: 'out-', type: 'prefix', meaning: 'beyond; surpassing', origin: 'Old English', example: 'outgrow = grow beyond' },
+      { part: 'over-', type: 'prefix', meaning: 'above; too much', origin: 'Old English', example: 'overload = load too much' },
       { part: 'para-', type: 'prefix', meaning: 'beside; beyond', origin: 'Greek', example: 'paradox = beyond expectation' },
+      { part: 'peri-', type: 'prefix', meaning: 'around', origin: 'Greek', example: 'perimeter = measure around' },
       { part: 'photo-', type: 'prefix', meaning: 'light', origin: 'Greek', example: 'photograph = writing with light' },
       { part: 'poly-', type: 'prefix', meaning: 'many', origin: 'Greek', example: 'polygon = many-sided figure' },
       { part: 'post-', type: 'prefix', meaning: 'after', origin: 'Latin', example: 'postscript = writing after' },
       { part: 'pre-', type: 'prefix', meaning: 'before', origin: 'Latin', example: 'preview = view before' },
       { part: 'pro-', type: 'prefix', meaning: 'forward; for', origin: 'Latin', example: 'project = throw forward' },
       { part: 're-', type: 'prefix', meaning: 'again; back', origin: 'Latin', example: 'review = view again' },
+      { part: 'retro-', type: 'prefix', meaning: 'backward', origin: 'Latin', example: 'retrograde = move backward' },
+      { part: 'semi-', type: 'prefix', meaning: 'half', origin: 'Latin', example: 'semicircle = half a circle' },
       { part: 'sub-', type: 'prefix', meaning: 'under; below', origin: 'Latin', example: 'submarine = under the sea' },
       { part: 'super-', type: 'prefix', meaning: 'above; over', origin: 'Latin', example: 'superior = higher' },
+      { part: 'supra-', type: 'prefix', meaning: 'above; beyond', origin: 'Latin', example: 'supranational = above nations' },
+      { part: 'sur-', type: 'prefix', meaning: 'over; above', origin: 'French', example: 'surcharge = charge over' },
       { part: 'syn-', type: 'prefix', meaning: 'together; with', origin: 'Greek', example: 'synthesis = putting together' },
       { part: 'tele-', type: 'prefix', meaning: 'distant; far', origin: 'Greek', example: 'telephone = sound from afar' },
       { part: 'trans-', type: 'prefix', meaning: 'across; through', origin: 'Latin', example: 'transport = carry across' },
       { part: 'tri-', type: 'prefix', meaning: 'three', origin: 'Latin', example: 'triangle = three-sided figure' },
+      { part: 'ultra-', type: 'prefix', meaning: 'beyond; exceedingly', origin: 'Latin', example: 'ultrasonic = beyond human hearing' },
       { part: 'un-', type: 'prefix', meaning: 'not; opposite of', origin: 'Latin', example: 'unhappy = not happy' },
+      { part: 'under-', type: 'prefix', meaning: 'below; beneath', origin: 'Old English', example: 'underwater = below water' },
+      { part: 'vice-', type: 'prefix', meaning: 'in place of', origin: 'Latin', example: 'vice-chair = one acting for a chair' },
+      { part: 'with-', type: 'prefix', meaning: 'against; back from', origin: 'Old English', example: 'withdraw = draw back' },
       { part: '-able', type: 'suffix', meaning: 'capable of; suitable for', origin: 'Latin', example: 'readable = capable of being read' },
+      { part: '-ac', type: 'suffix', meaning: 'relating to', origin: 'Greek', example: 'cardiac = relating to the heart' },
+      { part: '-aceous', type: 'suffix', meaning: 'resembling; made of', origin: 'Latin', example: 'herbaceous = like herbs' },
       { part: '-acy', type: 'suffix', meaning: 'state or quality of', origin: 'Latin', example: 'privacy = state of being private' },
+      { part: '-age', type: 'suffix', meaning: 'collection; action; state', origin: 'French', example: 'storage = act of storing' },
       { part: '-al', type: 'suffix', meaning: 'relating to; characterized by', origin: 'Latin', example: 'natural = relating to nature' },
+      { part: '-algia', type: 'suffix', meaning: 'pain', origin: 'Greek', example: 'neuralgia = nerve pain' },
+      { part: '-an', type: 'suffix', meaning: 'relating to; belonging to', origin: 'Latin', example: 'human = belonging to humans' },
       { part: '-ance', type: 'suffix', meaning: 'state or quality of', origin: 'Latin', example: 'importance = state of being important' },
+      { part: '-ant', type: 'suffix', meaning: 'one who; inclined to', origin: 'Latin', example: 'assistant = one who helps' },
+      { part: '-arian', type: 'suffix', meaning: 'one who supports; relating to', origin: 'Latin', example: 'vegetarian = one who avoids meat' },
       { part: '-ary', type: 'suffix', meaning: 'relating to; connected with', origin: 'Latin', example: 'dictionary = book of words' },
       { part: '-ate', type: 'suffix', meaning: 'to make; to act', origin: 'Latin', example: 'activate = make active' },
       { part: '-ation', type: 'suffix', meaning: 'act or process of', origin: 'Latin', example: 'creation = the act of creating' },
-      { part: '-ce', type: 'suffix', meaning: 'state or quality of', origin: 'Latin', example: 'obedience = state of obeying' },
+      { part: '-ative', type: 'suffix', meaning: 'tending to; having the nature of', origin: 'Latin', example: 'informative = giving information' },
+      { part: '-bility', type: 'suffix', meaning: 'ability; quality of', origin: 'Latin', example: 'stability = quality of being stable' },
+      { part: '-cal', type: 'suffix', meaning: 'pertaining to', origin: 'Latin', example: 'musical = pertaining to music' },
+      { part: '-cide', type: 'suffix', meaning: 'killer; killing', origin: 'Latin', example: 'homicide = killing of a human' },
+      { part: '-cracy', type: 'suffix', meaning: 'rule by', origin: 'Greek', example: 'democracy = rule by the people' },
+      { part: '-craft', type: 'suffix', meaning: 'skill; art', origin: 'Old English', example: 'handiwork = skilled work' },
+      { part: '-cy', type: 'suffix', meaning: 'state or quality of', origin: 'Latin', example: 'accuracy = quality of being accurate' },
       { part: '-dom', type: 'suffix', meaning: 'state of; rank of', origin: 'Old English', example: 'freedom = state of being free' },
       { part: '-ed', type: 'suffix', meaning: 'past tense or completed action', origin: 'English', example: 'walked = completed action' },
+      { part: '-ee', type: 'suffix', meaning: 'one who receives the action', origin: 'French', example: 'employee = one employed' },
+      { part: '-en', type: 'suffix', meaning: 'made of; to make', origin: 'Old English', example: 'darken = make dark' },
+      { part: '-ence', type: 'suffix', meaning: 'state or quality of', origin: 'Latin', example: 'dependence = state of depending' },
       { part: '-er', type: 'suffix', meaning: 'one who; that which', origin: 'English', example: 'teacher = one who teaches' },
+      { part: '-ery', type: 'suffix', meaning: 'place of; collection of', origin: 'French', example: 'bakery = place for baking' },
       { part: '-ess', type: 'suffix', meaning: 'female; feminine', origin: 'French', example: 'actress = female actor' },
+      { part: '-est', type: 'suffix', meaning: 'most', origin: 'Old English', example: 'brightest = most bright' },
       { part: '-ful', type: 'suffix', meaning: 'full of', origin: 'English', example: 'careful = full of care' },
       { part: '-graph', type: 'suffix', meaning: 'writing; recording', origin: 'Greek', example: 'autograph = one’s own writing' },
       { part: '-gram', type: 'suffix', meaning: 'thing written; record', origin: 'Greek', example: 'telegram = message sent over distance' },
       { part: '-hood', type: 'suffix', meaning: 'state or condition of', origin: 'Old English', example: 'childhood = state of being a child' },
       { part: '-ic', type: 'suffix', meaning: 'relating to; characteristic of', origin: 'Greek', example: 'electric = relating to electricity' },
+      { part: '-ical', type: 'suffix', meaning: 'relating to', origin: 'Greek', example: 'musical = relating to music' },
       { part: '-ify', type: 'suffix', meaning: 'to make; to cause', origin: 'Latin', example: 'clarify = make clear' },
       { part: '-ing', type: 'suffix', meaning: 'action or process', origin: 'English', example: 'running = the act of running' },
       { part: '-ion', type: 'suffix', meaning: 'act or process of', origin: 'Latin', example: 'motion = the act of moving' },
+      { part: '-ious', type: 'suffix', meaning: 'full of; having the quality of', origin: 'Latin', example: 'curious = eager to know' },
+      { part: '-ise', type: 'suffix', meaning: 'to make; to become', origin: 'French', example: 'realise = make real' },
+      { part: '-ish', type: 'suffix', meaning: 'like; somewhat', origin: 'Old English', example: 'childish = like a child' },
       { part: '-ism', type: 'suffix', meaning: 'belief; practice; condition', origin: 'Greek', example: 'capitalism = economic system' },
       { part: '-ist', type: 'suffix', meaning: 'one who practices or studies', origin: 'Greek', example: 'scientist = one who studies science' },
       { part: '-ity', type: 'suffix', meaning: 'state or quality of', origin: 'Latin', example: 'activity = state of acting' },
+      { part: '-ive', type: 'suffix', meaning: 'tending to; having the nature of', origin: 'Latin', example: 'active = tending to act' },
+      { part: '-ize', type: 'suffix', meaning: 'to make; to become', origin: 'Greek', example: 'modernize = make modern' },
       { part: '-less', type: 'suffix', meaning: 'without', origin: 'English', example: 'careless = without care' },
+      { part: '-like', type: 'suffix', meaning: 'similar to', origin: 'English', example: 'childlike = like a child' },
       { part: '-logy', type: 'suffix', meaning: 'study of', origin: 'Greek', example: 'psychology = study of the mind' },
+      { part: '-ly', type: 'suffix', meaning: 'in a manner; every', origin: 'Old English', example: 'quickly = in a quick manner' },
       { part: '-ment', type: 'suffix', meaning: 'result or process of', origin: 'Latin', example: 'movement = the act of moving' },
       { part: '-meter', type: 'suffix', meaning: 'measure', origin: 'Greek', example: 'thermometer = measure of heat' },
       { part: '-ness', type: 'suffix', meaning: 'state of being', origin: 'English', example: 'kindness = state of being kind' },
       { part: '-ology', type: 'suffix', meaning: 'study of; science of', origin: 'Greek', example: 'biology = study of life' },
+      { part: '-or', type: 'suffix', meaning: 'one who; that which', origin: 'Latin', example: 'actor = one who acts' },
       { part: '-ous', type: 'suffix', meaning: 'full of; having the quality of', origin: 'Latin', example: 'dangerous = full of danger' },
+      { part: '-phile', type: 'suffix', meaning: 'lover of', origin: 'Greek', example: 'bibliophile = lover of books' },
       { part: '-philic', type: 'suffix', meaning: 'loving; attracted to', origin: 'Greek', example: 'hydrophilic = attracted to water' },
       { part: '-phobia', type: 'suffix', meaning: 'fear of', origin: 'Greek', example: 'claustrophobia = fear of enclosed spaces' },
-      { part: '-scope', type: 'suffix', meaning: 'instrument for seeing or examining', origin: 'Greek', example: 'microscope = instrument for seeing small things' },
       { part: '-ship', type: 'suffix', meaning: 'state or condition of; office', origin: 'Old English', example: 'friendship = state of being friends' },
+      { part: '-sion', type: 'suffix', meaning: 'act or process of', origin: 'Latin', example: 'decision = act of deciding' },
+      { part: '-some', type: 'suffix', meaning: 'tending to; full of', origin: 'Old English', example: 'troublesome = full of trouble' },
       { part: '-tion', type: 'suffix', meaning: 'act or process of', origin: 'Latin', example: 'creation = the act of creating' },
-      { part: '-wise', type: 'suffix', meaning: 'in the manner of', origin: 'English', example: 'clockwise = in the direction of a clock' }
+      { part: '-tude', type: 'suffix', meaning: 'state or quality of', origin: 'Latin', example: 'magnitude = great size' },
+      { part: '-ward', type: 'suffix', meaning: 'in the direction of', origin: 'Old English', example: 'forward = toward the front' },
+      { part: '-wise', type: 'suffix', meaning: 'in the manner of', origin: 'English', example: 'clockwise = in the direction of a clock' },
+      { part: '-y', type: 'suffix', meaning: 'characterized by; inclined to', origin: 'Old English', example: 'sleepy = inclined to sleep' }
     ];
 
-    const resultsEl = document.getElementById('results');
     const prefixListEl = document.getElementById('prefix-list');
     const suffixListEl = document.getElementById('suffix-list');
-    const searchInput = document.getElementById('part-search');
-    const typeSelect = document.getElementById('part-type');
-    const searchButton = document.getElementById('search-btn');
-
-    function renderEntries(list) {
-      if (!list.length) {
-        resultsEl.innerHTML = '<div class="entry"><div class="meaning">No matching word parts found.</div></div>';
-        return;
-      }
-
-      resultsEl.innerHTML = list.map((item) => `
-        <div class="entry">
-          <div class="part">${item.part}</div>
-          <div class="meaning"><strong>Meaning:</strong> ${item.meaning}</div>
-          <div class="meaning"><strong>Example:</strong> ${item.example}</div>
-          <div class="origin">Origin: ${item.origin}</div>
-        </div>
-      `).join('');
-    }
 
     function renderReferenceList() {
       const prefixes = parts.filter((item) => item.type === 'prefix');
@@ -305,28 +348,7 @@
       `).join('');
     }
 
-    function searchParts() {
-      const query = searchInput.value.trim().toLowerCase();
-      const type = typeSelect.value;
-      const filtered = parts.filter((item) => {
-        const matchesType = type === 'all' || item.type === type;
-        const matchesQuery = !query || item.part.toLowerCase().includes(query) || item.meaning.toLowerCase().includes(query) || item.example.toLowerCase().includes(query);
-        return matchesType && matchesQuery;
-      });
-      renderEntries(filtered);
-    }
-
-    searchButton.addEventListener('click', searchParts);
-    searchInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        searchParts();
-      }
-    });
-    typeSelect.addEventListener('change', searchParts);
-
     renderReferenceList();
-    renderEntries(parts.slice(0, 6));
   </script>
 </body>
 </html>
