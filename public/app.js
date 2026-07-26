@@ -41,6 +41,7 @@ const newSiteLink = document.getElementById('new-site-link');
 const newSiteRemindButton = document.getElementById('new-site-remind');
 
 let pendingMfaToken = null;
+let draftAutosaveTimer = null;
 
 function toBase64Url(bytes) {
   const binary = String.fromCharCode(...bytes);
@@ -249,6 +250,23 @@ async function restoreDraft() {
   } catch {}
 }
 
+function schedulePermanentEntryBackup() {
+  if (!entryContent) return;
+  const value = entryContent.value.trim();
+  if (!value) return;
+  clearTimeout(draftAutosaveTimer);
+  draftAutosaveTimer = window.setTimeout(() => {
+    const payload = {
+      title: `Entry ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+      content: value,
+      source: 'main',
+      createdAt: new Date().toISOString()
+    };
+    queuePendingEntry(payload);
+    void flushPendingEntries();
+  }, 1800);
+}
+
 async function saveDraft() {
   if (!entryContent) return;
   const draftKey = getActiveUserStorageKey('main_entry_draft');
@@ -260,9 +278,15 @@ async function saveDraft() {
   }
 
   try {
-    const isLoggedIn = localStorage.getItem('blog_logged_in') === '1' || (await ensureAuthenticatedSession());
-    const draftState = isLoggedIn ? value : '';
-    if (!draftState && !value.trim()) return;
+    if (!value.trim()) {
+      await fetchWithSessionRecovery('/api/drafts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'main', content: '' })
+      });
+      return;
+    }
+
     await fetchWithSessionRecovery('/api/drafts', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -335,16 +359,10 @@ async function saveEntry() {
       body: JSON.stringify({ title: pendingEntry.title, content })
     });
 
-    if (response.status === 401 || response.status === 403) {
-      queuePendingEntry(pendingEntry);
-      saveStatus.textContent = 'Saved locally for syncing once your session is restored.';
-      saveEntryButton.disabled = false;
-      return;
-    }
-
     if (!response.ok) {
+      queuePendingEntry(pendingEntry);
       const errData = await response.json().catch(() => ({}));
-      saveStatus.textContent = errData.error || 'Could not save entry. Try again.';
+      saveStatus.textContent = errData.error || 'Saved locally for syncing once the connection is restored.';
       saveEntryButton.disabled = false;
       return;
     }
@@ -367,7 +385,8 @@ async function saveEntry() {
     const el = document.getElementById('entries-list');
     if (el && el.lastElementChild) el.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
   } catch (err) {
-    saveStatus.textContent = 'Network error — check your connection and try again.';
+    queuePendingEntry(pendingEntry);
+    saveStatus.textContent = 'Network error — saved locally and will sync when the connection is restored.';
     saveEntryButton.disabled = false;
   }
 }
@@ -878,7 +897,10 @@ async function togglePublish(entryId, publish) {
   }
 }
 
-entryContent.addEventListener('input', saveDraft);
+entryContent.addEventListener('input', () => {
+  void saveDraft();
+  schedulePermanentEntryBackup();
+});
 saveEntryButton.addEventListener('click', saveEntry);
 searchInput.addEventListener('input', loadEntries);
 calendarInput.addEventListener('change', loadEntries);
@@ -926,6 +948,18 @@ restoreDraft();
 window.addEventListener('pageshow', () => {
   if (!entryContent || entryContent.value.trim()) return;
   restoreDraft();
+});
+window.addEventListener('beforeunload', () => {
+  if (entryContent && entryContent.value.trim()) {
+    void saveDraft();
+    schedulePermanentEntryBackup();
+  }
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && entryContent && entryContent.value.trim()) {
+    void saveDraft();
+    schedulePermanentEntryBackup();
+  }
 });
 loadBlogTitle();
 applyStoredPreferences();
@@ -1485,7 +1519,11 @@ function savePendingEntries(entries) {
 
 function queuePendingEntry(entry) {
   const pending = getPendingEntries();
-  const deduped = pending.filter((item) => !(item.createdAt && entry.createdAt && item.createdAt === entry.createdAt && item.content === entry.content));
+  const deduped = pending.filter((item) => {
+    const sameContent = item.content === entry.content && (item.title || '') === (entry.title || '') && (item.source || 'main') === (entry.source || 'main');
+    const sameCreatedAt = Boolean(item.createdAt && entry.createdAt && item.createdAt === entry.createdAt);
+    return !sameContent && !sameCreatedAt;
+  });
   deduped.push(entry);
   savePendingEntries(deduped);
 }

@@ -327,12 +327,19 @@ async function initDatabase() {
   }
   await dbRun(`CREATE TABLE IF NOT EXISTS drafts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
+    user_id INTEGER,
+    browser_id TEXT NOT NULL DEFAULT '',
     source TEXT NOT NULL DEFAULT 'main',
     content TEXT NOT NULL DEFAULT '',
-    updated_at TEXT NOT NULL,
-    UNIQUE(user_id, source)
+    updated_at TEXT NOT NULL
   )`);
+  const draftColumns = await dbAll('PRAGMA table_info(drafts)');
+  if (!draftColumns.some(c => c.name === 'browser_id')) {
+    await dbRun('ALTER TABLE drafts ADD COLUMN browser_id TEXT NOT NULL DEFAULT ""');
+  }
+  if (!draftColumns.some(c => c.name === 'user_id')) {
+    await dbRun('ALTER TABLE drafts ADD COLUMN user_id INTEGER');
+  }
   await dbRun(`CREATE TABLE IF NOT EXISTS profiles (
     user_id INTEGER PRIMARY KEY,
     full_name TEXT NOT NULL DEFAULT '',
@@ -917,10 +924,14 @@ app.delete('/api/profile/work/:id', async (req, res) => {
 
 app.get('/api/drafts', async (req, res) => {
   const user = await getAuthenticatedUser(req, res);
-  if (!user) return res.status(401).json({ error: 'Login required.' });
+  const browserId = getOrCreateClientId(req, res);
   const source = String(req.query.source || 'main');
   try {
-    const row = await dbGet('SELECT content, updated_at FROM drafts WHERE user_id = ? AND source = ?', [user.userId, source]);
+    const rows = await dbAll(
+      'SELECT content, updated_at, user_id FROM drafts WHERE source = ? AND ((user_id IS NOT NULL AND user_id = ?) OR browser_id = ?) ORDER BY updated_at DESC, id DESC',
+      [source, user ? user.userId : null, browserId]
+    );
+    const row = rows.find((entry) => user && entry.user_id === user.userId) || rows[0] || null;
     res.json({ content: row ? row.content : '', updatedAt: row ? row.updated_at : '' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load draft.' });
@@ -929,22 +940,21 @@ app.get('/api/drafts', async (req, res) => {
 
 app.put('/api/drafts', async (req, res) => {
   const user = await getAuthenticatedUser(req, res);
-  if (!user) return res.status(401).json({ error: 'Login required.' });
+  const browserId = getOrCreateClientId(req, res);
   const source = String(req.body?.source || 'main');
   const content = String(req.body?.content || '');
   const updatedAt = new Date().toISOString();
 
   try {
     if (!content.trim()) {
-      await dbRun('DELETE FROM drafts WHERE user_id = ? AND source = ?', [user.userId, source]);
+      await dbRun('DELETE FROM drafts WHERE source = ? AND ((user_id IS NOT NULL AND user_id = ?) OR browser_id = ?)', [source, user ? user.userId : null, browserId]);
       return res.json({ content: '', updatedAt: '' });
     }
 
+    await dbRun('DELETE FROM drafts WHERE source = ? AND ((user_id IS NOT NULL AND user_id = ?) OR browser_id = ?)', [source, user ? user.userId : null, browserId]);
     await dbRun(
-      `INSERT INTO drafts (user_id, source, content, updated_at)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT(user_id, source) DO UPDATE SET content = excluded.content, updated_at = excluded.updated_at`,
-      [user.userId, source, content, updatedAt]
+      'INSERT INTO drafts (user_id, browser_id, source, content, updated_at) VALUES (?, ?, ?, ?, ?)',
+      [user ? user.userId : null, browserId, source, content, updatedAt]
     );
     res.json({ content, updatedAt });
   } catch (err) {
