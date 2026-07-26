@@ -226,24 +226,48 @@ function renderEntries(entries) {
   });
 }
 
-function restoreDraft() {
+async function restoreDraft() {
   if (!entryContent) return;
   const draftKey = getActiveUserStorageKey('main_entry_draft');
   const savedDraft = localStorage.getItem(draftKey);
-  if (savedDraft !== null) {
+  if (savedDraft !== null && savedDraft !== '') {
     entryContent.value = savedDraft;
     if (saveStatus) saveStatus.textContent = 'Restored your saved draft.';
+    return;
   }
+
+  try {
+    const response = await fetchWithSessionRecovery('/api/drafts?source=main');
+    if (response.ok) {
+      const data = await response.json().catch(() => ({}));
+      if (data.content) {
+        entryContent.value = data.content;
+        localStorage.setItem(draftKey, data.content);
+        if (saveStatus) saveStatus.textContent = 'Restored your saved draft from the server.';
+      }
+    }
+  } catch {}
 }
 
-function saveDraft() {
+async function saveDraft() {
   if (!entryContent) return;
   const draftKey = getActiveUserStorageKey('main_entry_draft');
+  const value = entryContent.value;
   try {
-    localStorage.setItem(draftKey, entryContent.value);
+    localStorage.setItem(draftKey, value);
   } catch (err) {
     console.warn('Draft storage limit reached; keeping the current draft in the textarea only.', err);
   }
+
+  try {
+    const draftState = localStorage.getItem('blog_logged_in') === '1' ? value : '';
+    if (!draftState && !value.trim()) return;
+    await fetchWithSessionRecovery('/api/drafts', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: 'main', content: value })
+    });
+  } catch {}
 }
 
 async function loadEntries() {
@@ -256,7 +280,7 @@ async function loadEntries() {
   const cacheKey = `entries_cache:${userId}`;
   const url = `/api/entries?${params.toString()}`;
   try {
-    const response = await fetch(url, { credentials: 'same-origin' });
+    const response = await fetchWithSessionRecovery(url);
     const entries = await response.json();
     if (Array.isArray(entries) && entries.length > 0) {
       // Cache entries in localStorage for resilience
@@ -304,10 +328,9 @@ async function saveEntry() {
   try {
     const title = `Entry ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
-    const response = await fetch('/api/entries', {
+    const response = await fetchWithSessionRecovery('/api/entries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
       body: JSON.stringify({ title, content })
     });
 
@@ -327,6 +350,14 @@ async function saveEntry() {
 
     const draftKey = getActiveUserStorageKey('main_entry_draft');
     localStorage.removeItem(draftKey);
+    try {
+      await fetch('/api/drafts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ source: 'main', content: '' })
+      });
+    } catch {}
     entryContent.value = '';
     refreshTimestamp();
     saveStatus.textContent = 'Entry saved.';
@@ -428,8 +459,14 @@ function hideNewSiteBannerForLater() {
 
 function getActiveUserStorageKey(prefix) {
   const browserId = localStorage.getItem('blog_browser_id') || 'browser-guest';
-  const userId = localStorage.getItem('blog_user_id') || 'guest';
-  return `${prefix}:${browserId}:${userId}`;
+  const userId = localStorage.getItem('blog_user_id') || localStorage.getItem('blog_username') || 'guest';
+  const primary = `${prefix}:${browserId}:${userId}`;
+  const fallback = `${prefix}:browser:${browserId}`;
+  try {
+    if (localStorage.getItem(primary) !== null) return primary;
+    if (localStorage.getItem(fallback) !== null) return fallback;
+  } catch {}
+  return primary;
 }
 
 function saveBlogTitle() {
@@ -1300,7 +1337,7 @@ const userGreeting = document.getElementById('user-greeting');
 const userLogoutBtn = document.getElementById('user-logout-btn');
 const userLoginPrompt = document.getElementById('user-login-prompt');
 
-async function tryStoredLoginFromBrowser() {
+function getSavedCredentials() {
   const savedUser = localStorage.getItem('blog_username') || (() => {
     const match = document.cookie.match(/(?:^|; )blog_username=([^;]+)/);
     return match ? decodeURIComponent(match[1]) : '';
@@ -1309,6 +1346,25 @@ async function tryStoredLoginFromBrowser() {
     const match = document.cookie.match(/(?:^|; )blog_saved_password=([^;]+)/);
     return match ? decodeURIComponent(match[1]) : '';
   })();
+  return { savedUser, savedPassword };
+}
+
+async function fetchWithSessionRecovery(url, options = {}) {
+  const response = await fetch(url, { credentials: 'same-origin', ...options });
+  if ((response.status === 401 || response.status === 403) && !options._retried) {
+    const { savedUser, savedPassword } = getSavedCredentials();
+    if (savedUser && savedPassword) {
+      const restored = await tryStoredLoginFromBrowser();
+      if (restored) {
+        return fetch(url, { credentials: 'same-origin', ...options, _retried: true });
+      }
+    }
+  }
+  return response;
+}
+
+async function tryStoredLoginFromBrowser() {
+  const { savedUser, savedPassword } = getSavedCredentials();
   if (!savedUser || !savedPassword) return false;
   try {
     let browserId = localStorage.getItem('blog_browser_id');
@@ -1363,8 +1419,10 @@ async function checkUserSession() {
         if (restored) {
           applyAuthState(localStorage.getItem('blog_username'), localStorage.getItem('blog_user_id'));
         } else {
-          localStorage.removeItem('blog_logged_in');
-          localStorage.removeItem('blog_user_id');
+          if (!getSavedCredentials().savedUser || !getSavedCredentials().savedPassword) {
+            localStorage.removeItem('blog_logged_in');
+            localStorage.removeItem('blog_user_id');
+          }
           if (userAccountBar) userAccountBar.style.display = 'none';
           if (userLoginPrompt) userLoginPrompt.style.display = 'block';
         }

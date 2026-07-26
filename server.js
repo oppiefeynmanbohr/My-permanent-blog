@@ -141,6 +141,31 @@ function getBrowserIdFromRequest(req) {
   return cookies.client_id || '';
 }
 
+async function tryRehydrateUserSession(req, res) {
+  const cookies = parseCookies(req);
+  const storedUser = String(cookies.blog_username || '').trim();
+  const storedPassword = String(cookies.blog_saved_password || '').trim();
+  if (!storedUser || !storedPassword) return null;
+
+  try {
+    const identifier = normalizeIdentifier(storedUser);
+    const candidate = await dbGet(
+      'SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?',
+      [identifier, identifier]
+    );
+    if (!candidate || isLegacyCodeOnlyUser(candidate)) return null;
+
+    const hash = hashPassword(storedPassword, candidate.password_salt);
+    if (hash !== candidate.password_hash) return null;
+
+    const browserId = getBrowserIdFromRequest(req);
+    await createUserSession(req, res, candidate.id, candidate.username, true, browserId);
+    return { userId: candidate.id, username: candidate.username, browserId };
+  } catch {
+    return null;
+  }
+}
+
 // Middleware: load user session from DB before each request
 function loadUserSession(req, res, next) {
   const cookies = parseCookies(req);
@@ -149,16 +174,33 @@ function loadUserSession(req, res, next) {
   req._userSession = null;
 
   if (!token) {
-    return next();
+    return tryRehydrateUserSession(req, res)
+      .then((user) => {
+        if (user) req._userSession = user;
+        return next();
+      })
+      .catch(() => next());
   }
 
   dbGet('SELECT * FROM user_sessions WHERE token = ?', [token])
     .then((row) => {
       if (!row || row.expires_at < Date.now()) {
         if (row) {
-          return dbRun('DELETE FROM user_sessions WHERE token = ?', [token]).then(() => next());
+          return dbRun('DELETE FROM user_sessions WHERE token = ?', [token]).then(() =>
+            tryRehydrateUserSession(req, res)
+              .then((user) => {
+                if (user) req._userSession = user;
+                return next();
+              })
+              .catch(() => next())
+          );
         }
-        return next();
+        return tryRehydrateUserSession(req, res)
+          .then((user) => {
+            if (user) req._userSession = user;
+            return next();
+          })
+          .catch(() => next());
       }
 
       req._userSession = { userId: row.user_id, username: row.username, browserId: row.browser_id || '' };
@@ -249,6 +291,14 @@ async function initDatabase() {
   if (!sessionColumns.some(c => c.name === 'browser_id')) {
     await dbRun('ALTER TABLE user_sessions ADD COLUMN browser_id TEXT NOT NULL DEFAULT ""');
   }
+  await dbRun(`CREATE TABLE IF NOT EXISTS drafts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    source TEXT NOT NULL DEFAULT 'main',
+    content TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL,
+    UNIQUE(user_id, source)
+  )`);
   await dbRun(`CREATE TABLE IF NOT EXISTS profiles (
     user_id INTEGER PRIMARY KEY,
     full_name TEXT NOT NULL DEFAULT '',
@@ -671,32 +721,12 @@ app.get('/api/auth/session', async (req, res) => {
     return res.json({ authenticated: true, username: user.username, userId: user.userId });
   }
 
-  const cookies = parseCookies(req);
-  const storedUser = String(cookies.blog_username || '').trim();
-  const storedPassword = String(cookies.blog_saved_password || '').trim();
-  if (!storedUser || !storedPassword) return res.json({ authenticated: false });
-
-  try {
-    const identifier = normalizeIdentifier(storedUser);
-    const candidate = await dbGet(
-      'SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?',
-      [identifier, identifier]
-    );
-    if (!candidate || isLegacyCodeOnlyUser(candidate)) {
-      return res.json({ authenticated: false });
-    }
-
-    const hash = hashPassword(storedPassword, candidate.password_salt);
-    if (hash !== candidate.password_hash) {
-      return res.json({ authenticated: false });
-    }
-
-    const browserId = getBrowserIdFromRequest(req);
-    await createUserSession(req, res, candidate.id, candidate.username, true, browserId);
-    return res.json({ authenticated: true, username: candidate.username, userId: candidate.id });
-  } catch (err) {
-    return res.json({ authenticated: false });
+  const rehydrated = await tryRehydrateUserSession(req, res);
+  if (rehydrated) {
+    return res.json({ authenticated: true, username: rehydrated.username, userId: rehydrated.userId });
   }
+
+  return res.json({ authenticated: false });
 });
 
 // ── Email-code auth ────────────────────────────────────────────────────────�[...]
@@ -848,6 +878,45 @@ app.delete('/api/profile/work/:id', async (req, res) => {
     await dbRun('DELETE FROM work_history WHERE id = ?', [id]);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Failed to delete work entry.' }); }
+});
+
+// ── Draft Routes ───────────────────────────────────────────────────────────
+
+app.get('/api/drafts', async (req, res) => {
+  const user = getUserFromRequest(req);
+  if (!user) return res.status(401).json({ error: 'Login required.' });
+  const source = String(req.query.source || 'main');
+  try {
+    const row = await dbGet('SELECT content, updated_at FROM drafts WHERE user_id = ? AND source = ?', [user.userId, source]);
+    res.json({ content: row ? row.content : '', updatedAt: row ? row.updated_at : '' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load draft.' });
+  }
+});
+
+app.put('/api/drafts', async (req, res) => {
+  const user = getUserFromRequest(req);
+  if (!user) return res.status(401).json({ error: 'Login required.' });
+  const source = String(req.body?.source || 'main');
+  const content = String(req.body?.content || '');
+  const updatedAt = new Date().toISOString();
+
+  try {
+    if (!content.trim()) {
+      await dbRun('DELETE FROM drafts WHERE user_id = ? AND source = ?', [user.userId, source]);
+      return res.json({ content: '', updatedAt: '' });
+    }
+
+    await dbRun(
+      `INSERT INTO drafts (user_id, source, content, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(user_id, source) DO UPDATE SET content = excluded.content, updated_at = excluded.updated_at`,
+      [user.userId, source, content, updatedAt]
+    );
+    res.json({ content, updatedAt });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save draft.' });
+  }
 });
 
 // ── Entries Routes ────────────────────────────────────────────────────────────
