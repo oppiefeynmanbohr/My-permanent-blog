@@ -835,7 +835,7 @@ async function loadPreferences() {
 }
 
 async function archiveEntry(entryId) {
-  const response = await fetch(`/api/entries/${entryId}/archive`, {
+  const response = await fetchWithSessionRecovery(`/api/entries/${entryId}/archive`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin'
@@ -855,7 +855,7 @@ async function deleteEntry(entryId) {
     saveStatus.textContent = 'Deletion cancelled.';
     return;
   }
-  const response = await fetch(`/api/entries/${entryId}`, {
+  const response = await fetchWithSessionRecovery(`/api/entries/${entryId}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({})
@@ -872,7 +872,7 @@ async function deleteEntry(entryId) {
 }
 
 async function togglePublish(entryId, publish) {
-  const response = await fetch(`/api/entries/${entryId}/publish`, {
+  const response = await fetchWithSessionRecovery(`/api/entries/${entryId}/publish`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',

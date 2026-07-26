@@ -152,6 +152,16 @@ function getBrowserIdFromRequest(req) {
   return cookies.client_id || '';
 }
 
+function canManageEntry(row, user, browserId) {
+  if (!row) return false;
+  if (row.user_id !== null) {
+    return !!user && row.user_id === user.userId;
+  }
+  if (!user || !user.userId) return true;
+  if (!browserId) return true;
+  return !row.browser_id || row.browser_id === browserId;
+}
+
 async function migrateAnonymousEntriesToUser(userId, browserId) {
   if (!userId || !browserId) return;
   try {
@@ -1051,7 +1061,7 @@ app.patch('/api/entries/:id/content', async (req, res) => {
   try {
     const row = await dbGet('SELECT id, user_id, browser_id FROM entries WHERE id = ? AND deleted = 0', [id]);
     if (!row) return res.status(404).json({ error: 'Entry not found.' });
-    if (row.user_id !== (user ? user.userId : null) && !(row.user_id === null && row.browser_id === browserId)) {
+    if (!canManageEntry(row, user, browserId)) {
       return res.status(403).json({ error: 'You can only edit your own entries.' });
     }
     await dbRun('UPDATE entries SET content = ? WHERE id = ?', [content, id]);
@@ -1076,7 +1086,7 @@ app.patch('/api/entries/:id/publish', async (req, res) => {
   try {
     const row = await dbGet('SELECT id, user_id, browser_id FROM entries WHERE id = ? AND deleted = 0', [id]);
     if (!row) return res.status(404).json({ error: 'Entry not found.' });
-    if (!isAdmin && row.user_id !== (user ? user.userId : null) && !(row.user_id === null && row.browser_id === browserId)) {
+    if (!isAdmin && !canManageEntry(row, user, browserId)) {
       return res.status(403).json({ error: 'You can only publish your own entries.' });
     }
     await dbRun('UPDATE entries SET published = ? WHERE id = ?', [publishedValue, id]);
@@ -1096,7 +1106,7 @@ app.patch('/api/entries/:id/archive', async (req, res) => {
   try {
     const row = await dbGet('SELECT id, user_id, browser_id FROM entries WHERE id = ? AND deleted = 0', [id]);
     if (!row) return res.status(404).json({ error: 'Entry not found.' });
-    if (!isAdmin && row.user_id !== (user ? user.userId : null) && !(row.user_id === null && row.browser_id === browserId)) {
+    if (!isAdmin && !canManageEntry(row, user, browserId)) {
       return res.status(403).json({ error: 'You can only archive your own entries.' });
     }
     await dbRun('UPDATE entries SET archived = 1 WHERE id = ?', [id]);
@@ -1121,7 +1131,7 @@ app.delete('/api/entries/:id', async (req, res) => {
     if (!isAdmin) {
       row = await dbGet('SELECT id, user_id, browser_id FROM entries WHERE id = ? AND deleted = 0', [id]);
       if (!row) return res.status(404).json({ error: 'Entry not found.' });
-      if (row.user_id !== (user ? user.userId : null) && !(row.user_id === null && row.browser_id === browserId)) {
+      if (!canManageEntry(row, user, browserId)) {
         return res.status(403).json({ error: 'You can only delete your own entries.' });
       }
     }
