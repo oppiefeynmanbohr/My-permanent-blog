@@ -294,20 +294,13 @@
 
     // ── Load everything on page load ──
     async function init() {
-      try {
-        const r = await fetch('/api/auth/session', { credentials: 'same-origin' });
-        const s = await r.json();
-        resumeAuthenticated = !!s.authenticated;
-      } catch {
-        resumeAuthenticated = false;
-      }
       await loadProfile();
       await loadWork();
     }
 
     async function loadProfile() {
       try {
-        const r = await fetch('/api/profile', { credentials: 'same-origin' });
+        const r = await fetch('/api/profile', { credentials: 'omit' });
         if (!r.ok) return;
         profileData = await r.json();
         renderProfile();
@@ -358,7 +351,7 @@
 
     async function loadWork() {
       try {
-        const r = await fetch('/api/profile/work', { credentials: 'same-origin' });
+        const r = await fetch('/api/profile/work', { credentials: 'omit' });
         if (!r.ok) return;
         workList = await r.json();
         renderWork();
@@ -452,7 +445,7 @@
       try {
         const r = await fetch('/api/profile', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin', body: JSON.stringify(payload)
+          credentials: 'omit', body: JSON.stringify(payload)
         });
         const data = await r.json();
         if (!r.ok) { statusEl.textContent = data.error || 'Save failed.'; return; }
@@ -514,12 +507,12 @@
         if (editingWorkId) {
           r = await fetch(`/api/profile/work/${editingWorkId}`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin', body: JSON.stringify(payload)
+            credentials: 'omit', body: JSON.stringify(payload)
           });
         } else {
           r = await fetch('/api/profile/work', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin', body: JSON.stringify(payload)
+            credentials: 'omit', body: JSON.stringify(payload)
           });
         }
         const data = await r.json();
@@ -533,7 +526,7 @@
     async function deleteWork(id) {
       if (!confirm('Delete this work entry permanently?')) return;
       try {
-        const r = await fetch(`/api/profile/work/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+        const r = await fetch(`/api/profile/work/${id}`, { method: 'DELETE', credentials: 'omit' });
         if (r.ok) await loadWork();
       } catch {}
     }
