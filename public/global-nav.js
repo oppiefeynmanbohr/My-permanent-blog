@@ -17,13 +17,13 @@
   if (document.querySelector('.mpb-global-nav-wrap')) return;
 
   var links = [
-    { href: '/page1', label: 'Page 1' },
-    { href: '/page2', label: 'Page 2' },
-    { href: '/page3', label: 'Page 3' },
-    { href: '/page4', label: 'Page 4' },
-    { href: '/page5', label: 'Page 5' },
-    { href: '/page6', label: 'Page 6' },
-    { href: '/page7', label: 'Database' },
+    { href: '/page1', label: 'Blog Page 1' },
+    { href: '/page2', label: 'Blog Page 2' },
+    { href: '/page3', label: 'Blog Page 3' },
+    { href: '/page4', label: 'Blog Page 4' },
+    { href: '/page5', label: 'Blog Page 5' },
+    { href: '/page6', label: 'Blog Page 6' },
+    { href: '/page7', label: 'Blog Page 7' },
     { href: '/tools.html', label: 'Tools' },
     { href: '/library', label: 'Library' },
     { href: '/encyclopedia', label: 'Encyclopedia' },
