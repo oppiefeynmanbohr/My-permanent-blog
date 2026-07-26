@@ -863,10 +863,14 @@ app.get('/api/auth/debug', (req, res) => {
 
 app.get('/api/profile', async (req, res) => {
   const user = getUserFromRequest(req);
-  if (!user) return res.status(401).json({ error: 'Login required.' });
   try {
-    const row = await dbGet('SELECT * FROM profiles WHERE user_id = ?', [user.userId]);
-    res.json(row || { user_id: user.userId, full_name: '', title: '', bio: '', email: '', phone: '', location: '', website: '', photo: '', skills: '', education: '' });
+    if (user) {
+      const row = await dbGet('SELECT * FROM profiles WHERE user_id = ?', [user.userId]);
+      return res.json(row || { user_id: user.userId, full_name: '', title: '', bio: '', email: '', phone: '', location: '', website: '', photo: '', skills: '', education: '' });
+    }
+
+    const row = await dbGet('SELECT * FROM profiles ORDER BY updated_at DESC, user_id DESC LIMIT 1');
+    res.json(row || { user_id: null, full_name: '', title: '', bio: '', email: '', phone: '', location: '', website: '', photo: '', skills: '', education: '' });
   } catch (err) { res.status(500).json({ error: 'Failed to load profile.' }); }
 });
 
@@ -894,9 +898,15 @@ app.post('/api/profile', async (req, res) => {
 
 app.get('/api/profile/work', async (req, res) => {
   const user = getUserFromRequest(req);
-  if (!user) return res.status(401).json({ error: 'Login required.' });
   try {
-    const rows = await dbAll('SELECT * FROM work_history WHERE user_id = ? ORDER BY start_date DESC, id DESC', [user.userId]);
+    if (user) {
+      const rows = await dbAll('SELECT * FROM work_history WHERE user_id = ? ORDER BY start_date DESC, id DESC', [user.userId]);
+      return res.json(rows);
+    }
+
+    const owner = await dbGet('SELECT user_id FROM profiles ORDER BY updated_at DESC, user_id DESC LIMIT 1');
+    if (!owner || owner.user_id == null) return res.json([]);
+    const rows = await dbAll('SELECT * FROM work_history WHERE user_id = ? ORDER BY start_date DESC, id DESC', [owner.user_id]);
     res.json(rows);
   } catch (err) { res.status(500).json({ error: 'Failed to load work history.' }); }
 });

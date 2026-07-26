@@ -96,11 +96,7 @@
       <a href="/resume">Resume / Bio</a>
     </div>
 
-    <div id="login-notice" class="login-notice" style="display:none;">
-      Please <a href="/login">log in</a> to view and edit your resume.
-    </div>
-
-    <div id="resume-content" style="display:none;">
+    <div id="resume-content">
       <div class="resume-layout">
 
         <!-- ── LEFT SIDEBAR ── -->
@@ -290,23 +286,23 @@
     let workList = [];
     let pendingPhotoDataUrl = null;
     let editingWorkId = null;
+    let resumeAuthenticated = false;
 
     // ── Load everything on page load ──
     async function init() {
       try {
         const r = await fetch('/api/auth/session', { credentials: 'same-origin' });
         const s = await r.json();
-        if (!s.authenticated) {
-          document.getElementById('login-notice').style.display = 'block';
-          return;
-        }
+        resumeAuthenticated = !!s.authenticated;
       } catch {
-        document.getElementById('login-notice').style.display = 'block';
-        return;
+        resumeAuthenticated = false;
       }
-      document.getElementById('resume-content').style.display = 'block';
       await loadProfile();
       await loadWork();
+      if (!resumeAuthenticated) {
+        const editButton = document.querySelector('.resume-sidebar .btn-secondary');
+        if (editButton) editButton.style.display = 'none';
+      }
     }
 
     async function loadProfile() {
@@ -436,6 +432,10 @@
     }
 
     async function saveProfile() {
+      if (!resumeAuthenticated) {
+        document.getElementById('profile-save-status').textContent = 'Sign in to edit this resume.';
+        return;
+      }
       const statusEl = document.getElementById('profile-save-status');
       statusEl.textContent = 'Saving...';
       statusEl.className = 'status-msg';
@@ -503,6 +503,10 @@
     }
 
     async function saveWork() {
+      if (!resumeAuthenticated) {
+        document.getElementById('work-form-status').textContent = 'Sign in to edit this resume.';
+        return;
+      }
       const statusEl = document.getElementById('work-form-status');
       const payload = {
         role: document.getElementById('w-role').value.trim(),
@@ -535,6 +539,10 @@
     }
 
     async function deleteWork(id) {
+      if (!resumeAuthenticated) {
+        document.getElementById('work-form-status').textContent = 'Sign in to edit this resume.';
+        return;
+      }
       if (!confirm('Delete this work entry permanently?')) return;
       try {
         const r = await fetch(`/api/profile/work/${id}`, { method: 'DELETE', credentials: 'same-origin' });
