@@ -347,6 +347,9 @@
               setStatus(delMsg + ' (HTTP ' + delResp.status + ')');
               return;
             }
+            if (typeof window.__mpbMarkDeletedLocally === 'function') {
+              window.__mpbMarkDeletedLocally(entryId);
+            }
             setStatus('Entry deleted successfully.');
             window.location.reload();
           } catch (err) {

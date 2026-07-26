@@ -238,6 +238,55 @@ function renderEntries(entries) {
   });
 }
 
+function getLocallyDeletedEntryIds() {
+  try {
+    const raw = localStorage.getItem('blog_deleted_entry_ids');
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.map((v) => String(v)) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocallyDeletedEntryIds(ids) {
+  try {
+    localStorage.setItem('blog_deleted_entry_ids', JSON.stringify(ids));
+  } catch {}
+}
+
+function markEntryDeletedLocally(entryId) {
+  const id = String(entryId || '').trim();
+  if (!id) return;
+  const ids = getLocallyDeletedEntryIds();
+  if (!ids.includes(id)) {
+    ids.push(id);
+    // Keep tombstone list bounded.
+    saveLocallyDeletedEntryIds(ids.slice(-500));
+  }
+
+  try {
+    const keys = Object.keys(localStorage);
+    keys.forEach((key) => {
+      if (!key.startsWith('entries_cache:')) return;
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      const filtered = parsed.filter((entry) => String(entry && entry.id) !== id);
+      localStorage.setItem(key, JSON.stringify(filtered));
+    });
+  } catch {}
+}
+
+function filterOutLocallyDeletedEntries(entries) {
+  if (!Array.isArray(entries) || !entries.length) return Array.isArray(entries) ? entries : [];
+  const deletedIds = new Set(getLocallyDeletedEntryIds());
+  if (!deletedIds.size) return entries;
+  return entries.filter((entry) => !deletedIds.has(String(entry && entry.id)));
+}
+
+window.__mpbMarkDeletedLocally = markEntryDeletedLocally;
+
 async function restoreDraft() {
   if (!entryContent) return;
   const draftKey = getActiveUserStorageKey('main_entry_draft');
@@ -317,7 +366,7 @@ async function loadEntries() {
   const url = `/api/entries?${params.toString()}`;
   try {
     const response = await fetchWithSessionRecovery(url);
-    const entries = await response.json();
+    const entries = filterOutLocallyDeletedEntries(await response.json());
     if (Array.isArray(entries) && entries.length > 0) {
       // Cache entries in localStorage for resilience
       if (!search && !date) {
@@ -329,7 +378,7 @@ async function loadEntries() {
       try {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
-          const cachedEntries = JSON.parse(cached);
+          const cachedEntries = filterOutLocallyDeletedEntries(JSON.parse(cached));
           if (cachedEntries.length > 0) {
             renderEntries(cachedEntries);
             if (saveStatus) saveStatus.textContent = '(Showing cached entries — server may be restarting)';
@@ -345,7 +394,7 @@ async function loadEntries() {
     // Network error — try cache
     try {
       const cached = localStorage.getItem(cacheKey);
-      if (cached) renderEntries(JSON.parse(cached));
+      if (cached) renderEntries(filterOutLocallyDeletedEntries(JSON.parse(cached)));
     } catch {}
   }
 }
@@ -880,6 +929,7 @@ async function deleteEntry(entryId) {
       return;
     }
 
+    markEntryDeletedLocally(entryId);
     setStatusMessage('Entry deleted successfully.');
     try {
       const userId = localStorage.getItem('blog_user_id') || 'guest';
