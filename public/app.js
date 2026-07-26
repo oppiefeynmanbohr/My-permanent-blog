@@ -868,7 +868,11 @@ async function deleteEntry(entryId) {
   }
 
   saveStatus.textContent = 'Entry deleted successfully.';
-  loadEntries();
+  try {
+    const userId = localStorage.getItem('blog_user_id') || 'guest';
+    localStorage.removeItem(`entries_cache:${userId}`);
+  } catch {}
+  await loadEntries();
 }
 
 async function togglePublish(entryId, publish) {
