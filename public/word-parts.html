@@ -95,6 +95,20 @@
       margin-top: 20px;
     }
 
+    .glossary-group {
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e8e0cf;
+    }
+
+    .glossary-group h4 {
+      margin: 0 0 8px;
+      color: #4b5f7a;
+      font-size: 0.98rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
     .entry {
       border: 1px solid #e4dccb;
       border-radius: 10px;
@@ -325,27 +339,39 @@
     const prefixListEl = document.getElementById('prefix-list');
     const suffixListEl = document.getElementById('suffix-list');
 
+    function renderCollection(items, targetEl) {
+      const grouped = items
+        .slice()
+        .sort((a, b) => a.part.localeCompare(b.part))
+        .reduce((acc, item) => {
+          const key = (item.part || '').trim().charAt(0).toUpperCase() || '#';
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(item);
+          return acc;
+        }, {});
+
+      targetEl.innerHTML = Object.entries(grouped)
+        .map(([letter, entries]) => `
+          <div class="glossary-group">
+            <h4>${letter}</h4>
+            ${entries.map((item) => `
+              <div class="entry">
+                <div class="part">${item.part}</div>
+                <div class="meaning"><strong>Meaning:</strong> ${item.meaning}</div>
+                <div class="meaning"><strong>Example:</strong> ${item.example}</div>
+                <div class="origin">Origin: ${item.origin}</div>
+              </div>
+            `).join('')}
+          </div>
+        `)
+        .join('');
+    }
+
     function renderReferenceList() {
       const prefixes = parts.filter((item) => item.type === 'prefix');
       const suffixes = parts.filter((item) => item.type === 'suffix');
-
-      prefixListEl.innerHTML = prefixes.map((item) => `
-        <div class="entry">
-          <div class="part">${item.part}</div>
-          <div class="meaning"><strong>Meaning:</strong> ${item.meaning}</div>
-          <div class="meaning"><strong>Example:</strong> ${item.example}</div>
-          <div class="origin">Origin: ${item.origin}</div>
-        </div>
-      `).join('');
-
-      suffixListEl.innerHTML = suffixes.map((item) => `
-        <div class="entry">
-          <div class="part">${item.part}</div>
-          <div class="meaning"><strong>Meaning:</strong> ${item.meaning}</div>
-          <div class="meaning"><strong>Example:</strong> ${item.example}</div>
-          <div class="origin">Origin: ${item.origin}</div>
-        </div>
-      `).join('');
+      renderCollection(prefixes, prefixListEl);
+      renderCollection(suffixes, suffixListEl);
     }
 
     renderReferenceList();

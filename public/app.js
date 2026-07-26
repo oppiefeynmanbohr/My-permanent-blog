@@ -260,7 +260,8 @@ async function saveDraft() {
   }
 
   try {
-    const draftState = localStorage.getItem('blog_logged_in') === '1' ? value : '';
+    const isLoggedIn = localStorage.getItem('blog_logged_in') === '1' || (await ensureAuthenticatedSession());
+    const draftState = isLoggedIn ? value : '';
     if (!draftState && !value.trim()) return;
     await fetchWithSessionRecovery('/api/drafts', {
       method: 'PUT',
@@ -325,17 +326,17 @@ async function saveEntry() {
   saveEntryButton.disabled = true;
   saveStatus.textContent = 'Saving...';
 
-  try {
-    const title = `Entry ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  const pendingEntry = { title: `Entry ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, content, source: 'main', createdAt: new Date().toISOString() };
 
+  try {
     const response = await fetchWithSessionRecovery('/api/entries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, content })
+      body: JSON.stringify({ title: pendingEntry.title, content })
     });
 
     if (response.status === 401 || response.status === 403) {
-      queuePendingEntry({ title, content, source: 'main', createdAt: new Date().toISOString() });
+      queuePendingEntry(pendingEntry);
       saveStatus.textContent = 'Saved locally for syncing once your session is restored.';
       saveEntryButton.disabled = false;
       return;
@@ -351,10 +352,9 @@ async function saveEntry() {
     const draftKey = getActiveUserStorageKey('main_entry_draft');
     localStorage.removeItem(draftKey);
     try {
-      await fetch('/api/drafts', {
+      await fetchWithSessionRecovery('/api/drafts', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
         body: JSON.stringify({ source: 'main', content: '' })
       });
     } catch {}
@@ -1412,11 +1412,12 @@ async function ensureAuthenticatedSession() {
 
 async function fetchWithSessionRecovery(url, options = {}) {
   const ready = await ensureAuthenticatedSession();
+  const requestHeaders = { ...(options.headers || {}), ...getAuthHeaders() };
   if (!ready) {
-    return fetch(url, { credentials: 'same-origin', ...options, headers: { ...(options.headers || {}), ...getAuthHeaders() } });
+    return fetch(url, { credentials: 'same-origin', ...options, headers: requestHeaders });
   }
 
-  const response = await fetch(url, { credentials: 'same-origin', ...options, headers: { ...(options.headers || {}), ...getAuthHeaders() } });
+  const response = await fetch(url, { credentials: 'same-origin', ...options, headers: requestHeaders });
   if ((response.status === 401 || response.status === 403) && !options._retried) {
     const restored = await tryStoredLoginFromBrowser();
     if (restored) {
@@ -1484,8 +1485,9 @@ function savePendingEntries(entries) {
 
 function queuePendingEntry(entry) {
   const pending = getPendingEntries();
-  pending.push(entry);
-  savePendingEntries(pending);
+  const deduped = pending.filter((item) => !(item.createdAt && entry.createdAt && item.createdAt === entry.createdAt && item.content === entry.content));
+  deduped.push(entry);
+  savePendingEntries(deduped);
 }
 
 async function flushPendingEntries() {

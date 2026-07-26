@@ -152,6 +152,15 @@ function getBrowserIdFromRequest(req) {
   return cookies.client_id || '';
 }
 
+async function migrateAnonymousEntriesToUser(userId, browserId) {
+  if (!userId || !browserId) return;
+  try {
+    await dbRun('UPDATE entries SET user_id = ? WHERE user_id IS NULL AND browser_id = ? AND deleted = 0', [userId, browserId]);
+  } catch (err) {
+    console.warn('Failed to migrate anonymous entries:', err.message);
+  }
+}
+
 function getAuthHeaders(req) {
   const headers = req.headers || {};
   const username = String(headers['x-auth-username'] || headers['x-auth-user'] || '').trim();
@@ -255,7 +264,12 @@ CREATE TABLE IF NOT EXISTS entries (
   content TEXT NOT NULL,
   timestamp TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  published INTEGER NOT NULL DEFAULT 0
+  published INTEGER NOT NULL DEFAULT 0,
+  user_id INTEGER REFERENCES users(id),
+  source TEXT NOT NULL DEFAULT 'main',
+  deleted INTEGER NOT NULL DEFAULT 0,
+  archived INTEGER NOT NULL DEFAULT 0,
+  browser_id TEXT NOT NULL DEFAULT ''
 );
 `;
 
@@ -299,6 +313,7 @@ async function initDatabase() {
   if (!names.includes('source')) await dbRun("ALTER TABLE entries ADD COLUMN source TEXT NOT NULL DEFAULT 'main'");
   if (!names.includes('deleted')) await dbRun('ALTER TABLE entries ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0');
   if (!names.includes('archived')) await dbRun('ALTER TABLE entries ADD COLUMN archived INTEGER NOT NULL DEFAULT 0');
+  if (!names.includes('browser_id')) await dbRun('ALTER TABLE entries ADD COLUMN browser_id TEXT NOT NULL DEFAULT ""');
   await dbRun(`CREATE TABLE IF NOT EXISTS user_sessions (
     token TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL,
@@ -628,8 +643,9 @@ app.post('/api/auth/signup', async (req, res) => {
       [username.trim(), email.trim().toLowerCase(), hash, salt, createdAt]
     );
     const newUser = await dbGet('SELECT id FROM users WHERE username = ?', [username.trim()]);
-    const browserId = getBrowserIdFromRequest(req);
+    const browserId = getOrCreateClientId(req, res);
     await createUserSession(req, res, newUser.id, username.trim(), true, browserId);
+    await migrateAnonymousEntriesToUser(newUser.id, browserId);
     res.status(201).json({ success: true, username: username.trim() });
   } catch (err) {
     console.error('Signup DB error:', err.message);
@@ -658,8 +674,9 @@ app.post('/api/auth/login', async (req, res) => {
     const hash = hashPassword(password, user.password_salt);
     if (hash !== user.password_hash) return res.status(401).json({ error: 'Invalid username or password.' });
 
-    const browserId = getBrowserIdFromRequest(req);
+    const browserId = getOrCreateClientId(req, res);
     await createUserSession(req, res, user.id, user.username, !!rememberMe, browserId);
+    await migrateAnonymousEntriesToUser(user.id, browserId);
     res.json({ success: true, username: user.username });
   } catch (err) {
     res.status(500).json({ error: 'Login failed.' });
@@ -939,7 +956,8 @@ app.put('/api/drafts', async (req, res) => {
 
 app.get('/api/entries', async (req, res) => {
   cleanupAuthState();
-  const user = getUserFromRequest(req);
+  const user = await getAuthenticatedUser(req, res);
+  const browserId = getOrCreateClientId(req, res);
   const search = req.query.search || '';
   const date = req.query.date || '';
   const published = req.query.published;
@@ -954,10 +972,16 @@ app.get('/api/entries', async (req, res) => {
   // Exclude archived entries unless caller opts in (page7 uses include_archived=true)
   if (req.query.include_archived !== 'true') clauses.push('archived = 0');
 
-  // When a user is logged in, show only their entries. If no session is available,
-  // fall back to showing entries that were saved without a user account so work remains visible.
-  if (user && published !== 'true') { clauses.push('user_id = ?'); params.push(user.userId); }
-  else if (!user && published !== 'true') { clauses.push('user_id IS NULL'); }
+  // When a user is logged in, show their entries plus any anonymous entries from the same browser.
+  // When no session is available, fall back to anonymous entries from the current browser so work remains visible.
+  if (user && published !== 'true') {
+    clauses.push('(user_id = ? OR (user_id IS NULL AND browser_id = ?))');
+    params.push(user.userId, browserId);
+  } else if (!user && published !== 'true') {
+    clauses.push('user_id IS NULL');
+    clauses.push('browser_id = ?');
+    params.push(browserId);
+  }
 
   if (source) { clauses.push('source = ?'); params.push(source); }
   if (calmonth) { clauses.push("strftime('%Y-%m', created_at) = ?"); params.push(calmonth); }
@@ -982,6 +1006,7 @@ app.get('/api/entries', async (req, res) => {
 app.post('/api/entries', async (req, res) => {
   cleanupAuthState();
   const user = await getAuthenticatedUser(req, res);
+  const browserId = getOrCreateClientId(req, res);
 
   const { title, content, source, caldate } = req.body;
   if (!content) return res.status(400).json({ error: 'Content is required.' });
@@ -996,16 +1021,17 @@ app.post('/api/entries', async (req, res) => {
   }
   const timestamp = formatTimestamp(now);
   const createdAt = now.toISOString();
-  const sql = 'INSERT INTO entries (title, content, timestamp, created_at, published, user_id, source) VALUES (?, ?, ?, ?, 0, ?, ?)';
+  const sql = 'INSERT INTO entries (title, content, timestamp, created_at, published, user_id, source, browser_id) VALUES (?, ?, ?, ?, 0, ?, ?, ?)';
   const userId = user ? user.userId : null;
 
   try {
-    await dbRun(sql, [autoTitle, content, timestamp, createdAt, userId, entrySource]);
+    if (userId) await migrateAnonymousEntriesToUser(userId, browserId);
+    await dbRun(sql, [autoTitle, content, timestamp, createdAt, userId, entrySource, browserId]);
     const row = await dbGet(
       userId === null
-        ? 'SELECT id FROM entries WHERE created_at = ? AND user_id IS NULL ORDER BY id DESC LIMIT 1'
+        ? 'SELECT id FROM entries WHERE created_at = ? AND browser_id = ? ORDER BY id DESC LIMIT 1'
         : 'SELECT id FROM entries WHERE created_at = ? AND user_id = ? ORDER BY id DESC LIMIT 1',
-      userId === null ? [createdAt] : [createdAt, userId]
+      userId === null ? [createdAt, browserId] : [createdAt, userId]
     );
     const newId = row ? row.id : Date.now();
     res.status(201).json({ id: newId, title: autoTitle, content, timestamp, created_at: createdAt, published: 0, source: entrySource });
@@ -1016,7 +1042,7 @@ app.post('/api/entries', async (req, res) => {
 
 app.patch('/api/entries/:id/content', async (req, res) => {
   cleanupAuthState();
-  const user = getUserFromRequest(req);
+  const user = await getAuthenticatedUser(req, res);
   if (!user) return res.status(401).json({ error: 'Login required.' });
   const id = Number(req.params.id);
   const content = String(req.body.content || '').trim();
@@ -1036,7 +1062,7 @@ app.patch('/api/entries/:id/content', async (req, res) => {
 app.patch('/api/entries/:id/publish', async (req, res) => {
   cleanupAuthState();
   const isAdmin = isAdminAuthenticated(req);
-  const user = getUserFromRequest(req);
+  const user = await getAuthenticatedUser(req, res);
   if (!isAdmin && !user) return res.status(403).json({ error: 'Not authorized.' });
 
   const { publish } = req.body;
@@ -1058,7 +1084,7 @@ app.patch('/api/entries/:id/archive', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid entry ID.' });
   const isAdmin = isAdminAuthenticated(req);
-  const user = getUserFromRequest(req);
+  const user = await getAuthenticatedUser(req, res);
   if (!isAdmin && !user) return res.status(403).json({ error: 'Authentication required.' });
   try {
     const row = await dbGet('SELECT id, user_id FROM entries WHERE id = ? AND deleted = 0', [id]);
@@ -1077,7 +1103,7 @@ app.delete('/api/entries/:id', async (req, res) => {
   if (!id) return res.status(400).json({ error: 'Invalid entry ID.' });
 
   const isAdmin = isAdminAuthenticated(req);
-  const user = getUserFromRequest(req);
+  const user = await getAuthenticatedUser(req, res);
   if (!isAdmin && !user) return res.status(403).json({ error: 'Authentication required to delete entries.' });
 
   try {
