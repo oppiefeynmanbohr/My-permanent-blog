@@ -109,6 +109,37 @@
       border-radius: 8px;
     }
 
+    .term-index {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .term-index button {
+      border: 1px solid #d8c69b;
+      background: #fffdf8;
+      color: #123b70;
+      padding: 7px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
+    .term-index button.active {
+      background: #123b70;
+      color: white;
+      border-color: #123b70;
+    }
+
+    .article-entry {
+      display: none;
+    }
+
+    .article-entry.active {
+      display: block;
+    }
+
     .references {
       margin-top: 22px;
       padding-top: 10px;
@@ -158,21 +189,52 @@
 
     <div class="article-grid">
       <section id="encyclopedia-article" class="card">
-        <h2>Einstein's theory of relativity</h2>
-        <p class="lead">Einstein's theory of relativity is a foundational framework in physics that explains how space, time, motion, and gravity are connected. It transformed modern science by replacing older ideas of absolute time and space with a more flexible understanding of the universe.</p>
-        <p class="lead">The theory is usually divided into special relativity and general relativity. Special relativity describes how measurements of time and space change for objects moving at very high speeds, while general relativity explains gravity as the curvature of spacetime caused by mass and energy.</p>
-        <h3>Overview</h3>
-        <p class="lead">Special relativity, published in 1905, introduced the idea that the speed of light is constant for all observers and that time can pass differently for moving objects. General relativity, published in 1915, connected gravity to the geometry of spacetime and successfully explained planetary motion, light bending, and black holes.</p>
-        <h3>Why it matters</h3>
-        <p class="lead">Relativity matters because it shapes how scientists understand the cosmos, from GPS satellites to the behavior of stars and galaxies. It remains one of the most important intellectual achievements in modern physics and continues to guide research in cosmology and astrophysics.</p>
-        <div class="references">
-          <h3>References</h3>
-          <ol>
-            <li>Einstein, A. (1905) 'On the Electrodynamics of Moving Bodies', <em>Annalen der Physik</em>.</li>
-            <li>Einstein, A. (1916) <em>The Foundation of the General Theory of Relativity</em>. Available at: <a href="https://www.harvard.edu" target="_blank" rel="noreferrer">https://www.harvard.edu</a> (Accessed: 26 July 2026).</li>
-            <li>Harvard University Department of Physics (2024) <em>Relativity and Cosmology</em>. Available at: <a href="https://www.physics.harvard.edu" target="_blank" rel="noreferrer">https://www.physics.harvard.edu</a> (Accessed: 26 July 2026).</li>
-          </ol>
+        <div class="term-index" id="term-index"></div>
+
+        <div class="article-entry active" data-term="relativity">
+          <h2>Einstein's theory of relativity</h2>
+          <p class="lead">Einstein's theory of relativity is a foundational framework in physics that explains how space, time, motion, and gravity are connected. It transformed modern science by replacing older ideas of absolute time and space with a more flexible understanding of the universe.</p>
+          <p class="lead">The theory is usually divided into special relativity and general relativity. Special relativity describes how measurements of time and space change for objects moving at very high speeds, while general relativity explains gravity as the curvature of spacetime caused by mass and energy.</p>
+          <h3>Overview</h3>
+          <p class="lead">Special relativity, published in 1905, introduced the idea that the speed of light is constant for all observers and that time can pass differently for moving objects. General relativity, published in 1915, connected gravity to the geometry of spacetime and successfully explained planetary motion, light bending, and black holes.</p>
+          <h3>Why it matters</h3>
+          <p class="lead">Relativity matters because it shapes how scientists understand the cosmos, from GPS satellites to the behavior of stars and galaxies. It remains one of the most important intellectual achievements in modern physics and continues to guide research in cosmology and astrophysics.</p>
+          <div class="references">
+            <h3>References</h3>
+            <ol>
+              <li>Einstein, A. (1905) 'On the Electrodynamics of Moving Bodies', <em>Annalen der Physik</em>.</li>
+              <li>Einstein, A. (1916) <em>The Foundation of the General Theory of Relativity</em>. Available at: <a href="https://www.harvard.edu" target="_blank" rel="noreferrer">https://www.harvard.edu</a> (Accessed: 26 July 2026).</li>
+              <li>Harvard University Department of Physics (2024) <em>Relativity and Cosmology</em>. Available at: <a href="https://www.physics.harvard.edu" target="_blank" rel="noreferrer">https://www.physics.harvard.edu</a> (Accessed: 26 July 2026).</li>
+            </ol>
+          </div>
         </div>
+
+        <div class="article-entry" data-term="quantum">
+          <h2>Quantum mechanics</h2>
+          <p class="lead">Quantum mechanics is the branch of physics that describes the behavior of matter and energy at microscopic scales. It introduced the idea that particles can behave like waves and that certain quantities, such as position and momentum, are described probabilistically rather than deterministically.</p>
+          <p class="lead">This framework underlies modern chemistry, electronics, semiconductors, and many medical technologies. It is essential to understanding atoms, lasers, superconductors, and the structure of matter itself.</p>
+          <div class="references">
+            <h3>References</h3>
+            <ol>
+              <li>Griffiths, D. J. and Schroeter, D. F. (2018) <em>Introduction to Quantum Mechanics</em>. 3rd edn. Cambridge: Cambridge University Press.</li>
+              <li>Harvard University Department of Physics (2024) <em>Quantum Physics</em>. Available at: <a href="https://www.harvard.edu" target="_blank" rel="noreferrer">https://www.harvard.edu</a> (Accessed: 26 July 2026).</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="article-entry" data-term="cosmology">
+          <h2>Cosmology</h2>
+          <p class="lead">Cosmology is the scientific study of the origin, structure, evolution, and eventual fate of the universe. It draws on physics, astronomy, and mathematics to explain phenomena such as the Big Bang, galaxies, dark matter, and cosmic expansion.</p>
+          <p class="lead">Modern cosmology relies on observations from telescopes, particle physics, and statistical modeling to connect the earliest moments of the universe to the large-scale structure we see today.</p>
+          <div class="references">
+            <h3>References</h3>
+            <ol>
+              <li>Ryden, B. and Peterson, B. M. (2020) <em>Foundations of Astrophysics</em>. 1st edn. Houston: Rice University Press.</li>
+              <li>Harvard University Center for Astrophysics (2024) <em>Cosmology and Astrophysics</em>. Available at: <a href="https://www.cfa.harvard.edu" target="_blank" rel="noreferrer">https://www.cfa.harvard.edu</a> (Accessed: 26 July 2026).</li>
+            </ol>
+          </div>
+        </div>
+
         <a class="back-link" href="/page1">← Back to the blog</a>
       </section>
 
@@ -192,22 +254,58 @@
     const searchInput = document.getElementById('encyclopedia-search');
     const searchButton = document.getElementById('encyclopedia-search-btn');
     const searchStatus = document.getElementById('encyclopedia-search-status');
-    const article = document.getElementById('encyclopedia-article');
+    const termIndex = document.getElementById('term-index');
+    const entries = Array.from(document.querySelectorAll('.article-entry'));
+
+    const terms = [
+      { label: 'Relativity', value: 'relativity' },
+      { label: 'Quantum', value: 'quantum' },
+      { label: 'Cosmology', value: 'cosmology' }
+    ];
+
+    terms.forEach((term) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = term.label;
+      button.dataset.term = term.value;
+      button.addEventListener('click', () => showEntry(term.value));
+      termIndex.appendChild(button);
+    });
+
+    function showEntry(term) {
+      entries.forEach((entry) => {
+        entry.classList.toggle('active', entry.dataset.term === term);
+      });
+      termIndex.querySelectorAll('button').forEach((button) => {
+        button.classList.toggle('active', button.dataset.term === term);
+      });
+      searchStatus.textContent = `Viewing entry: ${term}.`;
+    }
 
     function runSearch() {
       const query = (searchInput.value || '').trim().toLowerCase();
       if (!query) {
-        article.style.display = '';
-        searchStatus.textContent = '';
+        showEntry('relativity');
+        searchStatus.textContent = 'Showing the main reference entry.';
         return;
       }
 
-      const searchableText = article.textContent.toLowerCase();
-      const match = searchableText.includes(query);
-      article.style.display = match ? '' : 'none';
-      searchStatus.textContent = match
-        ? `Showing results for “${query}”.`
-        : `No results found for “${query}”.`;
+      const matched = entries.filter((entry) => {
+        const text = entry.textContent.toLowerCase();
+        return text.includes(query);
+      });
+
+      if (matched.length) {
+        entries.forEach((entry) => entry.classList.toggle('active', matched.includes(entry)));
+        termIndex.querySelectorAll('button').forEach((button) => {
+          button.classList.toggle('active', matched.some((entry) => entry.dataset.term === button.dataset.term));
+        });
+        searchStatus.textContent = `Found ${matched.length} matching reference entry${matched.length > 1 ? 'ies' : 'y'}.`;
+      } else {
+        entries.forEach((entry) => entry.classList.remove('active'));
+        termIndex.querySelectorAll('button').forEach((button) => button.classList.remove('active'));
+        searchStatus.textContent = `No reference entries matched “${query}”.`;
+      }
     }
 
     searchButton.addEventListener('click', runSearch);
@@ -217,6 +315,8 @@
         runSearch();
       }
     });
+
+    showEntry('relativity');
   </script>
 </body>
 </html>
