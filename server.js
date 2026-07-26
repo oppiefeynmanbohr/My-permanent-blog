@@ -152,10 +152,15 @@ function getBrowserIdFromRequest(req) {
   return cookies.client_id || '';
 }
 
+function sameUserId(a, b) {
+  if (a === null || a === undefined || b === null || b === undefined) return false;
+  return String(a) === String(b);
+}
+
 function canManageEntry(row, user, browserId) {
   if (!row) return false;
   if (row.user_id !== null) {
-    return !!user && row.user_id === user.userId;
+    return !!user && sameUserId(row.user_id, user.userId);
   }
   if (!user || !user.userId) return true;
   if (!browserId) return true;

@@ -170,6 +170,12 @@
     let viewYear = today.getFullYear();
     let viewMonth = today.getMonth();
     let selectedDay = null;
+
+    function getActiveUserStorageKey(prefix) {
+      const browserId = localStorage.getItem('blog_browser_id') || 'browser-guest';
+      const userId = localStorage.getItem('blog_user_id') || 'guest';
+      return `${prefix}:${browserId}:${userId}`;
+    }
     // entryMap: 'YYYY-MM-DD' -> [ { id, content, timestamp } ]
     let entryMap = {};
 
@@ -226,9 +232,11 @@
       selectedDay = day;
       renderCalendar();
       const key = dateKey(viewYear, viewMonth, day);
+      const draftKey = getActiveUserStorageKey(`calendar_draft:${key}`);
+      const savedDraft = localStorage.getItem(draftKey);
       document.getElementById('entry-panel').style.display = 'block';
       document.getElementById('entry-day-label').textContent = `${MONTHS[viewMonth]} ${day}, ${viewYear}`;
-      document.getElementById('day-entry-content').value = '';
+      document.getElementById('day-entry-content').value = savedDraft || '';
       document.getElementById('day-status').textContent = '';
       renderDayEntries(key);
       document.getElementById('day-entry-content').focus();
@@ -290,13 +298,44 @@
     }
     async function deleteEntry(id, key) {
       if (!confirm('Delete this entry permanently?')) return;
-      const r = await fetch(`/api/entries/${id}`, { method: 'DELETE', credentials: 'same-origin' }).catch(() => null);
-      if (r && r.ok) {
+      const statusEl = document.getElementById(`edit-status-${id}`);
+      if (statusEl) statusEl.textContent = 'Deleting...';
+      try {
+        const r = await fetch(`/api/entries/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+        if (r.status === 401) {
+          if (statusEl) statusEl.textContent = 'Session expired - redirecting to login...';
+          setTimeout(() => { window.location.href = '/login'; }, 1200);
+          return;
+        }
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          if (statusEl) statusEl.textContent = data.error || 'Could not delete this entry.';
+          return;
+        }
         if (entryMap[key]) entryMap[key] = entryMap[key].filter(e => e.id !== id);
         renderCalendar();
         renderDayEntries(key);
+      } catch {
+        if (statusEl) statusEl.textContent = 'Network error. Try again.';
       }
     }
+
+    window.addEventListener('pageshow', () => {
+      if (selectedDay === null) return;
+      const key = dateKey(viewYear, viewMonth, selectedDay);
+      const draftKey = getActiveUserStorageKey(`calendar_draft:${key}`);
+      const savedDraft = localStorage.getItem(draftKey);
+      if (savedDraft !== null && !document.getElementById('day-entry-content').value.trim()) {
+        document.getElementById('day-entry-content').value = savedDraft;
+      }
+    });
+
+    document.getElementById('day-entry-content').addEventListener('input', () => {
+      if (selectedDay === null) return;
+      const key = dateKey(viewYear, viewMonth, selectedDay);
+      const draftKey = getActiveUserStorageKey(`calendar_draft:${key}`);
+      localStorage.setItem(draftKey, document.getElementById('day-entry-content').value);
+    });
 
     document.getElementById('save-day-entry').addEventListener('click', async () => {
       const key = dateKey(viewYear, viewMonth, selectedDay);
@@ -319,6 +358,8 @@
         const newEntry = await r.json();
         if (!entryMap[key]) entryMap[key] = [];
         entryMap[key].push({ id: newEntry.id, content: newEntry.content, timestamp: newEntry.timestamp });
+        const draftKey = getActiveUserStorageKey(`calendar_draft:${key}`);
+        localStorage.removeItem(draftKey);
         document.getElementById('day-entry-content').value = '';
         status.textContent = 'Saved!';
         setTimeout(() => { status.textContent = ''; }, 2000);
@@ -341,10 +382,11 @@
     });
 
     try {
-      const t = localStorage.getItem('blogTitle');
+      const userId = localStorage.getItem('blog_user_id') || 'guest';
+      const t = localStorage.getItem(`blogTitle:${userId}`);
       if (t) document.title = `${t} - Calendar Journal`;
-      const f = localStorage.getItem('blogFontFamily');
-      const s = localStorage.getItem('blogFontSize');
+      const f = localStorage.getItem(`blogFontFamily:${userId}`);
+      const s = localStorage.getItem(`blogFontSize:${userId}`);
       if (f) document.documentElement.style.setProperty('--blog-font-family', f);
       if (s) document.documentElement.style.setProperty('--blog-font-size', s);
     } catch {}

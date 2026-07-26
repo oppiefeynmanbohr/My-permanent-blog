@@ -278,6 +278,53 @@
       });
     })();
   </script>
-  <script src="app.js"></script>
+  <script>
+    (function () {
+      function setStatus(message) {
+        var el = document.getElementById('save-status');
+        if (el) {
+          el.textContent = message;
+        } else if (message) {
+          window.alert(message);
+        }
+      }
+
+      document.addEventListener('click', async function (event) {
+        var btn = event.target.closest('.delete-button');
+        if (!btn) return;
+        if (window.__mpbDeleteHandlerReady) return;
+
+        event.preventDefault();
+        var entryId = btn.getAttribute('data-id');
+        if (!entryId) return;
+
+        var ok = window.confirm('Delete this entry permanently?');
+        if (!ok) {
+          setStatus('Deletion cancelled.');
+          return;
+        }
+
+        setStatus('Deleting...');
+        try {
+          var resp = await fetch('/api/entries/' + encodeURIComponent(entryId), {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+          var data = await resp.json().catch(function () { return {}; });
+          if (!resp.ok) {
+            setStatus(data.error || 'Failed to delete entry.');
+            return;
+          }
+          setStatus('Entry deleted successfully.');
+          window.location.reload();
+        } catch (err) {
+          setStatus('Network error. Could not delete entry.');
+        }
+      });
+    })();
+  </script>
+  <script src="app.js?v=20260726"></script>
 </body>
 </html>

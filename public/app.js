@@ -42,6 +42,17 @@ const newSiteRemindButton = document.getElementById('new-site-remind');
 
 let pendingMfaToken = null;
 let draftAutosaveTimer = null;
+window.__mpbDeleteHandlerReady = true;
+
+function setStatusMessage(message) {
+  if (saveStatus) {
+    saveStatus.textContent = message;
+    return;
+  }
+  if (message) {
+    window.alert(message);
+  }
+}
 
 function toBase64Url(bytes) {
   const binary = String.fromCharCode(...bytes);
@@ -842,39 +853,43 @@ async function archiveEntry(entryId) {
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    saveStatus.textContent = error?.error || 'Could not move entry. Make sure you are logged in.';
+    setStatusMessage(error?.error || 'Could not move entry. Make sure you are logged in.');
     return;
   }
-  saveStatus.textContent = 'Entry moved to Database.';
+  setStatusMessage('Entry moved to Database.');
   loadEntries();
 }
 
 async function deleteEntry(entryId) {
-  const confirmation = window.confirm('Delete this entry permanently?');
-  if (!confirmation) {
-    saveStatus.textContent = 'Deletion cancelled.';
-    return;
-  }
-  const response = await fetchWithSessionRecovery(`/api/entries/${entryId}`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({})
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    saveStatus.textContent = error?.error || 'Failed to delete entry.';
-    return;
-  }
-
-  saveStatus.textContent = 'Entry deleted successfully.';
   try {
-    const userId = localStorage.getItem('blog_user_id') || 'guest';
-    localStorage.removeItem(`entries_cache:${userId}`);
-    localStorage.removeItem('blog_pending_entries');
-  } catch {}
-  await loadEntries();
-  window.location.reload();
+    const confirmation = window.confirm('Delete this entry permanently?');
+    if (!confirmation) {
+      setStatusMessage('Deletion cancelled.');
+      return;
+    }
+    setStatusMessage('Deleting...');
+    const response = await fetchWithSessionRecovery(`/api/entries/${entryId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      setStatusMessage(error?.error || 'Failed to delete entry.');
+      return;
+    }
+
+    setStatusMessage('Entry deleted successfully.');
+    try {
+      const userId = localStorage.getItem('blog_user_id') || 'guest';
+      localStorage.removeItem(`entries_cache:${userId}`);
+      localStorage.removeItem('blog_pending_entries');
+    } catch {}
+    await loadEntries();
+  } catch (err) {
+    setStatusMessage('Network error. Could not delete entry.');
+  }
 }
 
 async function togglePublish(entryId, publish) {
@@ -903,13 +918,15 @@ async function togglePublish(entryId, publish) {
   }
 }
 
-entryContent.addEventListener('input', () => {
-  void saveDraft();
-  schedulePermanentEntryBackup();
-});
-saveEntryButton.addEventListener('click', saveEntry);
-searchInput.addEventListener('input', loadEntries);
-calendarInput.addEventListener('change', loadEntries);
+if (entryContent) {
+  entryContent.addEventListener('input', () => {
+    void saveDraft();
+    schedulePermanentEntryBackup();
+  });
+}
+if (saveEntryButton) saveEntryButton.addEventListener('click', saveEntry);
+if (searchInput) searchInput.addEventListener('input', loadEntries);
+if (calendarInput) calendarInput.addEventListener('change', loadEntries);
 if (fontFamilyInput) {
   fontFamilyInput.addEventListener('change', () => {
     const v = fontFamilyInput.value;

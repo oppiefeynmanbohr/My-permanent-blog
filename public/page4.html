@@ -213,9 +213,28 @@
 
     async function deleteEntry(id) {
       const confirm = prompt('Type "delete permanently" to confirm:');
-      if (!confirm || confirm.trim().toLowerCase() !== 'delete permanently') { return; }
-      await fetch(`/api/entries/${id}`, { method: 'DELETE', credentials: 'same-origin' });
-      loadEntries();
+      if (!confirm || confirm.trim().toLowerCase() !== 'delete permanently') {
+        saveStatus.textContent = 'Deletion cancelled.';
+        return;
+      }
+      saveStatus.textContent = 'Deleting...';
+      try {
+        const r = await fetch(`/api/entries/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+        if (r.status === 401) {
+          saveStatus.textContent = 'Session expired - redirecting to login...';
+          setTimeout(() => { window.location.href = '/login'; }, 1200);
+          return;
+        }
+        if (!r.ok) {
+          const error = await r.json().catch(() => ({}));
+          saveStatus.textContent = error.error || 'Could not delete entry.';
+          return;
+        }
+        saveStatus.textContent = 'Entry deleted.';
+        loadEntries();
+      } catch {
+        saveStatus.textContent = 'Network error. Could not delete entry.';
+      }
     }
 
     saveBtn.addEventListener('click', saveEntry);
@@ -332,7 +351,8 @@
 
     // Apply saved blog title
     try {
-      const t = localStorage.getItem('blogTitle');
+      const userId = localStorage.getItem('blog_user_id') || 'guest';
+      const t = localStorage.getItem(`blogTitle:${userId}`);
       if (t) {
         document.getElementById('blog-title-display').textContent = t;
         document.title = `${t} - Daily Journal`;
@@ -341,8 +361,9 @@
 
     // Apply saved fonts
     try {
-      const f = localStorage.getItem('blogFontFamily');
-      const s = localStorage.getItem('blogFontSize');
+      const userId = localStorage.getItem('blog_user_id') || 'guest';
+      const f = localStorage.getItem(`blogFontFamily:${userId}`);
+      const s = localStorage.getItem(`blogFontSize:${userId}`);
       if (f) document.documentElement.style.setProperty('--blog-font-family', f);
       if (s) document.documentElement.style.setProperty('--blog-font-size', s);
     } catch {}
