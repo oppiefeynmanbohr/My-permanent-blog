@@ -183,12 +183,6 @@
     // entryMap: 'YYYY-MM-DD' -> [ { id, content, timestamp } ]
     let entryMap = {};
 
-    // Redirect to login if not authenticated
-    fetch('/api/auth/session', { credentials: 'same-origin' })
-      .then(r => r.json())
-      .then(d => { if (!d.authenticated) window.location.href = '/login'; })
-      .catch(() => {});
-
     function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
     function firstDayOfWeek(y, m) { return new Date(y, m, 1).getDay(); }
     function padDate(n) { return String(n).padStart(2, '0'); }
@@ -306,11 +300,6 @@
       if (statusEl) statusEl.textContent = 'Deleting...';
       try {
         const r = await fetch(`/api/entries/${id}`, { method: 'DELETE', credentials: 'same-origin' });
-        if (r.status === 401) {
-          if (statusEl) statusEl.textContent = 'Session expired - redirecting to login...';
-          setTimeout(() => { window.location.href = '/login'; }, 1200);
-          return;
-        }
         const data = await r.json().catch(() => ({}));
         if (!r.ok) {
           if (statusEl) statusEl.textContent = data.error || 'Could not delete this entry.';
@@ -354,10 +343,6 @@
           credentials: 'same-origin',
           body: JSON.stringify({ content, source: 'calendar', caldate: dateStr })
         });
-        if (r.status === 401) {
-          status.textContent = 'Session expired — redirecting to login...';
-          setTimeout(() => { window.location.href = '/login'; }, 1200); return;
-        }
         if (!r.ok) { status.textContent = 'Could not save. Try again.'; return; }
         const newEntry = await r.json();
         if (!entryMap[key]) entryMap[key] = [];
