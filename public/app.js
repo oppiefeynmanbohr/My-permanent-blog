@@ -335,7 +335,8 @@ async function saveEntry() {
     });
 
     if (response.status === 401 || response.status === 403) {
-      saveStatus.textContent = 'Your session needs to be refreshed. Please try again in a moment.';
+      queuePendingEntry({ title, content, source: 'main', createdAt: new Date().toISOString() });
+      saveStatus.textContent = 'Saved locally for syncing once your session is restored.';
       saveEntryButton.disabled = false;
       return;
     }
@@ -1423,6 +1424,49 @@ function applyAuthState(username, userId) {
   if (userLoginPrompt) userLoginPrompt.style.display = 'none';
 }
 
+function getPendingEntries() {
+  try {
+    const raw = localStorage.getItem('blog_pending_entries');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePendingEntries(entries) {
+  try {
+    localStorage.setItem('blog_pending_entries', JSON.stringify(entries));
+  } catch {}
+}
+
+function queuePendingEntry(entry) {
+  const pending = getPendingEntries();
+  pending.push(entry);
+  savePendingEntries(pending);
+}
+
+async function flushPendingEntries() {
+  const pending = getPendingEntries();
+  if (!pending.length) return;
+  const remaining = [];
+  for (const entry of pending) {
+    try {
+      const response = await fetchWithSessionRecovery('/api/entries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: entry.title, content: entry.content, source: entry.source || 'main' })
+      });
+      if (response.ok) {
+        continue;
+      }
+      remaining.push(entry);
+    } catch {
+      remaining.push(entry);
+    }
+  }
+  savePendingEntries(remaining);
+}
+
 async function checkUserSession() {
   try {
     const r = await fetch('/api/auth/session', { credentials: 'same-origin' });
@@ -1430,6 +1474,7 @@ async function checkUserSession() {
     const data = await r.json();
     if (data.authenticated) {
       applyAuthState(data.username, data.userId);
+      await flushPendingEntries();
     } else {
       const lsUser = localStorage.getItem('blog_username');
       if (lsUser && localStorage.getItem('blog_logged_in')) {
