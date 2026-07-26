@@ -969,23 +969,16 @@ app.get('/api/entries', async (req, res) => {
   const params = [];
   const clauses = ['deleted = 0'];
 
-  // Exclude archived entries unless caller opts in (page7 uses include_archived=true)
+  // Preserve entries by default unless explicitly deleted; only archive hides them from the main lists.
   if (req.query.include_archived !== 'true') clauses.push('archived = 0');
 
-  // When a user is logged in, show their entries and any anonymous entries that were saved from the same browser.
-  // If a user is not signed in, fall back to anonymous entries from the current browser.
   if (user && published !== 'true') {
-    clauses.push('(user_id = ? OR (user_id IS NULL AND browser_id = ?))');
+    clauses.push('(user_id = ? OR user_id IS NULL OR browser_id = ?)');
     params.push(user.userId, browserId);
   } else if (!user && published !== 'true') {
     clauses.push('user_id IS NULL');
     clauses.push('browser_id = ?');
     params.push(browserId);
-  }
-
-  if (user && published !== 'true') {
-    clauses.push('(user_id = ? OR user_id IS NULL)');
-    params.push(user.userId);
   }
 
   if (source) { clauses.push('source = ?'); params.push(source); }
