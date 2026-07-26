@@ -74,7 +74,34 @@
     .fraction-result {
       margin-top: 12px; font-size: 1.05rem; font-weight: 700; color: #2f4f4f; background: #f8efe0; border: 1px dashed #c8a97e; border-radius: 10px; padding: 10px 12px;
     }
-    @media (max-width: 720px) { .calc-grid { grid-template-columns: repeat(4, 1fr); } .fraction-grid { grid-template-columns: 1fr; } }
+    .scientific-card {
+      margin-top: 18px;
+      background: linear-gradient(180deg, #111827 0%, #1f2937 100%);
+      color: #f9fafb;
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: 0 14px 28px rgba(0,0,0,0.25);
+      border: 3px solid #374151;
+    }
+    .scientific-title { font-size: 1.25rem; font-weight: 800; margin-bottom: 4px; color: #f9fafb; }
+    .scientific-subtitle { color: #d1d5db; font-size: 0.95rem; margin-bottom: 12px; }
+    .scientific-screen {
+      background: #dfe9c8; color: #1f2937; border-radius: 12px; padding: 14px; min-height: 94px; margin-bottom: 12px; font-family: "Courier New", monospace; border: 2px solid #6b7280; box-shadow: inset 0 0 8px rgba(0,0,0,0.15);
+    }
+    .scientific-screen .expression { font-size: 1rem; color: #374151; word-break: break-all; }
+    .scientific-screen .result { font-size: 2rem; font-weight: bold; margin-top: 8px; }
+    .scientific-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+    .scientific-btn {
+      border: 1px solid #111827; border-radius: 12px; padding: 15px 10px; font-size: 1rem; font-weight: 700; cursor: pointer; background: #f9fafb; color: #111827; box-shadow: 0 3px 0 #4b5563; min-height: 56px;
+    }
+    .scientific-btn:hover { filter: brightness(0.97); }
+    .scientific-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 #4b5563; }
+    .scientific-btn.operator { background: #f59e0b; color: #fff; }
+    .scientific-btn.func { background: #2563eb; color: #fff; }
+    .scientific-btn.clear { background: #dc2626; color: #fff; }
+    .scientific-btn.equal { background: #16a34a; color: #fff; }
+    .scientific-hint { margin-top: 12px; color: #e5e7eb; font-size: 0.92rem; }
+    @media (max-width: 720px) { .calc-grid { grid-template-columns: repeat(4, 1fr); } .fraction-grid { grid-template-columns: 1fr; } .scientific-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   </style>
 </head>
 <body>
@@ -182,13 +209,63 @@
         </div>
         <div id="fraction-result" class="fraction-result">Result: 5/4 = 1 1/4</div>
       </div>
+
+      <div class="scientific-card">
+        <div class="scientific-title">Scientific Calculator</div>
+        <div class="scientific-subtitle">A larger scientific keypad with common functions for schoolwork, engineering, and quick math.</div>
+        <div class="scientific-screen">
+          <div id="sci-expression" class="expression">0</div>
+          <div id="sci-result" class="result">0</div>
+        </div>
+        <div class="scientific-grid">
+          <button class="scientific-btn clear" data-action="clear">AC</button>
+          <button class="scientific-btn" data-action="parenthesis-open">(</button>
+          <button class="scientific-btn" data-action="parenthesis-close">)</button>
+          <button class="scientific-btn operator" data-action="power">xʸ</button>
+          <button class="scientific-btn func" data-action="sqrt">√</button>
+
+          <button class="scientific-btn func" data-action="sin">sin</button>
+          <button class="scientific-btn func" data-action="cos">cos</button>
+          <button class="scientific-btn func" data-action="tan">tan</button>
+          <button class="scientific-btn func" data-action="log">log</button>
+          <button class="scientific-btn func" data-action="ln">ln</button>
+
+          <button class="scientific-btn" data-value="7">7</button>
+          <button class="scientific-btn" data-value="8">8</button>
+          <button class="scientific-btn" data-value="9">9</button>
+          <button class="scientific-btn operator" data-value="/">÷</button>
+          <button class="scientific-btn func" data-action="square">x²</button>
+
+          <button class="scientific-btn" data-value="4">4</button>
+          <button class="scientific-btn" data-value="5">5</button>
+          <button class="scientific-btn" data-value="6">6</button>
+          <button class="scientific-btn operator" data-value="*">×</button>
+          <button class="scientific-btn func" data-action="pi">π</button>
+
+          <button class="scientific-btn" data-value="1">1</button>
+          <button class="scientific-btn" data-value="2">2</button>
+          <button class="scientific-btn" data-value="3">3</button>
+          <button class="scientific-btn operator" data-value="-">−</button>
+          <button class="scientific-btn func" data-action="e">e</button>
+
+          <button class="scientific-btn" data-value="0">0</button>
+          <button class="scientific-btn" data-value=".">.</button>
+          <button class="scientific-btn func" data-action="toggle-sign">±</button>
+          <button class="scientific-btn operator" data-value="+">+</button>
+          <button class="scientific-btn equal" data-action="equals">=</button>
+        </div>
+        <div class="scientific-hint">Tip: use the same keyboard input as the standard calculator, plus the scientific buttons above.</div>
+      </div>
     </div>
   </div>
 
   <script>
     const expressionEl = document.getElementById('calc-expression');
     const resultEl = document.getElementById('calc-result');
+    const sciExpressionEl = document.getElementById('sci-expression');
+    const sciResultEl = document.getElementById('sci-result');
     let expression = '0';
+    let scientificExpression = '0';
 
     function isIncompleteExpression(value) {
       const trimmed = String(value || '').trim();
@@ -204,13 +281,23 @@
       const trimmed = String(value || '').trim();
       if (!trimmed || trimmed === '0' || isIncompleteExpression(trimmed)) return null;
       try {
-        const safe = trimmed
+        let safe = trimmed
           .replace(/π/g, 'Math.PI')
+          .replace(/e/g, 'Math.E')
           .replace(/×/g, '*')
           .replace(/÷/g, '/')
-          .replace(/√/g, 'Math.sqrt')
           .replace(/%/g, '/100')
-          .replace(/\^2/g, '**2');
+          .replace(/\^2/g, '**2')
+          .replace(/\^/g, '**');
+        safe = safe
+          .replace(/\bsin\(/g, 'Math.sin(')
+          .replace(/\bcos\(/g, 'Math.cos(')
+          .replace(/\btan\(/g, 'Math.tan(')
+          .replace(/\blog\(/g, 'Math.log10(')
+          .replace(/\bln\(/g, 'Math.log(')
+          .replace(/\bsqrt\(/g, 'Math.sqrt(')
+          .replace(/\bexp\(/g, 'Math.exp(')
+          .replace(/\babs\(/g, 'Math.abs(');
         const result = Function(`"use strict"; return (${safe})`)();
         return Number.isFinite(result) ? result : null;
       } catch {
@@ -247,6 +334,21 @@
       updateDisplay();
     }
 
+    function appendScientificValue(value) {
+      const operators = ['+', '-', '*', '/'];
+      const lastChar = scientificExpression.slice(-1);
+      if (scientificExpression === '0' && !operators.includes(value) && value !== '.') {
+        scientificExpression = value;
+      } else if (operators.includes(value) && operators.includes(lastChar)) {
+        scientificExpression = scientificExpression.slice(0, -1) + value;
+      } else if (value === '.' && lastChar === '.') {
+        return;
+      } else {
+        scientificExpression += value;
+      }
+      updateScientificDisplay();
+    }
+
     function handleAction(action) {
       if (action === 'clear') {
         expression = '0';
@@ -265,7 +367,7 @@
         return;
       }
       if (action === 'sqrt') {
-        expression = expression === '0' ? '√(' : `${expression}√(`;
+        expression = expression === '0' ? 'sqrt(' : `${expression}sqrt(`;
         updateDisplay();
         return;
       }
@@ -301,6 +403,110 @@
       }
     }
 
+    function updateScientificDisplay() {
+      sciExpressionEl.textContent = scientificExpression || '0';
+      if (scientificExpression === '0') {
+        sciResultEl.textContent = '0';
+        return;
+      }
+      if (isIncompleteExpression(scientificExpression)) {
+        sciResultEl.textContent = '—';
+        return;
+      }
+      const result = evaluateExpression(scientificExpression);
+      sciResultEl.textContent = result === null ? 'Error' : result.toString();
+    }
+
+    function handleScientificAction(action) {
+      if (action === 'clear') {
+        scientificExpression = '0';
+        updateScientificDisplay();
+        return;
+      }
+      if (action === 'delete') {
+        scientificExpression = scientificExpression.length <= 1 ? '0' : scientificExpression.slice(0, -1);
+        updateScientificDisplay();
+        return;
+      }
+      if (action === 'equals') {
+        const result = evaluateExpression(scientificExpression);
+        scientificExpression = result === null ? 'Error' : String(result);
+        updateScientificDisplay();
+        return;
+      }
+      if (action === 'parenthesis-open') {
+        scientificExpression = scientificExpression === '0' ? '(' : `${scientificExpression}(`;
+        updateScientificDisplay();
+        return;
+      }
+      if (action === 'parenthesis-close') {
+        scientificExpression = `${scientificExpression})`;
+        updateScientificDisplay();
+        return;
+      }
+      if (action === 'power') {
+        scientificExpression = `${scientificExpression}^`;
+        updateScientificDisplay();
+        return;
+      }
+      if (action === 'square') {
+        scientificExpression = `${scientificExpression}^2`;
+        updateScientificDisplay();
+        return;
+      }
+      if (action === 'sqrt') {
+        scientificExpression = scientificExpression === '0' ? 'sqrt(' : `${scientificExpression}sqrt(`;
+        updateScientificDisplay();
+        return;
+      }
+      if (action === 'pi') {
+        scientificExpression = scientificExpression === '0' ? 'π' : `${scientificExpression}π`;
+        updateScientificDisplay();
+        return;
+      }
+      if (action === 'e') {
+        scientificExpression = scientificExpression === '0' ? 'e' : `${scientificExpression}e`;
+        updateScientificDisplay();
+        return;
+      }
+      if (action === 'toggle-sign') {
+        if (scientificExpression === '0') {
+          scientificExpression = '-';
+        } else if (scientificExpression.startsWith('-')) {
+          scientificExpression = scientificExpression.slice(1);
+        } else {
+          scientificExpression = `-${scientificExpression}`;
+        }
+        updateScientificDisplay();
+        return;
+      }
+      if (action === 'sin') {
+        scientificExpression = `${scientificExpression}sin(`;
+        updateScientificDisplay();
+        return;
+      }
+      if (action === 'cos') {
+        scientificExpression = `${scientificExpression}cos(`;
+        updateScientificDisplay();
+        return;
+      }
+      if (action === 'tan') {
+        scientificExpression = `${scientificExpression}tan(`;
+        updateScientificDisplay();
+        return;
+      }
+      if (action === 'log') {
+        scientificExpression = `${scientificExpression}log(`;
+        updateScientificDisplay();
+        return;
+      }
+      if (action === 'ln') {
+        scientificExpression = `${scientificExpression}ln(`;
+        updateScientificDisplay();
+        return;
+      }
+    }
+
     document.querySelectorAll('.calc-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const value = btn.getAttribute('data-value');
@@ -309,6 +515,18 @@
           appendValue(value);
         } else if (action) {
           handleAction(action);
+        }
+      });
+    });
+
+    document.querySelectorAll('.scientific-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const value = btn.getAttribute('data-value');
+        const action = btn.getAttribute('data-action');
+        if (value !== null) {
+          appendScientificValue(value);
+        } else if (action) {
+          handleScientificAction(action);
         }
       });
     });
@@ -423,6 +641,7 @@
     });
 
     updateDisplay();
+    updateScientificDisplay();
     calculateFractionResult();
   </script>
 </body>
