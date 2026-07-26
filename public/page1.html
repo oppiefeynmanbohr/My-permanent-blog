@@ -289,6 +289,13 @@
         }
       }
 
+      function requestWithRecovery(url, options) {
+        if (typeof window.fetchWithSessionRecovery === 'function') {
+          return window.fetchWithSessionRecovery(url, options || {});
+        }
+        return window.fetch(url, Object.assign({ credentials: 'same-origin' }, options || {}));
+      }
+
       document.addEventListener('click', async function (event) {
         var rawTarget = event.target;
         var target = rawTarget && rawTarget.nodeType === 1
@@ -328,7 +335,7 @@
 
           setStatus('Deleting...');
           try {
-            var delResp = await fetch('/api/entries/' + encodeURIComponent(entryId), {
+            var delResp = await requestWithRecovery('/api/entries/' + encodeURIComponent(entryId), {
               method: 'DELETE',
               credentials: 'same-origin',
               headers: { 'Content-Type': 'application/json' },
@@ -336,7 +343,8 @@
             });
             var delData = await delResp.json().catch(function () { return {}; });
             if (!delResp.ok) {
-              setStatus(delData.error || 'Failed to delete entry.');
+              var delMsg = delData.error || 'Failed to delete entry.';
+              setStatus(delMsg + ' (HTTP ' + delResp.status + ')');
               return;
             }
             setStatus('Entry deleted successfully.');
@@ -350,7 +358,7 @@
         if (isArchive) {
           setStatus('Moving entry to Database...');
           try {
-            var arcResp = await fetch('/api/entries/' + encodeURIComponent(entryId) + '/archive', {
+            var arcResp = await requestWithRecovery('/api/entries/' + encodeURIComponent(entryId) + '/archive', {
               method: 'PATCH',
               credentials: 'same-origin',
               headers: { 'Content-Type': 'application/json' },
@@ -358,7 +366,8 @@
             });
             var arcData = await arcResp.json().catch(function () { return {}; });
             if (!arcResp.ok) {
-              setStatus(arcData.error || 'Could not move entry to Database.');
+              var arcMsg = arcData.error || 'Could not move entry to Database.';
+              setStatus(arcMsg + ' (HTTP ' + arcResp.status + ')');
               return;
             }
             setStatus('Entry moved to Database.');
@@ -373,7 +382,7 @@
           var shouldPublish = !/unpublish/i.test(label);
           setStatus(shouldPublish ? 'Publishing entry...' : 'Unpublishing entry...');
           try {
-            var pubResp = await fetch('/api/entries/' + encodeURIComponent(entryId) + '/publish', {
+            var pubResp = await requestWithRecovery('/api/entries/' + encodeURIComponent(entryId) + '/publish', {
               method: 'PATCH',
               credentials: 'same-origin',
               headers: { 'Content-Type': 'application/json' },
@@ -381,7 +390,8 @@
             });
             var pubData = await pubResp.json().catch(function () { return {}; });
             if (!pubResp.ok) {
-              setStatus(pubData.error || 'Failed to update publish status.');
+              var pubMsg = pubData.error || 'Failed to update publish status.';
+              setStatus(pubMsg + ' (HTTP ' + pubResp.status + ')');
               return;
             }
             setStatus(shouldPublish ? 'Entry published.' : 'Entry unpublished.');
@@ -397,6 +407,6 @@
       }, true);
     })();
   </script>
-  <script src="app.js?v=20260726"></script>
+  <script src="app.js?v=20260726b"></script>
 </body>
 </html>
