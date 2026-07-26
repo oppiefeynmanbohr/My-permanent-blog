@@ -1073,6 +1073,11 @@ app.patch('/api/entries/:id/publish', async (req, res) => {
   const publishedValue = publish ? 1 : 0;
 
   try {
+    const row = await dbGet('SELECT id, user_id, browser_id FROM entries WHERE id = ? AND deleted = 0', [id]);
+    if (!row) return res.status(404).json({ error: 'Entry not found.' });
+    if (!isAdmin && row.user_id !== user.userId && !(row.user_id === null && row.browser_id === getBrowserIdFromRequest(req))) {
+      return res.status(403).json({ error: 'You can only publish your own entries.' });
+    }
     await dbRun('UPDATE entries SET published = ? WHERE id = ?', [publishedValue, id]);
     res.json({ success: true, published: publishedValue });
   } catch (err) {
@@ -1088,9 +1093,11 @@ app.patch('/api/entries/:id/archive', async (req, res) => {
   const user = await getAuthenticatedUser(req, res);
   if (!isAdmin && !user) return res.status(403).json({ error: 'Authentication required.' });
   try {
-    const row = await dbGet('SELECT id, user_id FROM entries WHERE id = ? AND deleted = 0', [id]);
+    const row = await dbGet('SELECT id, user_id, browser_id FROM entries WHERE id = ? AND deleted = 0', [id]);
     if (!row) return res.status(404).json({ error: 'Entry not found.' });
-    if (!isAdmin && row.user_id !== user.userId) return res.status(403).json({ error: 'You can only archive your own entries.' });
+    if (!isAdmin && row.user_id !== user.userId && !(row.user_id === null && row.browser_id === getBrowserIdFromRequest(req))) {
+      return res.status(403).json({ error: 'You can only archive your own entries.' });
+    }
     await dbRun('UPDATE entries SET archived = 1 WHERE id = ?', [id]);
     res.json({ success: true });
   } catch (err) {
