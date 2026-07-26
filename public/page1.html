@@ -290,13 +290,27 @@
       }
 
       document.addEventListener('click', async function (event) {
-        var btn = event.target.closest('.delete-button');
+        var rawTarget = event.target;
+        var target = rawTarget && rawTarget.nodeType === 1
+          ? rawTarget
+          : (rawTarget && rawTarget.parentElement ? rawTarget.parentElement : null);
+        if (!target || !target.closest) return;
+
+        var btn = target.closest('.delete-button');
+        if (!btn) {
+          var maybeButton = target.closest('button[data-id]');
+          if (maybeButton && /delete/i.test((maybeButton.textContent || '').trim())) {
+            btn = maybeButton;
+          }
+        }
         if (!btn) return;
 
         event.preventDefault();
         event.stopPropagation();
         var entryId = btn.getAttribute('data-id');
         if (!entryId) return;
+
+        setStatus('Delete clicked. Awaiting confirmation...');
 
         var ok = window.confirm('Delete this entry permanently?');
         if (!ok) {
