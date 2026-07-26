@@ -977,7 +977,7 @@ if (entryContent) {
     schedulePermanentEntryBackup();
   });
 }
-if (saveEntryButton) saveEntryButton.addEventListener('click', saveEntry);
+if (saveEntryButton && !window.__mpbUseDirectSaveHandler) saveEntryButton.addEventListener('click', saveEntry);
 if (searchInput) searchInput.addEventListener('input', loadEntries);
 if (calendarInput) calendarInput.addEventListener('change', loadEntries);
 window.__mpbDeleteHandlerReady = true;

@@ -281,7 +281,9 @@
   <script>
     (function () {
       window.__mpbUseDirectEntryActionHandlers = true;
+      window.__mpbUseDirectSaveHandler = true;
       var inFlightActions = new Set();
+      var saveInFlight = false;
 
       function setStatus(message) {
         var el = document.getElementById('save-status');
@@ -305,6 +307,52 @@
           ? rawTarget
           : (rawTarget && rawTarget.parentElement ? rawTarget.parentElement : null);
         if (!target || !target.closest) return;
+
+        var saveBtn = target.closest('#save-entry');
+        if (saveBtn) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+          if (saveInFlight) return;
+
+          var entryField = document.getElementById('entry-content');
+          var content = entryField ? String(entryField.value || '').trim() : '';
+          if (!content) {
+            setStatus('Please write something before saving.');
+            return;
+          }
+
+          saveInFlight = true;
+          saveBtn.disabled = true;
+          setStatus('Saving...');
+          try {
+            var saveResp = await requestWithRecovery('/api/entries', {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ content: content, source: 'main' })
+            });
+            var saveData = await saveResp.json().catch(function () { return {}; });
+            if (!saveResp.ok) {
+              var saveMsg = saveData.error || 'Could not save entry.';
+              setStatus(saveMsg + ' (HTTP ' + saveResp.status + ')');
+              return;
+            }
+            if (entryField) entryField.value = '';
+            setStatus('Entry saved.');
+            if (typeof window.loadEntries === 'function') {
+              await window.loadEntries();
+            } else {
+              window.location.reload();
+            }
+          } catch (err) {
+            setStatus('Network error. Could not save entry.');
+          } finally {
+            saveInFlight = false;
+            saveBtn.disabled = false;
+          }
+          return;
+        }
 
         var btn = target.closest('.delete-button, .archive-button, .publish-button');
         if (!btn) {
