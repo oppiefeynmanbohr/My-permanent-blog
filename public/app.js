@@ -42,7 +42,7 @@ const newSiteRemindButton = document.getElementById('new-site-remind');
 
 let pendingMfaToken = null;
 let draftAutosaveTimer = null;
-window.__mpbDeleteHandlerReady = true;
+window.__mpbDeleteHandlerReady = false;
 
 function setStatusMessage(message) {
   if (saveStatus) {
@@ -927,6 +927,7 @@ if (entryContent) {
 if (saveEntryButton) saveEntryButton.addEventListener('click', saveEntry);
 if (searchInput) searchInput.addEventListener('input', loadEntries);
 if (calendarInput) calendarInput.addEventListener('change', loadEntries);
+window.__mpbDeleteHandlerReady = true;
 if (fontFamilyInput) {
   fontFamilyInput.addEventListener('change', () => {
     const v = fontFamilyInput.value;

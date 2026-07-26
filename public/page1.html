@@ -292,9 +292,9 @@
       document.addEventListener('click', async function (event) {
         var btn = event.target.closest('.delete-button');
         if (!btn) return;
-        if (window.__mpbDeleteHandlerReady) return;
 
         event.preventDefault();
+        event.stopPropagation();
         var entryId = btn.getAttribute('data-id');
         if (!entryId) return;
 
@@ -322,7 +322,7 @@
         } catch (err) {
           setStatus('Network error. Could not delete entry.');
         }
-      });
+      }, true);
     })();
   </script>
   <script src="app.js?v=20260726"></script>
