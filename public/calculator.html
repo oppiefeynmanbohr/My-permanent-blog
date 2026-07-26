@@ -6,24 +6,75 @@
   <title>TI-84 Style Calculator</title>
   <link rel="stylesheet" href="style.css" />
   <style>
-    body { background: linear-gradient(135deg, #f7f0e6, #efe0c7); }
-    .calc-shell { max-width: 920px; margin: 24px auto; padding: 20px; }
-    .calc-card { background: #111827; color: #f9fafb; border-radius: 22px; padding: 20px; box-shadow: 0 18px 50px rgba(0,0,0,0.25); }
-    .calc-screen { background: #dce8c7; color: #1f2937; border-radius: 14px; padding: 16px; min-height: 92px; margin-bottom: 14px; font-family: "Courier New", monospace; }
+    body { background: linear-gradient(135deg, #ece3d0, #d8c7a0); }
+    .calc-shell { max-width: 900px; margin: 24px auto; padding: 20px; }
+    .calc-card {
+      background: linear-gradient(180deg, #3b3b3b 0%, #242424 100%);
+      color: #f9fafb;
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 20px 45px rgba(0,0,0,0.3);
+      border: 3px solid #111827;
+    }
+    .calc-screen {
+      background: #dfe9c8;
+      color: #1f2937;
+      border-radius: 10px;
+      padding: 16px;
+      min-height: 92px;
+      margin-bottom: 14px;
+      font-family: "Courier New", monospace;
+      border: 2px solid #6b7280;
+      box-shadow: inset 0 0 8px rgba(0,0,0,0.15);
+    }
     .calc-screen .expression { font-size: 1rem; color: #374151; word-break: break-all; }
     .calc-screen .result { font-size: 2rem; font-weight: bold; margin-top: 8px; }
     .calc-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-    .calc-btn { border: none; border-radius: 10px; padding: 14px; font-size: 1rem; font-weight: 700; cursor: pointer; background: #e5e7eb; color: #111827; }
+    .calc-btn {
+      border: 1px solid #111827;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: #f3f4f6;
+      color: #111827;
+      box-shadow: 0 2px 0 #6b7280;
+    }
     .calc-btn:hover { filter: brightness(0.96); }
+    .calc-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 #6b7280; }
     .calc-btn.operator { background: #f59e0b; color: #fff; }
-    .calc-btn.func { background: #3b82f6; color: #fff; }
-    .calc-btn.clear { background: #ef4444; color: #fff; }
-    .calc-btn.equal { background: #10b981; color: #fff; }
-    .calc-btn.small { font-size: 0.9rem; padding: 12px; }
+    .calc-btn.func { background: #2563eb; color: #fff; }
+    .calc-btn.clear { background: #dc2626; color: #fff; }
+    .calc-btn.equal { background: #16a34a; color: #fff; }
+    .calc-btn.small { font-size: 0.9rem; padding: 11px; }
     .calc-hint { margin-top: 16px; color: #e5e7eb; font-size: 0.95rem; }
     .calc-row { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
     .calc-pill { background: rgba(255,255,255,0.12); padding: 8px 12px; border-radius: 999px; font-size: 0.9rem; }
-    @media (max-width: 720px) { .calc-grid { grid-template-columns: repeat(4, 1fr); } }
+    .calc-title { font-size: 1.8rem; margin: 0; color: #fff; }
+    .calc-subtitle { color: #d1d5db; margin-top: 4px; }
+    .fraction-card {
+      margin-top: 18px;
+      background: rgba(255,255,255,0.95);
+      color: #1f2937;
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 10px 24px rgba(0,0,0,0.15);
+      border: 2px solid #c8a97e;
+    }
+    .fraction-title { font-size: 1.2rem; font-weight: 800; margin-bottom: 4px; color: #3b2a1a; }
+    .fraction-subtitle { color: #6b4f34; font-size: 0.95rem; margin-bottom: 12px; }
+    .fraction-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: end; }
+    .fraction-entry label { display: block; font-size: 0.82rem; font-weight: 700; margin-bottom: 6px; color: #5a3e28; }
+    .fraction-inputs { display: flex; align-items: center; gap: 6px; }
+    .fraction-inputs input, .fraction-actions select {
+      width: 72px; padding: 8px; border: 1px solid #c8a97e; border-radius: 8px; font-size: 1rem; text-align: center;
+    }
+    .fraction-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    .fraction-result {
+      margin-top: 12px; font-size: 1.05rem; font-weight: 700; color: #2f4f4f; background: #f8efe0; border: 1px dashed #c8a97e; border-radius: 10px; padding: 10px 12px;
+    }
+    @media (max-width: 720px) { .calc-grid { grid-template-columns: repeat(4, 1fr); } .fraction-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -31,8 +82,8 @@
     <header>
       <div class="header-top">
         <div>
-          <h1>TI-84 Style Calculator</h1>
-          <p class="subtitle">Scientific calculator with keyboard-style controls</p>
+          <h1 class="calc-title">TI-83 Plus Style Calculator</h1>
+          <p class="calc-subtitle">A familiar graphing-calculator-inspired keypad</p>
         </div>
         <a class="support-button" href="/page1">Back to Blog</a>
       </div>
@@ -94,6 +145,43 @@
         </div>
         <div class="calc-hint">Tip: use the buttons above or type directly using + - * / and parentheses.</div>
       </div>
+
+      <div class="fraction-card">
+        <div class="fraction-title">Carpenter's Fraction Calculator</div>
+        <div class="fraction-subtitle">Add, subtract, multiply, and divide common fractional measurements for trim, boards, and layout work.</div>
+        <div class="fraction-grid">
+          <div class="fraction-entry">
+            <label for="frac-a-num">First measurement</label>
+            <div class="fraction-inputs">
+              <input id="frac-a-num" type="number" value="1" min="-9999" />
+              <span>/</span>
+              <input id="frac-a-den" type="number" value="2" min="1" />
+            </div>
+          </div>
+          <div class="fraction-entry">
+            <label for="frac-op">Operation</label>
+            <select id="frac-op">
+              <option value="+">+</option>
+              <option value="-">−</option>
+              <option value="*">×</option>
+              <option value="/">÷</option>
+            </select>
+          </div>
+          <div class="fraction-entry">
+            <label for="frac-b-num">Second measurement</label>
+            <div class="fraction-inputs">
+              <input id="frac-b-num" type="number" value="3" min="-9999" />
+              <span>/</span>
+              <input id="frac-b-den" type="number" value="4" min="1" />
+            </div>
+          </div>
+        </div>
+        <div class="fraction-actions">
+          <button id="frac-calc-btn" class="calc-btn operator">Calculate</button>
+          <button id="frac-clear-btn" class="calc-btn small">Clear</button>
+        </div>
+        <div id="fraction-result" class="fraction-result">Result: 5/4 = 1 1/4</div>
+      </div>
     </div>
   </div>
 
@@ -102,25 +190,57 @@
     const resultEl = document.getElementById('calc-result');
     let expression = '0';
 
-    function updateDisplay() {
-      expressionEl.textContent = expression || '0';
+    function isIncompleteExpression(value) {
+      const trimmed = String(value || '').trim();
+      if (!trimmed || trimmed === '0') return false;
+      const lastChar = trimmed.slice(-1);
+      if (['+', '-', '*', '/', '.', '^'].includes(lastChar)) return true;
+      const opens = (trimmed.match(/\(/g) || []).length;
+      const closes = (trimmed.match(/\)/g) || []).length;
+      return opens > closes;
+    }
+
+    function evaluateExpression(value) {
+      const trimmed = String(value || '').trim();
+      if (!trimmed || trimmed === '0' || isIncompleteExpression(trimmed)) return null;
       try {
-        const safe = expression
+        const safe = trimmed
           .replace(/π/g, 'Math.PI')
           .replace(/×/g, '*')
           .replace(/÷/g, '/')
           .replace(/√/g, 'Math.sqrt')
-          .replace(/%/g, '/100');
+          .replace(/%/g, '/100')
+          .replace(/\^2/g, '**2');
         const result = Function(`"use strict"; return (${safe})`)();
-        resultEl.textContent = Number.isFinite(result) ? result.toString() : 'Error';
+        return Number.isFinite(result) ? result : null;
       } catch {
-        resultEl.textContent = 'Error';
+        return null;
       }
     }
 
-    function appendValue(value) {
+    function updateDisplay() {
+      expressionEl.textContent = expression || '0';
       if (expression === '0') {
+        resultEl.textContent = '0';
+        return;
+      }
+      if (isIncompleteExpression(expression)) {
+        resultEl.textContent = '—';
+        return;
+      }
+      const result = evaluateExpression(expression);
+      resultEl.textContent = result === null ? 'Error' : result.toString();
+    }
+
+    function appendValue(value) {
+      const operators = ['+', '-', '*', '/'];
+      const lastChar = expression.slice(-1);
+      if (expression === '0' && !operators.includes(value) && value !== '.') {
         expression = value;
+      } else if (operators.includes(value) && operators.includes(lastChar)) {
+        expression = expression.slice(0, -1) + value;
+      } else if (value === '.' && lastChar === '.') {
+        return;
       } else {
         expression += value;
       }
@@ -139,19 +259,9 @@
         return;
       }
       if (action === 'equals') {
-        try {
-          const safe = expression
-            .replace(/π/g, 'Math.PI')
-            .replace(/×/g, '*')
-            .replace(/÷/g, '/')
-            .replace(/√/g, 'Math.sqrt');
-          const result = Function(`"use strict"; return (${safe})`)();
-          expression = Number.isFinite(result) ? String(result) : 'Error';
-          updateDisplay();
-        } catch {
-          expression = 'Error';
-          updateDisplay();
-        }
+        const result = evaluateExpression(expression);
+        expression = result === null ? 'Error' : String(result);
+        updateDisplay();
         return;
       }
       if (action === 'sqrt') {
@@ -220,7 +330,100 @@
       }
     });
 
+    function gcd(a, b) {
+      a = Math.abs(a);
+      b = Math.abs(b);
+      while (b) {
+        const temp = b;
+        b = a % b;
+        a = temp;
+      }
+      return a || 1;
+    }
+
+    function simplifyFraction(numerator, denominator) {
+      if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) return null;
+      const sign = (numerator < 0) !== (denominator < 0) ? -1 : 1;
+      const absNum = Math.abs(numerator);
+      const absDen = Math.abs(denominator);
+      const divisor = gcd(absNum, absDen);
+      return { numerator: sign * (absNum / divisor), denominator: absDen / divisor };
+    }
+
+    function formatFraction(value) {
+      const simplified = simplifyFraction(value.numerator, value.denominator);
+      if (!simplified) return 'Invalid';
+      const { numerator, denominator } = simplified;
+      if (denominator === 1) return String(numerator);
+      const whole = Math.trunc(numerator / denominator);
+      const remainder = numerator % denominator;
+      if (whole !== 0 && remainder !== 0) {
+        return `${whole} ${Math.abs(remainder)}/${Math.abs(denominator)}`;
+      }
+      if (whole !== 0) {
+        return String(whole);
+      }
+      return `${numerator}/${denominator}`;
+    }
+
+    function calculateFractionResult() {
+      const numeratorA = Number(document.getElementById('frac-a-num').value);
+      const denominatorA = Number(document.getElementById('frac-a-den').value);
+      const numeratorB = Number(document.getElementById('frac-b-num').value);
+      const denominatorB = Number(document.getElementById('frac-b-den').value);
+      const operator = document.getElementById('frac-op').value;
+      const resultEl = document.getElementById('fraction-result');
+
+      if (!Number.isFinite(numeratorA) || !Number.isFinite(numeratorB) || !Number.isFinite(denominatorA) || !Number.isFinite(denominatorB) || denominatorA === 0 || denominatorB === 0) {
+        resultEl.textContent = 'Result: Invalid fractions';
+        return;
+      }
+
+      let numerator;
+      let denominator;
+      if (operator === '+') {
+        numerator = numeratorA * denominatorB + numeratorB * denominatorA;
+        denominator = denominatorA * denominatorB;
+      } else if (operator === '-') {
+        numerator = numeratorA * denominatorB - numeratorB * denominatorA;
+        denominator = denominatorA * denominatorB;
+      } else if (operator === '*') {
+        numerator = numeratorA * numeratorB;
+        denominator = denominatorA * denominatorB;
+      } else {
+        numerator = numeratorA * denominatorB;
+        denominator = denominatorA * numeratorB;
+      }
+
+      const simplified = simplifyFraction(numerator, denominator);
+      if (!simplified) {
+        resultEl.textContent = 'Result: Invalid fractions';
+        return;
+      }
+      const fractionText = `${simplified.numerator}/${simplified.denominator}`;
+      const mixedText = formatFraction({ numerator: simplified.numerator, denominator: simplified.denominator });
+      resultEl.textContent = `Result: ${fractionText} = ${mixedText}`;
+    }
+
+    document.getElementById('frac-calc-btn').addEventListener('click', calculateFractionResult);
+    document.getElementById('frac-clear-btn').addEventListener('click', () => {
+      document.getElementById('frac-a-num').value = '1';
+      document.getElementById('frac-a-den').value = '2';
+      document.getElementById('frac-b-num').value = '3';
+      document.getElementById('frac-b-den').value = '4';
+      document.getElementById('frac-op').value = '+';
+      document.getElementById('fraction-result').textContent = 'Result: 5/4 = 1 1/4';
+    });
+    ['frac-a-num', 'frac-a-den', 'frac-b-num', 'frac-b-den', 'frac-op'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('input', calculateFractionResult);
+        el.addEventListener('change', calculateFractionResult);
+      }
+    });
+
     updateDisplay();
+    calculateFractionResult();
   </script>
 </body>
 </html>
