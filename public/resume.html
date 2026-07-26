@@ -358,6 +358,39 @@
       } catch {}
     }
 
+    async function fileToCompressedDataUrl(file) {
+      const originalDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = () => reject(new Error('Could not read photo.'));
+        reader.readAsDataURL(file);
+      });
+
+      const img = await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('Could not load photo.'));
+        image.src = originalDataUrl;
+      });
+
+      const maxSide = 1200;
+      const scale = Math.min(1, maxSide / Math.max(img.width || maxSide, img.height || maxSide));
+      const width = Math.max(1, Math.round((img.width || maxSide) * scale));
+      const height = Math.max(1, Math.round((img.height || maxSide) * scale));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      let compressed = canvas.toDataURL('image/jpeg', 0.84);
+      if (compressed.length > 4.8 * 1024 * 1024) {
+        compressed = canvas.toDataURL('image/jpeg', 0.72);
+      }
+      return compressed;
+    }
+
     function renderWork() {
       const container = document.getElementById('work-list');
       const empty = document.getElementById('work-empty');
@@ -390,16 +423,19 @@
     }
 
     // ── Photo upload ──
-    document.getElementById('photo-upload').addEventListener('change', function() {
+    document.getElementById('photo-upload').addEventListener('change', async function() {
+      const statusEl = document.getElementById('profile-save-status');
       const file = this.files[0];
       if (!file) return;
-      if (file.size > 5 * 1024 * 1024) { alert('Photo must be under 5 MB.'); return; }
-      const reader = new FileReader();
-      reader.onload = e => {
-        pendingPhotoDataUrl = e.target.result;
+      try {
+        if (statusEl) statusEl.textContent = 'Preparing photo...';
+        pendingPhotoDataUrl = await fileToCompressedDataUrl(file);
         renderProfile();
-      };
-      reader.readAsDataURL(file);
+        if (statusEl) statusEl.textContent = 'Photo ready to save.';
+      } catch (error) {
+        pendingPhotoDataUrl = null;
+        if (statusEl) statusEl.textContent = error.message || 'Could not process photo.';
+      }
     });
 
     // ── Profile edit modal ──

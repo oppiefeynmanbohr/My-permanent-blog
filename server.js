@@ -880,7 +880,7 @@ app.get('/api/profile', async (req, res) => {
 app.post('/api/profile', async (req, res) => {
   const user = getUserFromRequest(req);
   const { full_name = '', title = '', bio = '', email = '', phone = '', location = '', website = '', photo = '', skills = '', education = '', work_status = '', status_note = '' } = req.body || {};
-  if (photo && photo.length > 5 * 1024 * 1024) return res.status(400).json({ error: 'Photo is too large (max 5 MB).' });
+  if (photo && photo.length > 7 * 1024 * 1024) return res.status(400).json({ error: 'Photo is too large (max 7 MB).' });
   const updatedAt = new Date().toISOString();
   const ownerId = user ? user.userId : 0;
   try {
