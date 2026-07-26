@@ -168,7 +168,12 @@
     const timestampEl = document.getElementById('current-timestamp');
 
     // Auto-save draft to localStorage AND server
-    const DRAFT_KEY = 'dreamstate_draft';
+    function getActiveUserStorageKey(prefix) {
+      const browserId = localStorage.getItem('blog_browser_id') || 'browser-guest';
+      const userId = localStorage.getItem('blog_user_id') || 'guest';
+      return `${prefix}:${browserId}:${userId}`;
+    }
+    const DRAFT_KEY = getActiveUserStorageKey('dreamstate_draft');
     const saved = localStorage.getItem(DRAFT_KEY);
     if (saved) dreamContent.value = saved;
 
@@ -188,6 +193,15 @@
       } catch {}
     }
     loadServerDraft();
+
+    window.addEventListener('pageshow', () => {
+      const draftKey = getActiveUserStorageKey('dreamstate_draft');
+      const saved = localStorage.getItem(draftKey);
+      if (saved && !dreamContent.value.trim()) {
+        dreamContent.value = saved;
+        setStatus('Restored your saved draft.', 'ok');
+      }
+    });
 
     let autoSaveTimer = null;
     dreamContent.addEventListener('input', () => {

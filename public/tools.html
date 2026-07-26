@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyForeverBlog Writer's Toolbox</title>
+<style>
+body {
+    margin:0;
+    background:#f5f8ff;
+    font-family:"Book Antiqua", Georgia, serif;
+    color:#1b2a4a;
+}
+header {
+    background:#123b70;
+    color:white;
+    text-align:center;
+    padding:30px;
+}
+h1 {
+    font-size:42px;
+}
+.container {
+    width:90%;
+    max-width:900px;
+    margin:auto;
+    padding:30px;
+}
+.box {
+    background:white;
+    border-radius:15px;
+    padding:25px;
+    margin-bottom:25px;
+    box-shadow:0 5px 15px #bbb;
+}
+button {
+    background:#123b70;
+    color:white;
+    border:none;
+    padding:12px 20px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:16px;
+}
+button:hover {
+    background:#1e73be;
+}
+textarea {
+    width:100%;
+    height:150px;
+    font-size:18px;
+    padding:10px;
+    font-family:"Book Antiqua",serif;
+}
+#clock {
+    font-size:28px;
+    font-weight:bold;
+}
+.calculator {
+    background:#555;
+    padding:20px;
+    border-radius:20px;
+    width:300px;
+}
+.screen {
+    width:270px;
+    height:60px;
+    background:#b8d38b;
+    font-size:30px;
+    text-align:right;
+    margin-bottom:15px;
+}
+.calc button {
+    width:55px;
+    margin:3px;
+}
+footer {
+    background:#123b70;
+    color:white;
+    text-align:center;
+    padding:20px;
+}
+</style>
+</head>
+<body>
+<header>
+<h1>MyForeverBlog</h1>
+<h2>Writer's Toolbox</h2>
+<p>Write • Reflect • Inspire • Remember</p>
+</header>
+<div class="container">
+<div class="box">
+<h2>📝 Writing Area</h2>
+<textarea id="writing" placeholder="Begin your permanent entry here..."></textarea>
+<br><br>
+<button onclick="timestamp()">Add Timestamp</button>
+</div>
+<div class="box">
+<h2>📅 Current Timestamp</h2>
+<div id="clock"></div>
+</div>
+<div class="box">
+<h2>🔢 Word Counter</h2>
+<p>Words: <span id="words">0</span></p>
+<p>Characters: <span id="characters">0</span></p>
+</div>
+<div class="box">
+<h2>🧮 TI-83 Style Calculator</h2>
+<div class="calculator">
+<input id="screen" class="screen">
+<div class="calc">
+<button onclick="add('7')">7</button>
+<button onclick="add('8')">8</button>
+<button onclick="add('9')">9</button>
+<button onclick="add('/')">÷</button>
+<br>
+<button onclick="add('4')">4</button>
+<button onclick="add('5')">5</button>
+<button onclick="add('6')">6</button>
+<button onclick="add('*')">×</button>
+<br>
+<button onclick="add('1')">1</button>
+<button onclick="add('2')">2</button>
+<button onclick="add('3')">3</button>
+<button onclick="add('-')">-</button>
+<br>
+<button onclick="add('0')">0</button>
+<button onclick="add('.')">.</button>
+<button onclick="calculate()">=</button>
+<button onclick="clearCalc()">C</button>
+</div>
+</div>
+</div>
+</div>
+<footer>MyForeverBlog © 2026</footer>
+<script>
+function timestamp(){
+let now=new Date();
+let stamp="("+now.toLocaleDateString()+" "+now.toLocaleTimeString()+")\n\n";
+document.getElementById("writing").value = stamp + document.getElementById("writing").value;
+}
+setInterval(function(){
+let now=new Date();
+document.getElementById("clock").innerHTML = now.toLocaleString();
+},1000);
+let writing=document.getElementById("writing");
+writing.addEventListener("input",function(){
+let text=writing.value;
+document.getElementById("words").innerHTML = text.trim()=="" ? 0 : text.trim().split(/\s+/).length;
+document.getElementById("characters").innerHTML = text.length;
+});
+function add(value){
+document.getElementById("screen").value += value;
+}
+function clearCalc(){
+document.getElementById("screen").value="";
+}
+function calculate(){
+try{
+document.getElementById("screen").value = eval(document.getElementById("screen").value);
+}
+catch{
+document.getElementById("screen").value="ERROR";
+}
+}
+</script>
+</body>
+</html>
+
+  </style>
+</head>
+<body>
+  <!-- Splash / Cover Screen -->
+  <div id="splash-screen" role="dialog" aria-label="Welcome screen">
+    <p class="splash-created">Created by</p>
+    <h1 class="splash-title">Lee Roby</h1>
+    <hr class="splash-rule" />
+    <p class="splash-copyright">
+      This website and all of its contents are the exclusive intellectual property of Lee Roby.<br/>
+      © 2026 Lee Roby. All rights reserved.
+    </p>
+    <p class="splash-warning">Unauthorized copying, reproduction, or distribution is strictly prohibited.</p>
+    <span class="splash-hint">Tap anywhere to enter</span>
+  </div>
+
+  <div class="app-shell">
+    <header>
+      <div class="header-top">
+        <div>
+          <h1 id="blog-title-display">Your Personal Blog</h1>
+          <p class="subtitle">Blog Tools</p>
+          <input id="blog-title-input" class="blog-title-input" type="text" placeholder="Type your blog name" />
+        </div>
+        <a id="support-link-button" class="support-button" href="/support">Support</a>
+      </div>
+      <nav class="page-nav">
+        <a class="page-button active" href="/tools">Blog Tools</a>
+        <a class="page-button" href="/page2">Blog Page 2</a>
+        <a class="page-button" href="/page3">Blog Page 3</a>
+        <a class="page-button" href="/page5">Blog Page 5</a>
+        <a class="page-button" href="/page6">Blog Page 6</a>
+        <a class="page-button" href="/page7">Database</a>
+        <a class="page-button" href="/library">Library</a>
+        <a class="page-button" href="/page4">Blog Page 4</a>
+        <a class="page-button" href="/dreamstate">Dream State</a>
+        <a class="page-button" href="/calendar-journal">Calendar</a>
+        <a class="page-button" href="/published">Public Entries</a>
+        <a class="page-button" href="/resume">My Resume</a>
+        <a class="page-button" href="/alarm">Alarm</a>
+      </nav>
+      <div id="new-site-banner" class="new-site-banner" style="display:none;">
+        <div class="new-site-banner-text">
+          This blog is getting a new home soon. <a id="new-site-link" href="#" target="_blank">Visit the new website</a> or choose Remind me later and we’ll show this again.
+        </div>
+        <button id="new-site-remind" class="secondary-button">Remind me later</button>
+      </div>
+    </header>
+    <div id="user-account-bar" style="display:none;background:#f5ede0;border-bottom:1px solid #e8c99a;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <span id="user-greeting" style="font-weight:bold;color:#5a3e28;"></span>
+      <button id="user-logout-btn" class="secondary-button" style="padding:6px 14px;font-size:0.85em;">Log Out</button>
+    </div>
+    <div id="user-login-prompt" style="display:none;background:#fff8f0;border:2px solid #e8c99a;border-radius:8px;margin:16px;padding:16px;text-align:center;">
+      <p style="margin:0 0 10px;color:#5a3e28;font-weight:bold;">Sign in to save your entries permanently</p>
+      <a href="/login" class="support-button" style="margin-right:8px;">Log In</a>
+      <a href="/login" class="secondary-button" onclick="localStorage.setItem('auth_tab','signup')">Sign Up</a>
+    </div>
+    <section class="entry-form-section">
+      <div class="entry-form-card">
+        <div class="form-row timestamp-row">
+          <label>Timestamp</label>
+          <div id="current-timestamp" class="timestamp-display"></div>
+        </div>
+        <div class="form-row">
+          <label for="entry-content">Write your entry</label>
+          <textarea id="entry-content" rows="12" placeholder="Begin writing your journal entry here..."></textarea>
+        </div>
+        <div class="form-row form-actions">
+          <button id="save-entry">Save Entry</button>
+          <span id="save-status" class="save-status"></span>
+        </div>
+      </div>
+    </section>
+    <section class="utility-panels">
+      <aside class="word-export-panel">
+        <div class="word-card">
+          <h2>Word Export</h2>
+          <p>Download the current draft or all your saved entries as a Word document.</p>
+          <div class="form-row timestamp-row">
+            <label>Export timestamp</label>
+            <div id="export-timestamp" class="timestamp-display"></div>
+          </div>
+          <div class="form-row" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button id="export-word" class="secondary-button">⬇ Download Entry as Word</button>
+            <button id="export-all-word" class="secondary-button">⬇ Download All Entries</button>
+          </div>
+          <div id="admin-dictionary-status" class="admin-dictionary-status" style="display:none;">Admin only: dictionary status unavailable.</div>
+          <p class="panel-note">This creates a downloadable .doc file containing the current title, timestamp, and entry content.</p>
+          <p class="panel-note" style="margin-top:8px;">📚 Need citation help? Visit the <a href="/library" style="color:#c8a97e;font-weight:bold;">Library</a> for MLA, APA &amp; Turabian guides.</p>
+        </div>
+        <div class="thesaurus-card" style="margin-top:16px;">
+          <h2>Thesaurus</h2>
+          <p>Type a word and get Historical Thesaurus-style synonyms inspired by the OED.</p>
+          <label for="thesaurus-input">Word</label>
+          <input id="thesaurus-input" type="text" placeholder="e.g. access" />
+          <button id="thesaurus-search" class="secondary-button">Find words</button>
+          <div id="thesaurus-results" class="thesaurus-results">Enter a word to begin.</div>
+        </div>
+      </aside>
+      <aside class="dictionary-panel">
+        <div class="word-card">
+          <h2>Oxford Dictionary</h2>
+          <p class="panel-note">Look up a concise definition (local Oxford-style) for a word.</p>
+          <label for="oxford-input">Word</label>
+          <input id="oxford-input" type="text" placeholder="e.g. access" />
+          <button id="oxford-lookup" class="secondary-button">Look up</button>
+          <div id="oxford-results" class="thesaurus-results">No lookup yet.</div>
+        </div>
+        <div class="word-card" style="margin-top:16px;">
+          <h2>Spell Check</h2>
+          <p class="panel-note">Type a word to check its spelling.</p>
+          <label for="spellcheck-input">Word</label>
+          <input id="spellcheck-input" type="text" placeholder="e.g. recieve" />
+          <button id="spellcheck-btn" class="secondary-button">Check spelling</button>
+          <div id="spellcheck-results" class="thesaurus-results">Enter a word to check.</div>
+        </div>
+      </aside>
+    </section>
+    <section class="search-panel">
+      <div class="search-row">
+        <label for="search-input">Search entries</label>
+        <input id="search-input" type="search" placeholder="Search by title or content" />
+      </div>
+      <div class="search-row">
+        <label for="calendar-input">Calendar search</label>
+        <input id="calendar-input" type="date" />
+      </div>
+      <div class="search-row">
+        <label for="font-family">Font family</label>
+        <select id="font-family">
+          <option value="">Default (Book Antiqua)</option>
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="'Times New Roman', serif">Times New Roman</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="'Courier New', monospace">Courier New</option>
+          <option value="sans-serif">Sans-serif</option>
+          <option value="serif">Serif</option>
+          <option value="monospace">Monospace</option>
+          <option value="custom">Custom...</option>
+        </select>
+        <input id="font-family-custom" type="text" placeholder="Enter custom font family" style="display:none;margin-top:6px;" />
+      </div>
+      <div class="search-row">
+        <label for="font-size">Font size (px)</label>
+        <input id="font-size" type="number" min="8" max="72" placeholder="16" />
+      </div>
+      <div id="admin-qr-row" class="search-row qr-row" style="grid-column: 1 / -1; display:none;">
+        <div class="qr-card">
+          <h3>Support QR</h3>
+          <p class="panel-note">Scan to open your support page on phone.</p>
+          <img id="support-qr-image" class="qr-image" alt="Support QR code" />
+          <a id="support-qr-link" href="/support" target="_blank">Open support link</a>
+        </div>
+        <div class="qr-card">
+          <h3>Admin Login QR</h3>
+          <p class="panel-note">Scan to open the admin page on phone.</p>
+          <img id="admin-login-qr-image" class="qr-image" alt="Admin login QR code" />
+          <a id="admin-login-qr-link" href="/admin" target="_blank">Open admin page</a>
+        </div>
+      </div>
+    </section>
+    <section class="entries-section">
+      <h2>Entries</h2>
+      <div id="entries-list" class="entries-list"></div>
+    </section>
+    <footer class="site-footer">
+      <p>© 2026 My Permanent Blog. All rights reserved. Unauthorized copying prohibited.</p>
+    </footer>
+  </div>
+  <script>
+    (function () {
+      var splash = document.getElementById('splash-screen');
+      if (!splash) return;
+      // Only show once per browser session
+      if (sessionStorage.getItem('splash_shown')) {
+        splash.style.display = 'none';
+        return;
+      }
+      sessionStorage.setItem('splash_shown', '1');
+      function dismiss() {
+        splash.classList.add('fade-out');
+        splash.addEventListener('animationend', function () {
+          splash.style.display = 'none';
+        }, { once: true });
+      }
+      // Auto-dismiss after 4 seconds
+      var timer = setTimeout(dismiss, 4000);
+      // Tap/click to dismiss early
+      splash.addEventListener('click', function () {
+        clearTimeout(timer);
+        dismiss();
+      });
+    })();
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
