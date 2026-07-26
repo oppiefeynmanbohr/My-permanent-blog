@@ -136,6 +136,17 @@ function getUserFromRequest(req) {
   return req._userSession || null;
 }
 
+async function getAuthenticatedUser(req, res) {
+  const user = getUserFromRequest(req);
+  if (user) return user;
+  const rehydrated = await tryRehydrateUserSession(req, res);
+  if (rehydrated) {
+    req._userSession = { userId: rehydrated.userId, username: rehydrated.username, browserId: rehydrated.browserId || '' };
+    return req._userSession;
+  }
+  return null;
+}
+
 function getBrowserIdFromRequest(req) {
   const cookies = parseCookies(req);
   return cookies.client_id || '';
@@ -883,7 +894,7 @@ app.delete('/api/profile/work/:id', async (req, res) => {
 // ── Draft Routes ───────────────────────────────────────────────────────────
 
 app.get('/api/drafts', async (req, res) => {
-  const user = getUserFromRequest(req);
+  const user = await getAuthenticatedUser(req, res);
   if (!user) return res.status(401).json({ error: 'Login required.' });
   const source = String(req.query.source || 'main');
   try {
@@ -895,7 +906,7 @@ app.get('/api/drafts', async (req, res) => {
 });
 
 app.put('/api/drafts', async (req, res) => {
-  const user = getUserFromRequest(req);
+  const user = await getAuthenticatedUser(req, res);
   if (!user) return res.status(401).json({ error: 'Login required.' });
   const source = String(req.body?.source || 'main');
   const content = String(req.body?.content || '');
@@ -964,7 +975,7 @@ app.get('/api/entries', async (req, res) => {
 
 app.post('/api/entries', async (req, res) => {
   cleanupAuthState();
-  const user = getUserFromRequest(req);
+  const user = await getAuthenticatedUser(req, res);
   if (!user) return res.status(401).json({ error: 'Please log in to save entries.' });
 
   const { title, content, source, caldate } = req.body;
