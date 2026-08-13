@@ -244,7 +244,7 @@ CREATE TABLE IF NOT EXISTS users (
 `;
 
 function dbRun(sql, params = []) {
-  if (tursoClient) return tursoClient.execute({ sql, args: params }).then(() => ({}));
+  if (tursoClient) return tursoClient.execute({ sql, args: params });
   return new Promise((resolve, reject) => {
     db.run(sql, params, function (err) { if (err) reject(err); else resolve(this); });
   });
@@ -1000,12 +1000,9 @@ app.post('/api/entries', async (req, res) => {
   const userId = user.userId;
 
   try {
-    if (userId) {
-      await migrateAnonymousEntriesToUser(userId, browserId);
-    }
-    await dbRun(sql, [autoTitle, content, timestamp, createdAt, userId, entrySource, browserId]);
-    const row = await dbGet('SELECT id FROM entries WHERE created_at = ? AND user_id = ? ORDER BY id DESC LIMIT 1', [createdAt, userId]);
-    const newId = row ? row.id : Date.now();
+    const result = await dbRun(sql, [autoTitle, content, timestamp, createdAt, userId, entrySource, browserId]);
+    const rawId = result.lastInsertRowid ?? result.lastID;
+    const newId = rawId === undefined || rawId === null ? Date.now() : Number(rawId);
     res.status(201).json({ id: newId, title: autoTitle, content, timestamp, created_at: createdAt, published: 0, source: entrySource });
   } catch (err) {
     console.error('Entry save failed:', err.message);
