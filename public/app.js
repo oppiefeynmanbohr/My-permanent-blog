@@ -994,7 +994,6 @@ if (exportAllWordButton) {
 }
 
 refreshTimestamp();
-restoreDraft();
 
 window.addEventListener('pageshow', () => {
   if (!entryContent || entryContent.value.trim()) return;
@@ -1013,11 +1012,10 @@ document.addEventListener('visibilitychange', () => {
 loadBlogTitle();
 applyStoredPreferences();
 // load preferences (server first, then local) and then entries
-loadPreferences().then(() => {
+const preferencesReady = loadPreferences().then(() => {
   if (supportUrlInput) applySupportLink(supportUrlInput.value.trim());
   if (newSiteUrlInput) updateNewSiteBanner(newSiteUrlInput.value.trim());
   refreshQrCodes();
-  loadEntries();
 });
 // save preferences whenever user changes inputs
 if (blogTitleInput) blogTitleInput.addEventListener('input', saveBlogTitle);
@@ -1539,7 +1537,10 @@ if (userNewBlogBtn) {
   });
 }
 
-checkUserSession();
+Promise.all([checkUserSession(), preferencesReady]).then(() => {
+  restoreDraft();
+  loadEntries();
+});
 
 // Redirect to correct signup tab if flagged
 if (localStorage.getItem('auth_tab') === 'signup') {
