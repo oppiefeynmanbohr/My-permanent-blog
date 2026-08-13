@@ -410,6 +410,11 @@ textarea {
   margin-top: 10px;
 }
 
+.journal-word-count {
+  color: #687786;
+  font-size: 0.9rem;
+}
+
 .writing-check-results {
   color: #4d4035;
   font-size: 0.95rem;

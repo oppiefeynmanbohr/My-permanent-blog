@@ -4,9 +4,10 @@
 
   const controls = document.createElement('div');
   controls.className = 'writing-check-controls';
-  controls.innerHTML = '<button type="button" class="secondary-button" id="check-writing">Check writing</button><span id="writing-check-status" class="save-status" aria-live="polite"></span><div id="writing-check-results" class="writing-check-results"></div>';
+  controls.innerHTML = '<span id="journal-word-count" class="journal-word-count" aria-live="polite">0 words</span><button type="button" class="secondary-button" id="check-writing">Check writing</button><span id="writing-check-status" class="save-status" aria-live="polite"></span><div id="writing-check-results" class="writing-check-results"></div>';
   entryField.parentElement.appendChild(controls);
 
+  const wordCount = controls.querySelector('#journal-word-count');
   const checkButton = controls.querySelector('#check-writing');
   const status = controls.querySelector('#writing-check-status');
   const results = controls.querySelector('#writing-check-results');
@@ -26,8 +27,17 @@
     });
     entryField.value = corrected;
     entryField.dispatchEvent(new Event('input', { bubbles: true }));
+    updateWordCount();
     results.textContent = 'Suggested fixes applied. Review the entry before saving.';
   }
+
+  function updateWordCount() {
+    const words = entryField.value.trim() ? entryField.value.trim().split(/\s+/).length : 0;
+    wordCount.textContent = `${words} word${words === 1 ? '' : 's'}`;
+  }
+
+  entryField.addEventListener('input', updateWordCount);
+  updateWordCount();
 
   checkButton.addEventListener('click', async () => {
     const text = entryField.value.trim();
