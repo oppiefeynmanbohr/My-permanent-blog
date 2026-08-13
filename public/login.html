@@ -36,6 +36,8 @@
   <div class="auth-shell">
     <div class="auth-card">
       <h1>My Permanent Blog</h1>
+      <div id="account-switch-message" class="auth-status" style="display:none;"></div>
+      <button class="auth-submit" id="new-user-btn" type="button" style="margin:0 0 16px;">I am a new user</button>
 
       <div class="tab-row">
         <button class="tab-btn active" id="tab-login" onclick="showTab('login')">Log In</button>
@@ -55,7 +57,10 @@
           </div>
           <div class="forgot-link"><a href="/reset-password">Forgot password?</a></div>
           <label class="auth-remember">
-            <input id="remember-me" type="checkbox" checked /> Keep me signed in
+            <input id="remember-email" type="checkbox" /> Remember my email on this device
+          </label>
+          <label class="auth-remember">
+            <input id="remember-me" type="checkbox" checked /> Keep me signed in on this personal device
           </label>
           <div id="login-status" class="auth-status"></div>
           <button class="auth-submit" id="login-btn" type="submit">Log In</button>
@@ -98,11 +103,18 @@
       document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
     }
 
+    const creatingNewAccount = new URLSearchParams(window.location.search).get('new') === '1';
+    const accountSwitchMessage = document.getElementById('account-switch-message');
+
     // Auto-switch to signup if directed from Sign Up button on blog
-    if (localStorage.getItem('auth_tab') === 'signup') {
+    if (creatingNewAccount || localStorage.getItem('auth_tab') === 'signup') {
       localStorage.removeItem('auth_tab');
       showTab('signup');
     }
+
+    document.getElementById('new-user-btn').addEventListener('click', () => {
+      window.location.assign('/logout?new=1');
+    });
 
     function getBrowserId() {
       let browserId = localStorage.getItem('blog_browser_id');
@@ -113,83 +125,17 @@
       return browserId;
     }
 
-    function buildSavedCredentialCookieValue(name, value) {
-      const expiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
-      const parts = [`${name}=${encodeURIComponent(value)}`, `expires=${expiry}`, 'path=/', 'Max-Age=31536000'];
-      if (window.location.protocol === 'https:') {
-        parts.push('Secure');
-        parts.push('SameSite=None');
-      } else {
-        parts.push('SameSite=Lax');
-      }
-      return parts.join('; ');
+    function clearLegacyPasswordStorage() {
+      localStorage.removeItem('blog_saved_password');
+      localStorage.removeItem('blog_password');
+      document.cookie = 'blog_saved_password=; Max-Age=0; Path=/; SameSite=Lax';
     }
 
-    function persistSavedCredentials(username, password) {
-      if (username) localStorage.setItem('blog_username', username);
-      if (password) localStorage.setItem('blog_saved_password', password);
-      if (password) localStorage.setItem('blog_password', password);
-      if (username || password) {
-        document.cookie = buildSavedCredentialCookieValue('blog_username', username || localStorage.getItem('blog_username') || '');
-        if (password) {
-          document.cookie = buildSavedCredentialCookieValue('blog_saved_password', password);
-        }
-      }
-      if (!username && !password) return;
-    }
-
-    // Pre-fill username and password from saved login details
-    const savedUser = localStorage.getItem('blog_username') || (() => {
-      const match = document.cookie.match(/(?:^|; )blog_username=([^;]+)/);
-      return match ? decodeURIComponent(match[1]) : '';
-    })();
-    const savedPassword = localStorage.getItem('blog_saved_password') || localStorage.getItem('blog_password') || (() => {
-      const match = document.cookie.match(/(?:^|; )blog_saved_password=([^;]+)/);
-      return match ? decodeURIComponent(match[1]) : '';
-    })();
-    if (savedUser) document.getElementById('login-username').value = savedUser;
-    if (savedPassword) document.getElementById('login-password').value = savedPassword;
-
-    const loginUsernameInput = document.getElementById('login-username');
-    const loginPasswordInput = document.getElementById('login-password');
-    [loginUsernameInput, loginPasswordInput].forEach((input) => {
-      input.addEventListener('input', () => {
-        persistSavedCredentials(loginUsernameInput.value.trim(), loginPasswordInput.value);
-      });
-    });
-
-    async function tryStoredLogin() {
-      const storedUser = localStorage.getItem('blog_username') || (() => {
-        const match = document.cookie.match(/(?:^|; )blog_username=([^;]+)/);
-        return match ? decodeURIComponent(match[1]) : '';
-      })();
-      const storedPassword = localStorage.getItem('blog_saved_password') || localStorage.getItem('blog_password') || (() => {
-        const match = document.cookie.match(/(?:^|; )blog_saved_password=([^;]+)/);
-        return match ? decodeURIComponent(match[1]) : '';
-      })();
-      if (!storedUser || !storedPassword) return false;
-      const statusEl = document.getElementById('login-status');
-      if (statusEl) statusEl.textContent = 'Restoring your last session…';
-      try {
-        const browserId = getBrowserId();
-        const r = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({ username: storedUser, password: storedPassword, rememberMe: true, browserId })
-        });
-        const data = await r.json().catch(() => ({}));
-        if (!r.ok) return false;
-        localStorage.setItem('blog_logged_in', '1');
-        localStorage.setItem('blog_username', data.username || storedUser);
-        localStorage.setItem('blog_saved_password', storedPassword);
-        localStorage.setItem('blog_password', storedPassword);
-        localStorage.setItem('blog_browser_id', browserId);
-        persistSavedCredentials(data.username || storedUser, storedPassword);
-        return true;
-      } catch {
-        return false;
-      }
+    clearLegacyPasswordStorage();
+    const savedEmail = localStorage.getItem('blog_saved_email') || '';
+    if (savedEmail) {
+      document.getElementById('login-username').value = savedEmail;
+      document.getElementById('remember-email').checked = true;
     }
 
     // ── Log In ──
@@ -199,7 +145,8 @@
       const statusEl = document.getElementById('login-status');
       const username = document.getElementById('login-username').value.trim();
       const password = document.getElementById('login-password').value;
-      const rememberMe = true;
+      const rememberMe = document.getElementById('remember-me').checked;
+      const rememberEmail = document.getElementById('remember-email').checked;
       if (!username || !password) { statusEl.textContent = 'Please enter your username or email, and password.'; return; }
       statusEl.textContent = '';
       loginBtn.disabled = true;
@@ -214,21 +161,6 @@
         });
         const data = await r.json();
         if (!r.ok) {
-          const savedPassword = localStorage.getItem('blog_saved_password');
-          const fallbackUsername = localStorage.getItem('blog_username');
-          const canUseSavedPassword = savedPassword && fallbackUsername && fallbackUsername.toLowerCase() === username.toLowerCase();
-          if (canUseSavedPassword && savedPassword === password) {
-            localStorage.setItem('blog_logged_in', '1');
-            localStorage.setItem('blog_username', fallbackUsername || username);
-            localStorage.setItem('blog_saved_password', savedPassword);
-            localStorage.setItem('blog_password', savedPassword);
-            localStorage.setItem('blog_browser_id', getBrowserId());
-            persistSavedCredentials(fallbackUsername || username, savedPassword);
-            statusEl.className = 'auth-status ok';
-            statusEl.textContent = 'Signed in using your saved browser password.';
-            setTimeout(() => { window.location.href = '/page1'; }, 600);
-            return;
-          }
           const msg = data.error || 'Login failed.';
           const isNotFound = msg.toLowerCase().includes('no account');
           statusEl.textContent = msg + (isNotFound ? ' — try the Sign Up tab to create a new account.' : '');
@@ -238,10 +170,9 @@
         }
         localStorage.setItem('blog_logged_in', '1');
         localStorage.setItem('blog_username', data.username || username);
-        localStorage.setItem('blog_saved_password', password);
-        localStorage.setItem('blog_password', password);
         localStorage.setItem('blog_browser_id', getBrowserId());
-        persistSavedCredentials(data.username || username, password);
+        if (rememberEmail) localStorage.setItem('blog_saved_email', username);
+        else localStorage.removeItem('blog_saved_email');
         statusEl.className = 'auth-status ok';
         statusEl.textContent = 'Logged in! Redirecting…';
         setTimeout(() => { window.location.href = '/page1'; }, 600);
@@ -281,14 +212,9 @@
           signupBtn.textContent = 'Create Account';
           return;
         }
-        localStorage.setItem('blog_logged_in', '1');
-        localStorage.setItem('blog_username', username);
-        localStorage.setItem('blog_saved_password', password);
-        localStorage.setItem('blog_password', password);
-        persistSavedCredentials(username, password);
         statusEl.className = 'auth-status ok';
-        statusEl.textContent = 'Account created! Redirecting…';
-        setTimeout(() => { window.location.href = '/page1'; }, 600);
+        statusEl.textContent = 'Verification email sent. Open the link in your email to finish creating your account.';
+        signupBtn.textContent = 'Verification Email Sent';
       } catch {
         statusEl.textContent = 'Network error. Try again.';
         signupBtn.disabled = false;
@@ -296,21 +222,50 @@
       }
     });
 
-    // Already logged in? Go straight to blog, or restore from the saved browser credentials.
-    fetch('/api/auth/session', { credentials: 'same-origin' })
-      .then(r => r.json())
-      .then(async (data) => {
-        if (data.authenticated) {
-          window.location.href = '/page1';
-          return;
+    async function verifySignupFromLink() {
+      const token = new URLSearchParams(window.location.search).get('verify');
+      if (!token) return false;
+      const statusEl = document.getElementById('signup-status');
+      showTab('signup');
+      statusEl.className = 'auth-status';
+      statusEl.textContent = 'Verifying your email address…';
+      try {
+        const response = await fetch('/api/auth/signup/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ token })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          statusEl.textContent = data.error || 'Email verification failed.';
+          return true;
         }
-        const restored = await tryStoredLogin();
-        if (restored) window.location.href = '/page1';
-      })
-      .catch(async () => {
-        const restored = await tryStoredLogin();
-        if (restored) window.location.href = '/page1';
-      });
+        localStorage.setItem('blog_logged_in', '1');
+        localStorage.setItem('blog_username', data.username || '');
+        history.replaceState({}, '', '/login');
+        statusEl.className = 'auth-status ok';
+        statusEl.textContent = 'Email verified! Redirecting…';
+        setTimeout(() => { window.location.href = '/page1'; }, 600);
+        return true;
+      } catch {
+        statusEl.textContent = 'Network error. Try opening the verification link again.';
+        return true;
+      }
+    }
+
+    verifySignupFromLink().then((verifying) => {
+      if (verifying) return;
+      fetch('/api/auth/session', { credentials: 'same-origin' })
+        .then(r => r.json())
+        .then((data) => {
+          if (data.authenticated && accountSwitchMessage) {
+            accountSwitchMessage.style.display = 'block';
+            accountSwitchMessage.textContent = 'Another user is signed in. Enter your own email and password below, or choose I am a new user.';
+          }
+        })
+        .catch(() => {});
+    });
   </script>
   <script src="/global-nav.js"></script>
 </body>

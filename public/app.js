@@ -1418,125 +1418,21 @@ refreshQrCodes();
 const userAccountBar = document.getElementById('user-account-bar');
 const userGreeting = document.getElementById('user-greeting');
 const userLogoutBtn = document.getElementById('user-logout-btn');
+const userNewBlogBtn = document.getElementById('user-new-blog-btn');
 const userLoginPrompt = document.getElementById('user-login-prompt');
-
-function getSavedCredentials() {
-  const savedUser = localStorage.getItem('blog_username') || (() => {
-    const match = document.cookie.match(/(?:^|; )blog_username=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : '';
-  })();
-  const savedPassword = localStorage.getItem('blog_saved_password') || localStorage.getItem('blog_password') || (() => {
-    const match = document.cookie.match(/(?:^|; )blog_saved_password=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : '';
-  })();
-  return { savedUser, savedPassword };
-}
-
-function getAuthHeaders() {
-  const { savedUser, savedPassword } = getSavedCredentials();
-  const headers = {};
-  if (savedUser) headers['X-Auth-Username'] = savedUser;
-  if (savedPassword) headers['X-Auth-Password'] = savedPassword;
-  return headers;
-}
-
-function buildSavedCredentialCookieValue(name, value) {
-  const expiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
-  const parts = [`${name}=${encodeURIComponent(value)}`, `expires=${expiry}`, 'path=/', 'Max-Age=31536000'];
-  if (window.location.protocol === 'https:') {
-    parts.push('Secure');
-    parts.push('SameSite=None');
-  } else {
-    parts.push('SameSite=Lax');
-  }
-  return parts.join('; ');
-}
-
-function persistSavedBrowserCredentials(username, password) {
-  const safeUser = String(username || '').trim();
-  const safePassword = String(password || '');
-  if (safeUser) localStorage.setItem('blog_username', safeUser);
-  if (safePassword) {
-    localStorage.setItem('blog_saved_password', safePassword);
-    localStorage.setItem('blog_password', safePassword);
-  }
-  if (safeUser || safePassword) {
-    document.cookie = buildSavedCredentialCookieValue('blog_username', safeUser);
-    if (safePassword) {
-      document.cookie = buildSavedCredentialCookieValue('blog_saved_password', safePassword);
-    }
-  }
-}
 
 async function ensureAuthenticatedSession() {
   try {
-    const sessionResp = await fetch('/api/auth/session', {
-      credentials: 'same-origin',
-      headers: getAuthHeaders()
-    });
+    const sessionResp = await fetch('/api/auth/session', { credentials: 'same-origin' });
     const sessionData = await sessionResp.json().catch(() => ({}));
     if (sessionData.authenticated) return true;
   } catch {}
-
-  const restored = await tryStoredLoginFromBrowser();
-  if (!restored) return false;
-
-  try {
-    const sessionResp = await fetch('/api/auth/session', {
-      credentials: 'same-origin',
-      headers: getAuthHeaders()
-    });
-    const sessionData = await sessionResp.json().catch(() => ({}));
-    return Boolean(sessionData.authenticated);
-  } catch {
-    return false;
-  }
+  return false;
 }
 
 async function fetchWithSessionRecovery(url, options = {}) {
-  const ready = await ensureAuthenticatedSession();
-  const requestHeaders = { ...(options.headers || {}), ...getAuthHeaders() };
-  if (!ready) {
-    return fetch(url, { credentials: 'same-origin', ...options, headers: requestHeaders });
-  }
-
-  const response = await fetch(url, { credentials: 'same-origin', ...options, headers: requestHeaders });
-  if ((response.status === 401 || response.status === 403) && !options._retried) {
-    const restored = await tryStoredLoginFromBrowser();
-    if (restored) {
-      return fetch(url, { credentials: 'same-origin', ...options, _retried: true, headers: { ...(options.headers || {}), ...getAuthHeaders() } });
-    }
-  }
-  return response;
-}
-
-async function tryStoredLoginFromBrowser() {
-  const { savedUser, savedPassword } = getSavedCredentials();
-  if (!savedUser || !savedPassword) return false;
-  try {
-    let browserId = localStorage.getItem('blog_browser_id');
-    if (!browserId) {
-      browserId = 'browser-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-      localStorage.setItem('blog_browser_id', browserId);
-    }
-    const r = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ username: savedUser, password: savedPassword, rememberMe: true, browserId })
-    });
-    if (!r.ok) return false;
-    const data = await r.json().catch(() => ({}));
-    localStorage.setItem('blog_logged_in', '1');
-    localStorage.setItem('blog_username', data.username || savedUser);
-    localStorage.setItem('blog_saved_password', savedPassword);
-    localStorage.setItem('blog_password', savedPassword);
-    localStorage.setItem('blog_browser_id', browserId);
-    persistSavedBrowserCredentials(data.username || savedUser, savedPassword);
-    return true;
-  } catch {
-    return false;
-  }
+  await ensureAuthenticatedSession();
+  return fetch(url, { credentials: 'same-origin', ...options });
 }
 
 function applyAuthState(username, userId) {
@@ -1544,8 +1440,6 @@ function applyAuthState(username, userId) {
   localStorage.setItem('blog_logged_in', '1');
   localStorage.setItem('blog_username', username);
   localStorage.setItem('blog_user_id', String(userId || ''));
-  const savedPassword = localStorage.getItem('blog_saved_password') || localStorage.getItem('blog_password') || '';
-  persistSavedBrowserCredentials(username, savedPassword);
   if (userAccountBar) userAccountBar.style.display = 'flex';
   if (userGreeting) userGreeting.textContent = `Logged in as ${username}`;
   if (userLoginPrompt) userLoginPrompt.style.display = 'none';
@@ -1553,7 +1447,7 @@ function applyAuthState(username, userId) {
 
 function getPendingEntries() {
   try {
-    const raw = localStorage.getItem('blog_pending_entries');
+    const raw = localStorage.getItem(getActiveUserStorageKey('blog_pending_entries'));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -1562,7 +1456,7 @@ function getPendingEntries() {
 
 function savePendingEntries(entries) {
   try {
-    localStorage.setItem('blog_pending_entries', JSON.stringify(entries));
+    localStorage.setItem(getActiveUserStorageKey('blog_pending_entries'), JSON.stringify(entries));
   } catch {}
 }
 
@@ -1608,42 +1502,33 @@ async function checkUserSession() {
       applyAuthState(data.username, data.userId);
       await flushPendingEntries();
     } else {
-      const lsUser = localStorage.getItem('blog_username');
-      if (lsUser && localStorage.getItem('blog_logged_in')) {
-        applyAuthState(lsUser, localStorage.getItem('blog_user_id'));
-      } else {
-        const restored = await tryStoredLoginFromBrowser();
-        if (restored) {
-          applyAuthState(localStorage.getItem('blog_username'), localStorage.getItem('blog_user_id'));
-        } else {
-          if (!getSavedCredentials().savedUser || !getSavedCredentials().savedPassword) {
-            localStorage.removeItem('blog_logged_in');
-            localStorage.removeItem('blog_user_id');
-          }
-          if (userAccountBar) userAccountBar.style.display = 'none';
-          if (userLoginPrompt) userLoginPrompt.style.display = 'block';
-        }
-      }
+      localStorage.removeItem('blog_logged_in');
+      localStorage.removeItem('blog_username');
+      localStorage.removeItem('blog_user_id');
+      if (userAccountBar) userAccountBar.style.display = 'none';
+      if (userLoginPrompt) userLoginPrompt.style.display = 'block';
     }
   } catch {
-    const lsUser = localStorage.getItem('blog_username');
-    if (lsUser && localStorage.getItem('blog_logged_in')) {
-      applyAuthState(lsUser, localStorage.getItem('blog_user_id'));
-      return;
-    }
-    const restored = await tryStoredLoginFromBrowser();
-    if (restored) {
-      applyAuthState(localStorage.getItem('blog_username'), localStorage.getItem('blog_user_id'));
-    }
+    if (userAccountBar) userAccountBar.style.display = 'none';
+    if (userLoginPrompt) userLoginPrompt.style.display = 'block';
   }
 }
 
 if (userLogoutBtn) {
-  userLogoutBtn.addEventListener('click', async () => {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+  userLogoutBtn.addEventListener('click', () => {
     localStorage.removeItem('blog_logged_in');
+    localStorage.removeItem('blog_username');
     localStorage.removeItem('blog_user_id');
-    window.location.reload();
+    window.location.assign('/logout');
+  });
+}
+
+if (userNewBlogBtn) {
+  userNewBlogBtn.addEventListener('click', () => {
+    localStorage.removeItem('blog_logged_in');
+    localStorage.removeItem('blog_username');
+    localStorage.removeItem('blog_user_id');
+    window.location.assign('/logout?new=1');
   });
 }
 

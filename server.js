@@ -55,6 +55,7 @@ const SMTP_PASS = process.env.SMTP_PASS || '';
 const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
 
 const pendingPasswordResets = new Map(); // token -> { userId, expiresAt }
+const pendingSignups = new Map();
 
 function getMailTransport() {
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
@@ -119,7 +120,7 @@ async function createUserSession(req, res, userId, username, rememberMe = false,
   const expiresAt = Date.now() + ttl;
   await dbRun('INSERT OR REPLACE INTO user_sessions (token, user_id, username, expires_at, browser_id) VALUES (?,?,?,?,?)',
     [token, userId, username, expiresAt, browserId || '']);
-  appendSetCookie(res, buildCookieValue('user_sid', token, req, ttl));
+  appendSetCookie(res, buildCookieValue('user_sid', token, req, rememberMe ? ttl : undefined));
   return token;
 }
 
@@ -137,14 +138,7 @@ function getUserFromRequest(req) {
 }
 
 async function getAuthenticatedUser(req, res) {
-  const user = getUserFromRequest(req);
-  if (user) return user;
-  const rehydrated = await tryRehydrateUserSession(req, res);
-  if (rehydrated) {
-    req._userSession = { userId: rehydrated.userId, username: rehydrated.username, browserId: rehydrated.browserId || '' };
-    return req._userSession;
-  }
-  return null;
+  return getUserFromRequest(req);
 }
 
 function getBrowserIdFromRequest(req) {
@@ -160,14 +154,9 @@ function sameUserId(a, b) {
 function canManageEntry(row, user, browserId) {
   if (!row) return false;
   if (row.user_id !== null) {
-    if (!!user && sameUserId(row.user_id, user.userId)) return true;
-    // Fall back to matching the browser's client_id cookie in case the login
-    // session cookie was dropped/expired, so delete/edit isn't silently blocked.
-    return !!browserId && !!row.browser_id && row.browser_id === browserId;
+    return !!user && sameUserId(row.user_id, user.userId);
   }
-  // Anonymous entries are treated as writable so legacy/browser-id drift
-  // cannot block publish/archive/delete for existing content.
-  return true;
+  return !!browserId && !!row.browser_id && row.browser_id === browserId;
 }
 
 async function migrateAnonymousEntriesToUser(userId, browserId) {
@@ -179,39 +168,6 @@ async function migrateAnonymousEntriesToUser(userId, browserId) {
   }
 }
 
-function getAuthHeaders(req) {
-  const headers = req.headers || {};
-  const username = String(headers['x-auth-username'] || headers['x-auth-user'] || '').trim();
-  const password = String(headers['x-auth-password'] || headers['x-auth-pass'] || '').trim();
-  return { username, password };
-}
-
-async function tryRehydrateUserSession(req, res) {
-  const cookies = parseCookies(req);
-  const authHeaders = getAuthHeaders(req);
-  const storedUser = authHeaders.username || String(cookies.blog_username || '').trim();
-  const storedPassword = authHeaders.password || String(cookies.blog_saved_password || '').trim();
-  if (!storedUser || !storedPassword) return null;
-
-  try {
-    const identifier = normalizeIdentifier(storedUser);
-    const candidate = await dbGet(
-      'SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?',
-      [identifier, identifier]
-    );
-    if (!candidate || isLegacyCodeOnlyUser(candidate)) return null;
-
-    const hash = hashPassword(storedPassword, candidate.password_salt);
-    if (hash !== candidate.password_hash) return null;
-
-    const browserId = getBrowserIdFromRequest(req);
-    await createUserSession(req, res, candidate.id, candidate.username, true, browserId);
-    return { userId: candidate.id, username: candidate.username, browserId };
-  } catch {
-    return null;
-  }
-}
-
 // Middleware: load user session from DB before each request
 function loadUserSession(req, res, next) {
   const cookies = parseCookies(req);
@@ -220,33 +176,16 @@ function loadUserSession(req, res, next) {
   req._userSession = null;
 
   if (!token) {
-    return tryRehydrateUserSession(req, res)
-      .then((user) => {
-        if (user) req._userSession = user;
-        return next();
-      })
-      .catch(() => next());
+    return next();
   }
 
   dbGet('SELECT * FROM user_sessions WHERE token = ?', [token])
     .then((row) => {
       if (!row || row.expires_at < Date.now()) {
         if (row) {
-          return dbRun('DELETE FROM user_sessions WHERE token = ?', [token]).then(() =>
-            tryRehydrateUserSession(req, res)
-              .then((user) => {
-                if (user) req._userSession = user;
-                return next();
-              })
-              .catch(() => next())
-          );
+          return dbRun('DELETE FROM user_sessions WHERE token = ?', [token]).then(() => next());
         }
-        return tryRehydrateUserSession(req, res)
-          .then((user) => {
-            if (user) req._userSession = user;
-            return next();
-          })
-          .catch(() => next());
+        return next();
       }
 
       req._userSession = { userId: row.user_id, username: row.username, browserId: row.browser_id || '' };
@@ -669,21 +608,73 @@ app.post('/api/auth/signup', async (req, res) => {
   const salt = crypto.randomBytes(32).toString('hex');
   const hash = hashPassword(password, salt);
   const createdAt = new Date().toISOString();
+  const normalizedEmail = email.trim().toLowerCase();
 
   try {
-    const result = await dbRun(
-      'INSERT INTO users (username, email, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?)',
-      [username.trim(), email.trim().toLowerCase(), hash, salt, createdAt]
+    const existing = await dbGet(
+      'SELECT id FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?',
+      [normalizeIdentifier(username), normalizedEmail]
     );
-    const newUser = await dbGet('SELECT id FROM users WHERE username = ?', [username.trim()]);
-    const browserId = getOrCreateClientId(req, res);
-    await createUserSession(req, res, newUser.id, username.trim(), true, browserId);
-    await migrateAnonymousEntriesToUser(newUser.id, browserId);
-    res.status(201).json({ success: true, username: username.trim() });
+    if (existing) return res.status(409).json({ error: 'Username or email already taken.' });
+
+    const transport = getMailTransport();
+    if (!transport) {
+      return res.status(503).json({ error: 'Email verification is unavailable until the mail service is configured.' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    pendingSignups.set(token, {
+      username: username.trim(),
+      email: normalizedEmail,
+      passwordHash: hash,
+      passwordSalt: salt,
+      createdAt,
+      expiresAt: Date.now() + RESET_TTL_MS
+    });
+    const verificationLink = `${req.protocol}://${req.get('host')}/login?verify=${token}`;
+    await transport.sendMail({
+      from: SMTP_FROM,
+      to: normalizedEmail,
+      subject: 'Verify your My Permanent Blog email address',
+      text: `Hi ${username.trim()},\n\nOpen this link to create your personal blog account (expires in 1 hour):\n\n${verificationLink}`,
+      html: `<p>Hi <strong>${username.trim()}</strong>,</p><p>Open this link to create your personal blog account (expires in 1 hour):</p><p><a href="${verificationLink}">${verificationLink}</a></p>`
+    });
+    res.status(202).json({ success: true, verificationRequired: true });
   } catch (err) {
     console.error('Signup DB error:', err.message);
+    for (const [token, signup] of pendingSignups.entries()) {
+      if (signup.email === normalizedEmail) pendingSignups.delete(token);
+    }
     if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Username or email already taken.' });
-    return res.status(500).json({ error: `Signup failed: ${err.message}` });
+    return res.status(500).json({ error: 'Failed to send verification email.' });
+  }
+});
+
+app.post('/api/auth/signup/verify', async (req, res) => {
+  const token = String(req.body?.token || '').trim();
+  const signup = pendingSignups.get(token);
+  if (!signup || signup.expiresAt < Date.now()) {
+    pendingSignups.delete(token);
+    return res.status(400).json({ error: 'This verification link has expired or is invalid.' });
+  }
+
+  try {
+    await dbRun(
+      'INSERT INTO users (username, email, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?)',
+      [signup.username, signup.email, signup.passwordHash, signup.passwordSalt, signup.createdAt]
+    );
+    const user = await dbGet('SELECT id, username FROM users WHERE email = ?', [signup.email]);
+    if (!user) return res.status(500).json({ error: 'Could not create the account.' });
+    const previousToken = parseCookies(req).user_sid;
+    if (previousToken) await dbRun('DELETE FROM user_sessions WHERE token = ?', [previousToken]);
+    const browserId = getOrCreateClientId(req, res);
+    await createUserSession(req, res, user.id, user.username, true, browserId);
+    pendingSignups.delete(token);
+    res.status(201).json({ success: true, username: user.username });
+  } catch (err) {
+    pendingSignups.delete(token);
+    if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Username or email already taken.' });
+    res.status(500).json({ error: 'Could not verify the email address.' });
   }
 });
 
@@ -719,9 +710,25 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/logout', async (req, res) => {
   const cookies = parseCookies(req);
   const token = cookies['user_sid'];
-  if (token) await dbRun('DELETE FROM user_sessions WHERE token = ?', [token]);
+  try {
+    if (token) await dbRun('DELETE FROM user_sessions WHERE token = ?', [token]);
+  } catch (err) {
+    console.error('Logout session deletion failed:', err.message);
+  }
   res.setHeader('Set-Cookie', buildCookieValue('user_sid', '', req, 0));
   res.json({ success: true });
+});
+
+app.get('/logout', async (req, res) => {
+  const cookies = parseCookies(req);
+  const token = cookies['user_sid'];
+  try {
+    if (token) await dbRun('DELETE FROM user_sessions WHERE token = ?', [token]);
+  } catch (err) {
+    console.error('Logout session deletion failed:', err.message);
+  }
+  res.setHeader('Set-Cookie', buildCookieValue('user_sid', '', req, 0));
+  res.redirect(req.query.new === '1' ? '/login?new=1' : '/login');
 });
 
 app.post('/api/auth/forgot-password', async (req, res) => {
@@ -786,62 +793,17 @@ app.get('/api/auth/session', async (req, res) => {
   if (user) {
     return res.json({ authenticated: true, username: user.username, userId: user.userId });
   }
-
-  const rehydrated = await tryRehydrateUserSession(req, res);
-  if (rehydrated) {
-    return res.json({ authenticated: true, username: rehydrated.username, userId: rehydrated.userId });
-  }
-
   return res.json({ authenticated: false });
 });
 
 // ── Email-code auth ────────────────────────────────────────────────────────�[...]
 
 app.post('/api/auth/email-setup', async (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase();
-  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    return res.status(400).json({ error: 'A valid email address is required.' });
-  }
-  const emailAuth = readJson(emailAuthFile, {});
-  const code = generateEmailCode();
-  emailAuth[email] = { code, createdAt: new Date().toISOString() };
-  writeJson(emailAuthFile, emailAuth);
-  res.json({ success: true, code });
+  res.status(410).json({ error: 'Email-code signup is no longer available. Create an account through email verification.' });
 });
 
 app.post('/api/auth/email-login', async (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase();
-  const code = String(req.body.code || '').trim().toUpperCase();
-  const newPassword = String(req.body.newPassword || '');
-  if (!email || !code || !newPassword) {
-    return res.status(400).json({ error: 'Email, code, and newPassword are required.' });
-  }
-  if (newPassword.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
-  }
-  const emailAuth = readJson(emailAuthFile, {});
-  const record = emailAuth[email];
-  if (!record || record.code !== code) {
-    return res.status(401).json({ error: 'Incorrect code. Check the code you received when you first signed up.' });
-  }
-  try {
-    const salt = crypto.randomBytes(32).toString('hex');
-    const hash = hashPassword(newPassword, salt);
-    await dbRun(
-      'INSERT OR IGNORE INTO users (username, email, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?)',
-      [email, email, hash, salt, new Date().toISOString()]
-    );
-    await dbRun('UPDATE users SET password_hash = ?, password_salt = ? WHERE email = ?', [hash, salt, email]);
-    const user = await dbGet('SELECT id FROM users WHERE email = ?', [email]);
-    if (!user) return res.status(500).json({ error: 'Login failed. Please try again.' });
-    const browserId = getBrowserIdFromRequest(req);
-    await createUserSession(req, res, user.id, email, true, browserId);
-    delete emailAuth[email];
-    writeJson(emailAuthFile, emailAuth);
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: 'Login failed.' });
-  }
+  res.status(410).json({ error: 'Email-code login is no longer available. Use your verified email and password.' });
 });
 
 app.get('/api/auth/debug', (req, res) => {
@@ -961,14 +923,15 @@ app.delete('/api/profile/work/:id', async (req, res) => {
 
 app.get('/api/drafts', async (req, res) => {
   const user = await getAuthenticatedUser(req, res);
+  if (!user) return res.status(401).json({ error: 'Sign in to access your drafts.' });
   const browserId = getOrCreateClientId(req, res);
   const source = String(req.query.source || 'main');
   try {
     const rows = await dbAll(
-      'SELECT content, updated_at, user_id FROM drafts WHERE source = ? AND ((user_id IS NOT NULL AND user_id = ?) OR browser_id = ?) ORDER BY updated_at DESC, id DESC',
-      [source, user ? user.userId : null, browserId]
+      'SELECT content, updated_at, user_id FROM drafts WHERE source = ? AND (user_id = ? OR (user_id IS NULL AND browser_id = ?)) ORDER BY updated_at DESC, id DESC',
+      [source, user.userId, browserId]
     );
-    const row = rows.find((entry) => user && entry.user_id === user.userId) || rows[0] || null;
+    const row = rows.find((entry) => sameUserId(entry.user_id, user.userId)) || rows[0] || null;
     res.json({ content: row ? row.content : '', updatedAt: row ? row.updated_at : '' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load draft.' });
@@ -977,6 +940,7 @@ app.get('/api/drafts', async (req, res) => {
 
 app.put('/api/drafts', async (req, res) => {
   const user = await getAuthenticatedUser(req, res);
+  if (!user) return res.status(401).json({ error: 'Sign in to save drafts.' });
   const browserId = getOrCreateClientId(req, res);
   const source = String(req.body?.source || 'main');
   const content = String(req.body?.content || '');
@@ -984,14 +948,14 @@ app.put('/api/drafts', async (req, res) => {
 
   try {
     if (!content.trim()) {
-      await dbRun('DELETE FROM drafts WHERE source = ? AND ((user_id IS NOT NULL AND user_id = ?) OR browser_id = ?)', [source, user ? user.userId : null, browserId]);
+      await dbRun('DELETE FROM drafts WHERE source = ? AND (user_id = ? OR (user_id IS NULL AND browser_id = ?))', [source, user.userId, browserId]);
       return res.json({ content: '', updatedAt: '' });
     }
 
-    await dbRun('DELETE FROM drafts WHERE source = ? AND ((user_id IS NOT NULL AND user_id = ?) OR browser_id = ?)', [source, user ? user.userId : null, browserId]);
+    await dbRun('DELETE FROM drafts WHERE source = ? AND (user_id = ? OR (user_id IS NULL AND browser_id = ?))', [source, user.userId, browserId]);
     await dbRun(
       'INSERT INTO drafts (user_id, browser_id, source, content, updated_at) VALUES (?, ?, ?, ?, ?)',
-      [user ? user.userId : null, browserId, source, content, updatedAt]
+      [user.userId, browserId, source, content, updatedAt]
     );
     res.json({ content, updatedAt });
   } catch (err) {
@@ -1006,6 +970,11 @@ app.get('/api/entries', async (req, res) => {
   const search = req.query.search || '';
   const date = req.query.date || '';
   const published = req.query.published;
+  const isPublicFeed = published === 'true';
+  const user = isPublicFeed ? null : await getAuthenticatedUser(req, res);
+  if (!isPublicFeed && !user) {
+    return res.status(401).json({ error: 'Sign in to access your personal blog.' });
+  }
   const source = req.query.source || '';
   const calmonth = req.query.calmonth || ''; // e.g. '2026-07'
   const order = (req.query.order || 'asc').toLowerCase() === 'desc' ? 'DESC' : 'ASC';
@@ -1016,6 +985,10 @@ app.get('/api/entries', async (req, res) => {
 
   // Show every undeleted entry in the archive by default. Login is no longer required to browse them.
   if (req.query.include_archived !== 'true') clauses.push('archived = 0');
+
+  // The published feed is intentionally public; every other query belongs only
+  // to the authenticated blogger.
+  if (!isPublicFeed) { clauses.push('user_id = ?'); params.push(user.userId); }
 
   if (source) { clauses.push('source = ?'); params.push(source); }
   if (calmonth) { clauses.push("strftime('%Y-%m', created_at) = ?"); params.push(calmonth); }
@@ -1040,6 +1013,7 @@ app.get('/api/entries', async (req, res) => {
 app.post('/api/entries', async (req, res) => {
   cleanupAuthState();
   const user = await getAuthenticatedUser(req, res);
+  if (!user) return res.status(401).json({ error: 'Sign in to save entries to your personal blog.' });
   const browserId = getOrCreateClientId(req, res);
 
   const { title, content, source, caldate } = req.body;
@@ -1056,7 +1030,7 @@ app.post('/api/entries', async (req, res) => {
   const timestamp = formatTimestamp(now);
   const createdAt = now.toISOString();
   const sql = 'INSERT INTO entries (title, content, timestamp, created_at, published, user_id, source, browser_id) VALUES (?, ?, ?, ?, 0, ?, ?, ?)';
-  const userId = user ? user.userId : null;
+  const userId = user.userId;
 
   try {
     if (userId) {
@@ -1064,12 +1038,7 @@ app.post('/api/entries', async (req, res) => {
       await dbRun('UPDATE entries SET user_id = ? WHERE user_id IS NULL AND (browser_id = ? OR browser_id = "") AND created_at <= ?', [userId, browserId, createdAt]);
     }
     await dbRun(sql, [autoTitle, content, timestamp, createdAt, userId, entrySource, browserId]);
-    const row = await dbGet(
-      userId === null
-        ? 'SELECT id FROM entries WHERE created_at = ? AND browser_id = ? ORDER BY id DESC LIMIT 1'
-        : 'SELECT id FROM entries WHERE created_at = ? AND user_id = ? ORDER BY id DESC LIMIT 1',
-      userId === null ? [createdAt, browserId] : [createdAt, userId]
-    );
+    const row = await dbGet('SELECT id FROM entries WHERE created_at = ? AND user_id = ? ORDER BY id DESC LIMIT 1', [createdAt, userId]);
     const newId = row ? row.id : Date.now();
     res.status(201).json({ id: newId, title: autoTitle, content, timestamp, created_at: createdAt, published: 0, source: entrySource });
   } catch (err) {
