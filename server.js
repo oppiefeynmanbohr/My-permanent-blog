@@ -771,22 +771,24 @@ app.post('/api/auth/email-login', async (req, res) => {
   res.status(410).json({ error: 'Email-code login is no longer available. Use your verified email and password.' });
 });
 
-app.get('/api/auth/debug', (req, res) => {
-  db.all("SELECT name FROM sqlite_master WHERE type='table'", [], (err, tables) => {
-    if (err) return res.json({ error: err.message, tables: [] });
-    db.all('SELECT count(*) as count FROM users', [], (err2, rows) => {
-      res.json({
-        tables: tables.map(t => t.name),
-        usersTableExists: tables.some(t => t.name === 'users'),
-        userCount: err2 ? `error: ${err2.message}` : rows[0].count,
-        protocol: req.protocol,
-        secure: req.secure,
-        forwardedProto: req.headers['x-forwarded-proto'],
-        host: req.get('host'),
-        isSecureRequest: isSecureRequest(req)
-      });
+app.get('/api/auth/debug', async (req, res) => {
+  try {
+    const tables = await dbAll("SELECT name FROM sqlite_master WHERE type='table'");
+    const count = await dbGet('SELECT count(*) as count FROM users');
+    res.json({
+      storage: tursoClient ? 'Turso cloud' : 'local SQLite',
+      tables: tables.map(t => t.name),
+      usersTableExists: tables.some(t => t.name === 'users'),
+      userCount: count ? count.count : 0,
+      protocol: req.protocol,
+      secure: req.secure,
+      forwardedProto: req.headers['x-forwarded-proto'],
+      host: req.get('host'),
+      isSecureRequest: isSecureRequest(req)
     });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message, storage: tursoClient ? 'Turso cloud' : 'local SQLite', tables: [] });
+  }
 });
 
 // ── Profile / Resume Routes ───────────────────────────────────────────────────
