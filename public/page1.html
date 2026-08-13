@@ -400,6 +400,16 @@
             });
             var delData = await delResp.json().catch(function () { return {}; });
             if (!delResp.ok) {
+              if (delResp.status === 404) {
+                // Entry is already gone server-side (e.g. an earlier attempt succeeded
+                // before the UI refreshed) — treat this as a successful deletion.
+                if (typeof window.__mpbMarkDeletedLocally === 'function') {
+                  window.__mpbMarkDeletedLocally(entryId);
+                }
+                setStatus('Entry already deleted.');
+                window.location.reload();
+                return;
+              }
               var delMsg = delData.error || 'Failed to delete entry.';
               setStatus(delMsg + ' (HTTP ' + delResp.status + ')');
               window.alert(delMsg + ' (HTTP ' + delResp.status + ')');
