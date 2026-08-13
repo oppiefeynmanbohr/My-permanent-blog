@@ -41,7 +41,7 @@ const newSiteLink = document.getElementById('new-site-link');
 const newSiteRemindButton = document.getElementById('new-site-remind');
 
 let pendingMfaToken = null;
-let draftAutosaveTimer = null;
+
 window.__mpbDeleteHandlerReady = false;
 
 function setStatusMessage(message) {
@@ -311,23 +311,6 @@ async function restoreDraft() {
       }
     }
   } catch {}
-}
-
-function schedulePermanentEntryBackup() {
-  if (!entryContent) return;
-  const value = entryContent.value.trim();
-  if (!value) return;
-  clearTimeout(draftAutosaveTimer);
-  draftAutosaveTimer = window.setTimeout(() => {
-    const payload = {
-      title: `Entry ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
-      content: value,
-      source: 'main',
-      createdAt: new Date().toISOString()
-    };
-    queuePendingEntry(payload);
-    void flushPendingEntries();
-  }, 1800);
 }
 
 async function saveDraft() {
@@ -974,7 +957,6 @@ async function togglePublish(entryId, publish) {
 if (entryContent) {
   entryContent.addEventListener('input', () => {
     void saveDraft();
-    schedulePermanentEntryBackup();
   });
 }
 if (saveEntryButton && !window.__mpbUseDirectSaveHandler) saveEntryButton.addEventListener('click', saveEntry);
@@ -1029,13 +1011,11 @@ window.addEventListener('pageshow', () => {
 window.addEventListener('beforeunload', () => {
   if (entryContent && entryContent.value.trim()) {
     void saveDraft();
-    schedulePermanentEntryBackup();
   }
 });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden' && entryContent && entryContent.value.trim()) {
     void saveDraft();
-    schedulePermanentEntryBackup();
   }
 });
 loadBlogTitle();
