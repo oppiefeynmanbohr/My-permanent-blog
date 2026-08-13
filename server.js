@@ -160,7 +160,10 @@ function sameUserId(a, b) {
 function canManageEntry(row, user, browserId) {
   if (!row) return false;
   if (row.user_id !== null) {
-    return !!user && sameUserId(row.user_id, user.userId);
+    if (!!user && sameUserId(row.user_id, user.userId)) return true;
+    // Fall back to matching the browser's client_id cookie in case the login
+    // session cookie was dropped/expired, so delete/edit isn't silently blocked.
+    return !!browserId && !!row.browser_id && row.browser_id === browserId;
   }
   // Anonymous entries are treated as writable so legacy/browser-id drift
   // cannot block publish/archive/delete for existing content.
