@@ -402,6 +402,9 @@
             if (!delResp.ok) {
               var delMsg = delData.error || 'Failed to delete entry.';
               setStatus(delMsg + ' (HTTP ' + delResp.status + ')');
+              window.alert(delMsg + ' (HTTP ' + delResp.status + ')');
+              btn.disabled = false;
+              inFlightActions.delete(actionKey);
               return;
             }
             if (typeof window.__mpbMarkDeletedLocally === 'function') {
@@ -430,6 +433,9 @@
             if (!arcResp.ok) {
               var arcMsg = arcData.error || 'Could not move entry to Database.';
               setStatus(arcMsg + ' (HTTP ' + arcResp.status + ')');
+              window.alert(arcMsg + ' (HTTP ' + arcResp.status + ')');
+              btn.disabled = false;
+              inFlightActions.delete(actionKey);
               return;
             }
             setStatus('Entry moved to Database.');
@@ -456,6 +462,9 @@
             if (!pubResp.ok) {
               var pubMsg = pubData.error || 'Failed to update publish status.';
               setStatus(pubMsg + ' (HTTP ' + pubResp.status + ')');
+              window.alert(pubMsg + ' (HTTP ' + pubResp.status + ')');
+              btn.disabled = false;
+              inFlightActions.delete(actionKey);
               return;
             }
             setStatus(shouldPublish ? 'Entry published.' : 'Entry unpublished.');
