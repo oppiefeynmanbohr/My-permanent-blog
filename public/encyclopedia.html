@@ -116,46 +116,6 @@
       border-radius: 8px;
     }
 
-    .term-index {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 16px;
-    }
-
-    .term-index button {
-      border: 1px solid #d8c69b;
-      background: #fffdf8;
-      color: #123b70;
-      padding: 7px 10px;
-      border-radius: 999px;
-      cursor: pointer;
-      font-size: 0.95rem;
-    }
-
-    .term-index button.active {
-      background: #123b70;
-      color: white;
-      border-color: #123b70;
-    }
-
-    .related-terms {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 16px;
-    }
-
-    .related-terms button {
-      border: 1px solid #d8c69b;
-      background: #fffdf8;
-      color: #123b70;
-      padding: 7px 10px;
-      border-radius: 999px;
-      cursor: pointer;
-      font-size: 0.95rem;
-    }
-
     .article-entry {
       display: none;
     }
@@ -239,17 +199,14 @@
         <a class="page-button" href="/alarm">Alarm</a>
       </nav>
       <div class="search-box">
-        <input id="encyclopedia-search" type="text" placeholder="Search for a topic or concept" />
-        <button id="encyclopedia-search-btn" type="button">Search</button>
+        <input id="encyclopedia-search" type="text" placeholder="Type a person or topic, then press Enter" />
       </div>
       <div id="encyclopedia-search-status" class="search-status" aria-live="polite"></div>
     </header>
 
     <div class="article-grid">
       <section id="encyclopedia-article" class="card">
-        <div class="term-index" id="term-index"></div>
         <div id="encyclopedia-content"></div>
-        <div id="related-topics" class="related-terms"></div>
         <a class="back-link" href="/page1">← Back to the blog</a>
       </section>
 
@@ -267,11 +224,8 @@
 
   <script>
     const searchInput = document.getElementById('encyclopedia-search');
-    const searchButton = document.getElementById('encyclopedia-search-btn');
     const searchStatus = document.getElementById('encyclopedia-search-status');
-    const termIndex = document.getElementById('term-index');
     const content = document.getElementById('encyclopedia-content');
-    const relatedTopics = document.getElementById('related-topics');
 
     const entries = [
       {
@@ -541,42 +495,6 @@
       ]
     };
 
-    function renderTermButtons() {
-      termIndex.innerHTML = '';
-      entries.forEach((entry) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = entry.label;
-        button.dataset.term = entry.term;
-        button.addEventListener('click', () => showEntry(entry.term));
-        termIndex.appendChild(button);
-      });
-    }
-
-    function renderRelatedTopics(entry) {
-      relatedTopics.innerHTML = '';
-      if (!entry.related || !entry.related.length) {
-        return;
-      }
-
-      const heading = document.createElement('strong');
-      heading.textContent = 'Related topics:';
-      relatedTopics.appendChild(heading);
-
-      entry.related.forEach((relatedTerm) => {
-        const relatedEntry = entries.find((item) => item.term === relatedTerm);
-        if (!relatedEntry) {
-          return;
-        }
-
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = relatedEntry.label;
-        button.addEventListener('click', () => showEntry(relatedEntry.term));
-        relatedTopics.appendChild(button);
-      });
-    }
-
     function showEntry(term) {
       const entry = entries.find((item) => item.term === term) || entries[0];
       const links = (researchLinks[entry.term] || []).map(([label, url]) => `<li><a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a></li>`).join('');
@@ -604,10 +522,6 @@
           <ul>${links}</ul>
         </div>
       `;
-      termIndex.querySelectorAll('button').forEach((button) => {
-        button.classList.toggle('active', button.dataset.term === entry.term);
-      });
-      renderRelatedTopics(entry);
       searchStatus.textContent = `Viewing ${entry.title}.`;
     }
 
@@ -668,8 +582,6 @@
           </ul>
         </div>
       `;
-      relatedTopics.innerHTML = '';
-      termIndex.querySelectorAll('button').forEach((button) => button.classList.remove('active'));
       searchStatus.textContent = `Wikipedia result for “${query}”.`;
     }
 
@@ -715,13 +627,10 @@
           <h2>No matching entry</h2>
           <p class="lead">No reference entries matched “${query}”. Try another topic such as Marie Curie, Guy Fawkes, relativity, quantum, cosmology, evolution, or electromagnetism.</p>
         `;
-        relatedTopics.innerHTML = '';
-        termIndex.querySelectorAll('button').forEach((button) => button.classList.remove('active'));
         searchStatus.textContent = `Wikipedia and the local reference catalog found no result for “${query}”.`;
       }
     }
 
-    searchButton.addEventListener('click', runSearch);
     searchInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') {
         event.preventDefault();
@@ -729,7 +638,6 @@
       }
     });
 
-    renderTermButtons();
     showEntry('relativity');
   </script>
   <script src="/global-nav.js"></script>
