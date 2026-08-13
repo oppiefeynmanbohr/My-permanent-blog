@@ -313,6 +313,22 @@
         related: ['relativity', 'evolution', 'quantum']
       },
       {
+        term: 'guy-fawkes',
+        label: 'Guy Fawkes',
+        title: 'Guy Fawkes (c. 1570–1606)',
+        intro: 'Guy Fawkes was an English Catholic soldier and conspirator best known for his role in the failed Gunpowder Plot of 1605.',
+        body: 'Fawkes joined a group of English Catholics who planned to blow up the House of Lords during the State Opening of Parliament, hoping to kill King James I and members of the government and replace the Protestant settlement with Catholic rule. He was found guarding gunpowder beneath Parliament on 4 November 1605 and arrested early the next day.',
+        details: 'The plot was uncovered before the attack could take place. Fawkes was interrogated and later tried with surviving conspirators. He was convicted of high treason and executed in London in January 1606. The failure of the plot is commemorated in Britain on 5 November as Guy Fawkes Night, also called Bonfire Night. The event is remembered as a major episode in the religious and political history of early Stuart England, not as evidence that the plot succeeded.',
+        references: [
+          'UK Parliament, The Gunpowder Plot and Guy Fawkes.',
+          'The National Archives (UK), The Gunpowder Plot, 1605.',
+          'Oxford Dictionary of National Biography, Guy Fawkes.'
+        ],
+        keywords: ['guy fawkes', 'fawkes', 'gunpowder plot', 'bonfire night', 'guy fawkes night', 'history', 'england'],
+        searchTerms: ['who was guy fawkes', 'james the first', 'james i', 'house of lords', 'parliament', '1605', '5 november', 'november fifth', 'treason', 'catholic', 'protestant', 'conspiracy', 'gunpowder', 'bonfire', 'stuart', 'robert catesby', 'england'],
+        related: ['marie-curie']
+      },
+      {
         term: 'evolution',
         label: 'Evolution',
         title: 'Evolution by natural selection',
@@ -433,7 +449,7 @@
       } else {
         content.innerHTML = `
           <h2>No matching entry</h2>
-          <p class="lead">No reference entries matched “${query}”. Try another topic such as relativity, quantum, cosmology, evolution, or electromagnetism.</p>
+          <p class="lead">No reference entries matched “${query}”. Try another topic such as Marie Curie, Guy Fawkes, relativity, quantum, cosmology, evolution, or electromagnetism.</p>
         `;
         relatedTopics.innerHTML = '';
         termIndex.querySelectorAll('button').forEach((button) => button.classList.remove('active'));
