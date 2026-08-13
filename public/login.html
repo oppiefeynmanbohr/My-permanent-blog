@@ -55,6 +55,11 @@
             <select id="saved-account-select"></select>
             <img id="saved-signature-preview" class="saved-signature" alt="Saved handwritten signature" />
           </div>
+          <div class="auth-field" id="login-signature-field" style="display:none;">
+            <label for="login-signature-pad">Draw your signature to confirm</label>
+            <canvas id="login-signature-pad" class="signature-pad" width="360" height="120"></canvas>
+            <div class="signature-actions"><button id="clear-login-signature" class="secondary-button" type="button">Clear</button></div>
+          </div>
           <div class="auth-field">
             <label for="login-username">Username, Email, or Signature</label>
             <input id="login-username" name="username" type="text" placeholder="Your username, email, or signature" autocomplete="username" />
@@ -155,8 +160,13 @@
     clearLegacyPasswordStorage();
     const signaturePad = document.getElementById('signup-signature-pad');
     const signatureContext = signaturePad.getContext('2d');
+    const loginSignaturePad = document.getElementById('login-signature-pad');
+    const loginSignatureContext = loginSignaturePad.getContext('2d');
     let signatureDrawing = false;
     let signatureHasStroke = false;
+    let loginSignatureDrawing = false;
+    let loginSignatureHasStroke = false;
+    let selectedAccount = null;
 
     function signaturePoint(event) {
       const bounds = signaturePad.getBoundingClientRect();
@@ -195,6 +205,82 @@
     signaturePad.addEventListener('pointercancel', () => { signatureDrawing = false; });
     document.getElementById('clear-signature').addEventListener('click', clearSignaturePad);
     clearSignaturePad();
+
+    function clearLoginSignaturePad() {
+      loginSignatureContext.clearRect(0, 0, loginSignaturePad.width, loginSignaturePad.height);
+      loginSignatureContext.fillStyle = '#fff';
+      loginSignatureContext.fillRect(0, 0, loginSignaturePad.width, loginSignaturePad.height);
+      loginSignatureContext.strokeStyle = '#1f1f1f';
+      loginSignatureContext.lineWidth = 2;
+      loginSignatureContext.lineCap = 'round';
+      loginSignatureContext.lineJoin = 'round';
+      loginSignatureHasStroke = false;
+    }
+
+    function loginSignaturePoint(event) {
+      const bounds = loginSignaturePad.getBoundingClientRect();
+      return {
+        x: (event.clientX - bounds.left) * (loginSignaturePad.width / bounds.width),
+        y: (event.clientY - bounds.top) * (loginSignaturePad.height / bounds.height)
+      };
+    }
+
+    loginSignaturePad.addEventListener('pointerdown', (event) => {
+      loginSignatureDrawing = true;
+      loginSignatureHasStroke = true;
+      loginSignaturePad.setPointerCapture(event.pointerId);
+      const point = loginSignaturePoint(event);
+      loginSignatureContext.beginPath();
+      loginSignatureContext.moveTo(point.x, point.y);
+    });
+    loginSignaturePad.addEventListener('pointermove', (event) => {
+      if (!loginSignatureDrawing) return;
+      const point = loginSignaturePoint(event);
+      loginSignatureContext.lineTo(point.x, point.y);
+      loginSignatureContext.stroke();
+    });
+    loginSignaturePad.addEventListener('pointerup', () => { loginSignatureDrawing = false; });
+    loginSignaturePad.addEventListener('pointercancel', () => { loginSignatureDrawing = false; });
+    document.getElementById('clear-login-signature').addEventListener('click', clearLoginSignaturePad);
+    clearLoginSignaturePad();
+
+    function signatureGrid(context, width, height) {
+      const pixels = context.getImageData(0, 0, width, height).data;
+      const columns = 30;
+      const rows = 10;
+      const grid = new Array(columns * rows).fill(false);
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const offset = (y * width + x) * 4;
+          if (pixels[offset] < 180 || pixels[offset + 1] < 180 || pixels[offset + 2] < 180) {
+            grid[Math.floor(y * rows / height) * columns + Math.floor(x * columns / width)] = true;
+          }
+        }
+      }
+      return grid;
+    }
+
+    async function signatureMatches(imageDataUrl) {
+      const image = new Image();
+      image.src = imageDataUrl;
+      await image.decode();
+      const reference = document.createElement('canvas');
+      reference.width = loginSignaturePad.width;
+      reference.height = loginSignaturePad.height;
+      const referenceContext = reference.getContext('2d');
+      referenceContext.fillStyle = '#fff';
+      referenceContext.fillRect(0, 0, reference.width, reference.height);
+      referenceContext.drawImage(image, 0, 0, reference.width, reference.height);
+      const expected = signatureGrid(referenceContext, reference.width, reference.height);
+      const actual = signatureGrid(loginSignatureContext, loginSignaturePad.width, loginSignaturePad.height);
+      let overlap = 0;
+      let total = 0;
+      expected.forEach((value, index) => {
+        if (value || actual[index]) total++;
+        if (value && actual[index]) overlap++;
+      });
+      return total > 0 && overlap / total >= 0.3;
+    }
     function getKnownAccounts() {
       try {
         const accounts = JSON.parse(localStorage.getItem('blog_known_accounts') || '[]');
@@ -237,6 +323,7 @@
       const identifier = event.target.value;
       const account = getKnownAccounts().find((entry) => identifier === (entry.signature || entry.email || entry.username));
       if (!account) return;
+      selectedAccount = account;
       document.getElementById('login-username').value = identifier;
       const preview = document.getElementById('saved-signature-preview');
       if (account.signatureImage) {
@@ -246,6 +333,9 @@
         preview.removeAttribute('src');
         preview.style.display = 'none';
       }
+      const signatureField = document.getElementById('login-signature-field');
+      signatureField.style.display = account.signatureImage ? 'flex' : 'none';
+      clearLoginSignaturePad();
       document.getElementById('login-password').focus();
     });
 
@@ -266,6 +356,19 @@
       const rememberMe = document.getElementById('remember-me').checked;
       const rememberEmail = document.getElementById('remember-email').checked;
       if (!username || !password) { statusEl.textContent = 'Please enter your username or email, and password.'; return; }
+      if (selectedAccount?.signatureImage) {
+        if (!loginSignatureHasStroke) { statusEl.textContent = 'Draw your signature to confirm this account.'; return; }
+        try {
+          if (!await signatureMatches(selectedAccount.signatureImage)) {
+            statusEl.textContent = 'That signature does not match the selected account. Try again.';
+            clearLoginSignaturePad();
+            return;
+          }
+        } catch {
+          statusEl.textContent = 'Could not verify the signature. Try drawing it again.';
+          return;
+        }
+      }
       statusEl.textContent = '';
       loginBtn.disabled = true;
       loginBtn.textContent = 'Logging in…';
