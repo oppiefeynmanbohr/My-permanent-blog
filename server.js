@@ -1006,7 +1006,7 @@ app.post('/api/entries', async (req, res) => {
     res.status(201).json({ id: newId, title: autoTitle, content, timestamp, created_at: createdAt, published: 0, source: entrySource });
   } catch (err) {
     console.error('Entry save failed:', err.message);
-    res.status(500).json({ error: 'Failed to save entry.' });
+    res.status(500).json({ error: 'Failed to save entry.', detail: err.message });
   }
 });
 
