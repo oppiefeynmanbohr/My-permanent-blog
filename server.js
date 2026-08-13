@@ -1547,84 +1547,88 @@ app.post('/api/admin/sms/verify', (req, res) => {
   res.json({ success: true, authenticated: true });
 });
 
-app.get(['/', '/page1'], (req, res) => {
+function sendPageNoCache(res, fileName) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   res.setHeader('Surrogate-Control', 'no-store');
-  res.sendFile(path.join(__dirname, 'public', 'page1.html'));
+  res.sendFile(path.join(__dirname, 'public', fileName));
+}
+
+app.get(['/', '/page1'], (req, res) => {
+  sendPageNoCache(res, 'page1.html');
 });
 
 app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+  sendPageNoCache(res, 'admin.html');
 });
 
 app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+  sendPageNoCache(res, 'login.html');
 });
 
 app.get('/reset-password', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'reset-password.html'));
+  sendPageNoCache(res, 'reset-password.html');
 });
 
 app.get('/resume', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'resume.html'));
+  sendPageNoCache(res, 'resume.html');
 });
 
 app.get('/page2', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'page2.html'));
+  sendPageNoCache(res, 'page2.html');
 });
 
 app.get('/page3', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'page3.html'));
+  sendPageNoCache(res, 'page3.html');
 });
 
 app.get('/page4', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'page4.html'));
+  sendPageNoCache(res, 'page4.html');
 });
 
 app.get('/page5', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'page5.html'));
+  sendPageNoCache(res, 'page5.html');
 });
 
 app.get('/page6', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'page6.html'));
+  sendPageNoCache(res, 'page6.html');
 });
 
 app.get('/page7', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'page7.html'));
+  sendPageNoCache(res, 'page7.html');
 });
 
 app.get('/dreamstate', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dreamstate.html'));
+  sendPageNoCache(res, 'dreamstate.html');
 });
 
 app.get('/calendar-journal', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'calendar-journal.html'));
+  sendPageNoCache(res, 'calendar-journal.html');
 });
 
 app.get('/library', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'library.html'));
+  sendPageNoCache(res, 'library.html');
 });
 
 app.get('/encyclopedia', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'encyclopedia.html'));
+  sendPageNoCache(res, 'encyclopedia.html');
 });
 
 app.get('/word-parts', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'word-parts.html'));
+  sendPageNoCache(res, 'word-parts.html');
 });
 
 app.get('/support', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'support.html'));
+  sendPageNoCache(res, 'support.html');
 });
 
 app.get('/alarm', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'alarm.html'));
+  sendPageNoCache(res, 'alarm.html');
 });
 
 app.get('/published', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'public.html'));
+  sendPageNoCache(res, 'public.html');
 });
 
 initDatabase()
