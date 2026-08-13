@@ -103,6 +103,26 @@
       margin: -8px 0 18px;
     }
 
+    .article-image {
+      margin: 0 0 20px;
+    }
+
+    .article-image img {
+      display: block;
+      width: 100%;
+      max-height: 360px;
+      object-fit: contain;
+      object-position: left center;
+      background: #f3f0e8;
+      border-radius: 8px;
+    }
+
+    .article-image small {
+      display: block;
+      margin-top: 6px;
+      color: #687786;
+    }
+
     .quick-facts {
       display: grid;
       gap: 10px;
@@ -507,6 +527,7 @@
       content.innerHTML = `
         <h2>${entry.title}</h2>
         <p class="article-category"><strong>Subject:</strong> ${entry.category || 'Reference topic'}</p>
+        <div class="article-image" id="article-image" aria-live="polite"></div>
         <p class="lead">${entry.intro}</p>
         <p class="lead">${entry.body}</p>
         <h3>Overview</h3>
@@ -523,6 +544,7 @@
         </div>
       `;
       searchStatus.textContent = `Viewing ${entry.title}.`;
+      loadWikipediaImage(entry.title, entry.title);
     }
 
     function escapeHtml(value) {
@@ -560,8 +582,21 @@
         title: summary.title || result.title,
         description: summary.description || 'Wikipedia reference article',
         extract: summary.extract,
-        url: summary.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`
+        url: summary.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`,
+        image: summary.thumbnail?.source || summary.originalimage?.source || ''
       };
+    }
+
+    async function loadWikipediaImage(query, articleKey) {
+      const imageContainer = document.getElementById('article-image');
+      if (!imageContainer) return;
+      try {
+        const article = await searchWikipedia(query);
+        if (!article?.image || document.getElementById('article-image') !== imageContainer) return;
+        imageContainer.innerHTML = `<img src="${escapeHtml(article.image)}" alt="Illustration for ${escapeHtml(article.title)}" loading="lazy"><small>Image from Wikipedia: ${escapeHtml(article.title)}</small>`;
+      } catch (error) {
+        // Articles remain fully readable when an image is unavailable.
+      }
     }
 
     function showWikipediaArticle(article, query) {
@@ -569,9 +604,13 @@
       const safeDescription = escapeHtml(article.description);
       const safeExtract = escapeHtml(article.extract);
       const safeUrl = encodeURI(article.url);
+      const image = article.image
+        ? `<div class="article-image"><img src="${escapeHtml(article.image)}" alt="Illustration for ${safeTitle}" loading="lazy"><small>Image from Wikipedia: ${safeTitle}</small></div>`
+        : '';
       content.innerHTML = `
         <h2>${safeTitle}</h2>
         <p class="article-category"><strong>Source:</strong> Wikipedia</p>
+        ${image}
         <p class="lead"><strong>${safeDescription}</strong></p>
         <p class="lead">${safeExtract}</p>
         <div class="research-links">
