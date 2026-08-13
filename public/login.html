@@ -47,6 +47,10 @@
       <!-- ── Log In panel ── -->
       <div id="panel-login" class="panel active">
         <form id="login-form" autocomplete="on" onsubmit="return false;">
+          <div class="auth-field" id="saved-accounts-field" style="display:none;">
+            <label for="saved-account-select">Choose a saved account on this device</label>
+            <select id="saved-account-select"></select>
+          </div>
           <div class="auth-field">
             <label for="login-username">Username or Email</label>
             <input id="login-username" type="text" placeholder="Your username or email" autocomplete="username" />
@@ -132,6 +136,43 @@
     }
 
     clearLegacyPasswordStorage();
+    function getKnownAccounts() {
+      try {
+        const accounts = JSON.parse(localStorage.getItem('blog_known_accounts') || '[]');
+        return Array.isArray(accounts) ? accounts.filter((account) => account && account.username) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function rememberAccount(username) {
+      const normalized = String(username || '').trim();
+      if (!normalized) return;
+      const accounts = getKnownAccounts().filter((account) => account.username.toLowerCase() !== normalized.toLowerCase());
+      accounts.unshift({ username: normalized });
+      localStorage.setItem('blog_known_accounts', JSON.stringify(accounts.slice(0, 20)));
+      renderKnownAccounts();
+    }
+
+    function renderKnownAccounts() {
+      const field = document.getElementById('saved-accounts-field');
+      const select = document.getElementById('saved-account-select');
+      const accounts = getKnownAccounts();
+      if (!accounts.length) return;
+      select.innerHTML = '<option value="">Select an account</option>' + accounts
+        .map((account) => `<option value="${account.username.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}">${account.username.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</option>`)
+        .join('');
+      field.style.display = 'flex';
+    }
+
+    document.getElementById('saved-account-select').addEventListener('change', (event) => {
+      const username = event.target.value;
+      if (!username) return;
+      document.getElementById('login-username').value = username;
+      document.getElementById('login-password').focus();
+    });
+
+    renderKnownAccounts();
     const savedEmail = localStorage.getItem('blog_saved_email') || '';
     if (savedEmail) {
       document.getElementById('login-username').value = savedEmail;
@@ -171,6 +212,7 @@
         localStorage.setItem('blog_logged_in', '1');
         localStorage.setItem('blog_username', data.username || username);
         localStorage.setItem('blog_browser_id', getBrowserId());
+        rememberAccount(data.username || username);
         if (rememberEmail) localStorage.setItem('blog_saved_email', username);
         else localStorage.removeItem('blog_saved_email');
         statusEl.className = 'auth-status ok';
@@ -215,6 +257,7 @@
         localStorage.setItem('blog_logged_in', '1');
         localStorage.setItem('blog_username', data.username || username);
         localStorage.setItem('blog_user_id', String(data.userId || ''));
+        rememberAccount(data.username || username);
         statusEl.className = 'auth-status ok';
         statusEl.textContent = 'Personal blog created! Redirecting…';
         setTimeout(() => { window.location.href = '/page1'; }, 600);

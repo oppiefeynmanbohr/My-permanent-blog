@@ -1440,6 +1440,13 @@ function applyAuthState(username, userId) {
   localStorage.setItem('blog_logged_in', '1');
   localStorage.setItem('blog_username', username);
   localStorage.setItem('blog_user_id', String(userId || ''));
+  try {
+    const rawAccounts = JSON.parse(localStorage.getItem('blog_known_accounts') || '[]');
+    const accounts = Array.isArray(rawAccounts) ? rawAccounts : [];
+    const withoutCurrent = accounts.filter((account) => String(account?.username || '').toLowerCase() !== username.toLowerCase());
+    withoutCurrent.unshift({ username });
+    localStorage.setItem('blog_known_accounts', JSON.stringify(withoutCurrent.slice(0, 20)));
+  } catch {}
   if (userAccountBar) userAccountBar.style.display = 'flex';
   if (userGreeting) userGreeting.textContent = `Logged in as ${username}`;
   if (userLoginPrompt) userLoginPrompt.style.display = 'none';
