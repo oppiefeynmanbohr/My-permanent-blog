@@ -340,6 +340,16 @@ async function initDatabase() {
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )`);
+  await dbRun(`CREATE TABLE IF NOT EXISTS finance_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    amount REAL NOT NULL,
+    category TEXT NOT NULL DEFAULT 'Other',
+    description TEXT NOT NULL DEFAULT '',
+    record_date TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  )`);
   // Clean up expired sessions
   await dbRun('DELETE FROM user_sessions WHERE expires_at < ?', [Date.now()]);
   const tables = (await dbAll("SELECT name FROM sqlite_master WHERE type='table'")).map(t => t.name);
@@ -962,6 +972,41 @@ app.delete('/api/vision-goals/:id', async (req, res) => {
     await dbRun('DELETE FROM vision_goals WHERE id = ? AND user_id = ?', [Number(req.params.id), user.userId]);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Failed to delete vision goal.' }); }
+});
+
+app.get('/api/finance-records', async (req, res) => {
+  const user = await getAuthenticatedUser(req, res);
+  if (!user) return res.status(401).json({ error: 'Sign in to access your financial tracker.' });
+  try {
+    const rows = await dbAll('SELECT * FROM finance_records WHERE user_id = ? ORDER BY record_date DESC, id DESC', [user.userId]);
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: 'Failed to load financial records.' }); }
+});
+
+app.post('/api/finance-records', async (req, res) => {
+  const user = await getAuthenticatedUser(req, res);
+  if (!user) return res.status(401).json({ error: 'Sign in to save financial records.' });
+  const kind = req.body?.kind === 'income' ? 'income' : req.body?.kind === 'expense' ? 'expense' : '';
+  const amount = Number(req.body?.amount);
+  const category = String(req.body?.category || 'Other').trim().slice(0, 80) || 'Other';
+  const description = String(req.body?.description || '').trim().slice(0, 300);
+  const recordDate = String(req.body?.recordDate || '').trim();
+  if (!kind || !Number.isFinite(amount) || amount <= 0 || amount > 1000000000) return res.status(400).json({ error: 'Enter a valid positive amount and record type.' });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(recordDate)) return res.status(400).json({ error: 'Choose a valid date.' });
+  try {
+    const createdAt = new Date().toISOString();
+    const result = await dbRun('INSERT INTO finance_records (user_id, kind, amount, category, description, record_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)', [user.userId, kind, amount, category, description, recordDate, createdAt]);
+    res.status(201).json({ id: Number(result.lastInsertRowid || result.lastID || Date.now()), user_id: user.userId, kind, amount, category, description, record_date: recordDate, created_at: createdAt });
+  } catch (err) { res.status(500).json({ error: 'Failed to save financial record.' }); }
+});
+
+app.delete('/api/finance-records/:id', async (req, res) => {
+  const user = await getAuthenticatedUser(req, res);
+  if (!user) return res.status(401).json({ error: 'Sign in to delete financial records.' });
+  try {
+    await dbRun('DELETE FROM finance_records WHERE id = ? AND user_id = ?', [Number(req.params.id), user.userId]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Failed to delete financial record.' }); }
 });
 
 // ── Draft Routes ───────────────────────────────────────────────────────────
@@ -1608,6 +1653,10 @@ app.get('/page6', (req, res) => {
 
 app.get('/page7', (req, res) => {
   sendPageNoCache(res, 'page7.html');
+});
+
+app.get(['/finance', '/page8'], (req, res) => {
+  sendPageNoCache(res, 'finance.html');
 });
 
 app.get('/dreamstate', (req, res) => {
