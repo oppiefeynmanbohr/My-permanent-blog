@@ -404,6 +404,22 @@ textarea {
   resize: vertical;
 }
 
+.writing-check-controls {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.writing-check-results {
+  color: #4d4035;
+  font-size: 0.95rem;
+}
+
+.writing-check-results ul {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
 .timestamp-row {
   display: flex;
   flex-direction: column;

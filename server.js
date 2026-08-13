@@ -753,6 +753,27 @@ app.post('/api/auth/reset-password', async (req, res) => {
   }
 });
 
+app.post('/api/grammar-check', async (req, res) => {
+  const text = String(req.body?.text || '');
+  if (!text.trim()) return res.status(400).json({ error: 'Text is required.' });
+  if (text.length > 30000) return res.status(400).json({ error: 'Text is too long to check at once.' });
+
+  try {
+    const body = new URLSearchParams({ text, language: 'en-US', enabledOnly: 'false' });
+    const response = await fetch('https://api.languagetool.org/v2/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    });
+    if (!response.ok) return res.status(502).json({ error: 'Grammar service is unavailable.' });
+    const result = await response.json();
+    res.json({ matches: Array.isArray(result.matches) ? result.matches : [] });
+  } catch (err) {
+    console.error('Grammar check failed:', err.message);
+    res.status(502).json({ error: 'Grammar service is unavailable.' });
+  }
+});
+
 app.get('/api/auth/session', async (req, res) => {
   const user = getUserFromRequest(req);
   if (user) {
