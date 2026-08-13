@@ -122,6 +122,9 @@
               <div class="entry-timestamp">${escapeHtml(entry.timestamp || '')}</div>
             </div>
             <div class="entry-content">${escapeHtml(entry.content || '')}</div>
+            <div class="entry-actions">
+              <button class="delete-button" data-id="${entry.id}">Delete</button>
+            </div>
           `;
           entriesList.appendChild(card);
         });
@@ -147,6 +150,28 @@
       }
       loadBlogTitle();
       loadPublishedEntries();
+    });
+
+    document.getElementById('entries-list').addEventListener('click', async (event) => {
+      const btn = event.target.closest('.delete-button');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      if (!id) return;
+      if (!window.confirm('Delete this entry permanently?')) return;
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/api/entries/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'same-origin' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          window.alert(data.error || 'Failed to delete entry.');
+          btn.disabled = false;
+          return;
+        }
+        await loadPublishedEntries();
+      } catch {
+        window.alert('Network error. Could not delete entry.');
+        btn.disabled = false;
+      }
     });
   </script>
   <script src="/global-nav.js"></script>

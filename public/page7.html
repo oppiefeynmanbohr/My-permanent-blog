@@ -195,6 +195,9 @@
             <span class="db-timestamp">${e.timestamp}</span>
           </div>
           <div class="db-entry-body">${escapeHtml(e.content)}</div>
+          <div class="db-entry-actions" style="margin-top:8px;">
+            <button class="secondary-button db-delete-btn" data-id="${e.id}" style="font-size:0.82em;padding:5px 12px;background:#fff0f0;color:#c62828;border:1px solid #f5c0c0;border-radius:6px;cursor:pointer;">Delete</button>
+          </div>
         </div>
       `).join('');
     }
@@ -209,6 +212,28 @@
 
     document.getElementById('db-search').addEventListener('input', render);
     document.getElementById('db-source-filter').addEventListener('change', render);
+
+    document.getElementById('db-entries').addEventListener('click', async (event) => {
+      const btn = event.target.closest('.db-delete-btn');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      if (!id) return;
+      if (!window.confirm('Delete this entry permanently?')) return;
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/api/entries/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'same-origin' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          window.alert(data.error || 'Failed to delete entry.');
+          btn.disabled = false;
+          return;
+        }
+        await loadAll();
+      } catch {
+        window.alert('Network error. Could not delete entry.');
+        btn.disabled = false;
+      }
+    });
 
     init();
   </script>
