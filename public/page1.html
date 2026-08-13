@@ -441,13 +441,9 @@
             });
             var arcData = await arcResp.json().catch(function () { return {}; });
             if (!arcResp.ok) {
-              if (arcResp.status === 404) {
-                // Entry is already gone server-side — self-heal the stale UI.
-                setStatus('Entry no longer exists.');
-                window.location.reload();
-                return;
-              }
-              var arcMsg = arcData.error || 'Could not move entry to Database.';
+              var arcMsg = arcResp.status === 404
+                ? 'This entry does not exist on the server (it may not have been saved, or was lost). Refresh the page to see the real current list.'
+                : (arcData.error || 'Could not move entry to Database.');
               setStatus(arcMsg + ' (HTTP ' + arcResp.status + ')');
               window.alert(arcMsg + ' (HTTP ' + arcResp.status + ')');
               btn.disabled = false;
@@ -476,13 +472,9 @@
             });
             var pubData = await pubResp.json().catch(function () { return {}; });
             if (!pubResp.ok) {
-              if (pubResp.status === 404) {
-                // Entry is already gone server-side — self-heal the stale UI.
-                setStatus('Entry no longer exists.');
-                window.location.reload();
-                return;
-              }
-              var pubMsg = pubData.error || 'Failed to update publish status.';
+              var pubMsg = pubResp.status === 404
+                ? 'This entry does not exist on the server (it may not have been saved, or was lost). Refresh the page to see the real current list.'
+                : (pubData.error || 'Failed to update publish status.');
               setStatus(pubMsg + ' (HTTP ' + pubResp.status + ')');
               window.alert(pubMsg + ' (HTTP ' + pubResp.status + ')');
               btn.disabled = false;
