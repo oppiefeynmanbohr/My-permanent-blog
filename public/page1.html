@@ -342,6 +342,18 @@
               return;
             }
             if (entryField) entryField.value = '';
+            try {
+              localStorage.removeItem('main_entry_draft');
+              localStorage.removeItem('blog_draft_main');
+            } catch (storageError) {}
+            try {
+              await requestWithRecovery('/api/drafts', {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ source: 'main', content: '' })
+              });
+            } catch (draftError) {}
             setStatus('Entry saved.');
             if (typeof window.loadEntries === 'function') {
               await window.loadEntries();
@@ -499,7 +511,7 @@
       }, true);
     })();
   </script>
-  <script src="app.js?v=20260726c"></script>
+  <script src="app.js?v=20260813a"></script>
   <script src="/global-nav.js"></script>
 </body>
 </html>

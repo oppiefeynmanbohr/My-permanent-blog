@@ -377,6 +377,8 @@ async function loadEntries() {
   }
 }
 
+window.loadEntries = loadEntries;
+
 async function saveEntry() {
   const content = entryContent.value.trim();
 
