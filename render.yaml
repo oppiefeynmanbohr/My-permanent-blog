@@ -3,6 +3,7 @@ services:
     name: my-permanent-blog
     runtime: node
     plan: starter
+    autoDeployTrigger: commit
     buildCommand: npm install
     startCommand: node server.js
     envVars:
