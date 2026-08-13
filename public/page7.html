@@ -75,6 +75,28 @@
       padding: 40px 0;
       font-size: 1.05em;
     }
+    .vision-board {
+      background: linear-gradient(135deg, #fff8e8, #f4efe4);
+      border: 1px solid #e3c98b;
+    }
+    .vision-form {
+      display: grid;
+      gap: 12px;
+    }
+    .vision-form textarea { min-height: 110px; }
+    .vision-goals { display: grid; gap: 16px; margin-top: 20px; }
+    .vision-goal {
+      background: #fff;
+      border-left: 5px solid #c08c2f;
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 3px 10px rgba(60,45,20,0.08);
+    }
+    .vision-goal h3 { margin: 0 0 5px; color: #704d1d; }
+    .vision-target { color: #8a6b3e; font-size: 0.9em; }
+    .vision-steps { margin: 14px 0 8px; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .vision-steps label { display: flex; gap: 8px; align-items: flex-start; }
+    .vision-progress { color: #687786; font-size: 0.88em; }
   </style>
 </head>
 <body>
@@ -83,7 +105,7 @@
       <div class="header-top">
         <div>
           <h1>Your Personal Blog</h1>
-          <p class="subtitle">Database — All Entries</p>
+          <p class="subtitle">Vision Board and Database</p>
         </div>
         <a class="support-button" href="/support">Support</a>
       </div>
@@ -94,7 +116,7 @@
         <a class="page-button" href="/page4">Blog Page 4</a>
         <a class="page-button" href="/page5">Blog Page 5</a>
         <a class="page-button" href="/page6">Blog Page 6</a>
-        <a class="page-button active" href="/page7">Database</a>
+        <a class="page-button active" href="/page7">Vision Board</a>
         <a class="page-button" href="/library">Library</a>
         <a class="page-button" href="/encyclopedia">Encyclopedia</a>
         <a class="page-button" href="/word-parts">Word Parts</a>
@@ -105,6 +127,26 @@
         <a class="page-button" href="/alarm">Alarm</a>
       </nav>
     </header>
+
+    <section class="entry-form-section">
+      <div class="entry-form-card vision-board">
+        <h2 style="margin:0 0 4px;">Vision Board</h2>
+        <p style="margin:0 0 16px;color:#6f6049;">Name a dream, describe why it matters, choose a target, and break it into steps you can complete.</p>
+        <form id="vision-form" class="vision-form">
+          <label for="vision-title">Dream or goal</label>
+          <input id="vision-title" type="text" maxlength="160" placeholder="What do you want to make possible?" required />
+          <label for="vision-description">Why it matters</label>
+          <textarea id="vision-description" maxlength="1000" placeholder="Describe the future you are working toward..."></textarea>
+          <label for="vision-target-date">Target date</label>
+          <input id="vision-target-date" type="date" />
+          <label for="vision-steps-input">Intermediate steps</label>
+          <textarea id="vision-steps-input" placeholder="One step per line&#10;Example: Research the first course&#10;Set aside one hour each week&#10;Complete the first milestone"></textarea>
+          <button type="submit" class="secondary-button">Add to Vision Board</button>
+          <span id="vision-status" class="db-count" aria-live="polite"></span>
+        </form>
+        <div id="vision-goals" class="vision-goals"></div>
+      </div>
+    </section>
 
     <section class="entry-form-section">
       <div class="entry-form-card">
@@ -150,8 +192,59 @@
     let allEntries = [];
 
     async function init() {
+      await loadVisionGoals();
       await loadAll();
     }
+
+    function escapeVision(value) {
+      return String(value || '').replace(/[&<>'"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[c]));
+    }
+
+    async function loadVisionGoals() {
+      const container = document.getElementById('vision-goals');
+      try {
+        const res = await fetch('/api/vision-goals', { credentials: 'same-origin' });
+        if (!res.ok) throw new Error();
+        const goals = await res.json();
+        container.innerHTML = goals.length ? goals.map(renderVisionGoal).join('') : '<p class="db-empty">Your board is ready for its first dream.</p>';
+      } catch { container.innerHTML = '<p class="db-empty">Sign in to create and save your Vision Board.</p>'; }
+    }
+
+    function renderVisionGoal(goal) {
+      const steps = Array.isArray(goal.steps) ? goal.steps : [];
+      const done = steps.filter(step => step.done).length;
+      return `<article class="vision-goal"><h3>${escapeVision(goal.title)}</h3>${goal.target_date ? `<div class="vision-target">Target: ${escapeVision(goal.target_date)}</div>` : ''}<p>${escapeVision(goal.description)}</p><div class="vision-progress">${done} of ${steps.length} steps complete</div><ul class="vision-steps">${steps.map((step, index) => `<li><label><input type="checkbox" class="vision-step" data-goal-id="${goal.id}" data-step-index="${index}" ${step.done ? 'checked' : ''}> <span>${escapeVision(step.text)}</span></label></li>`).join('')}</ul><button type="button" class="secondary-button vision-delete" data-goal-id="${goal.id}">Remove goal</button></article>`;
+    }
+
+    document.getElementById('vision-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const status = document.getElementById('vision-status');
+      const steps = document.getElementById('vision-steps-input').value.split('\n').map(text => ({ text, done: false })).filter(step => step.text.trim());
+      const payload = { title: document.getElementById('vision-title').value, description: document.getElementById('vision-description').value, targetDate: document.getElementById('vision-target-date').value, steps };
+      try {
+        const res = await fetch('/api/vision-goals', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Could not save goal.');
+        event.target.reset(); status.textContent = 'Goal added.'; await loadVisionGoals();
+      } catch (error) { status.textContent = error.message; }
+    });
+
+    document.getElementById('vision-goals').addEventListener('change', async (event) => {
+      if (!event.target.classList.contains('vision-step')) return;
+      const goalId = event.target.dataset.goalId;
+      const index = Number(event.target.dataset.stepIndex);
+      const cards = [...document.querySelectorAll(`.vision-step[data-goal-id="${goalId}"]`)];
+      const steps = cards.map((checkbox) => ({ text: checkbox.parentElement.querySelector('span').textContent, done: checkbox.checked }));
+      await fetch(`/api/vision-goals/${encodeURIComponent(goalId)}`, { method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ steps }) });
+      await loadVisionGoals();
+    });
+
+    document.getElementById('vision-goals').addEventListener('click', async (event) => {
+      const button = event.target.closest('.vision-delete');
+      if (!button || !window.confirm('Remove this goal from your Vision Board?')) return;
+      await fetch(`/api/vision-goals/${encodeURIComponent(button.dataset.goalId)}`, { method: 'DELETE', credentials: 'same-origin' });
+      await loadVisionGoals();
+    });
 
     async function loadAll() {
       try {

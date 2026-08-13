@@ -330,6 +330,16 @@ async function initDatabase() {
     description TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT ''
   )`);
+  await dbRun(`CREATE TABLE IF NOT EXISTS vision_goals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    target_date TEXT NOT NULL DEFAULT '',
+    steps TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`);
   // Clean up expired sessions
   await dbRun('DELETE FROM user_sessions WHERE expires_at < ?', [Date.now()]);
   const tables = (await dbAll("SELECT name FROM sqlite_master WHERE type='table'")).map(t => t.name);
@@ -905,6 +915,53 @@ app.delete('/api/profile/work/:id', async (req, res) => {
     await dbRun('DELETE FROM work_history WHERE id = ?', [id]);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Failed to delete work entry.' }); }
+});
+
+app.get('/api/vision-goals', async (req, res) => {
+  const user = await getAuthenticatedUser(req, res);
+  if (!user) return res.status(401).json({ error: 'Sign in to access your Vision Board.' });
+  try {
+    const rows = await dbAll('SELECT * FROM vision_goals WHERE user_id = ? ORDER BY updated_at DESC, id DESC', [user.userId]);
+    res.json(rows.map((row) => ({ ...row, steps: JSON.parse(row.steps || '[]') })));
+  } catch (err) { res.status(500).json({ error: 'Failed to load vision goals.' }); }
+});
+
+app.post('/api/vision-goals', async (req, res) => {
+  const user = await getAuthenticatedUser(req, res);
+  if (!user) return res.status(401).json({ error: 'Sign in to save Vision Board goals.' });
+  const title = String(req.body?.title || '').trim();
+  const description = String(req.body?.description || '').trim();
+  const targetDate = String(req.body?.targetDate || '').trim();
+  const rawSteps = Array.isArray(req.body?.steps) ? req.body.steps : [];
+  const steps = rawSteps.map((step) => ({ text: String(step.text || '').trim(), done: Boolean(step.done) })).filter((step) => step.text);
+  if (!title) return res.status(400).json({ error: 'A dream or goal title is required.' });
+  const now = new Date().toISOString();
+  try {
+    const result = await dbRun('INSERT INTO vision_goals (user_id, title, description, target_date, steps, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)', [user.userId, title, description, targetDate, JSON.stringify(steps), now, now]);
+    res.status(201).json({ id: Number(result.lastInsertRowid || result.lastID || Date.now()), user_id: user.userId, title, description, target_date: targetDate, steps, created_at: now, updated_at: now });
+  } catch (err) { res.status(500).json({ error: 'Failed to save vision goal.' }); }
+});
+
+app.patch('/api/vision-goals/:id', async (req, res) => {
+  const user = await getAuthenticatedUser(req, res);
+  if (!user) return res.status(401).json({ error: 'Sign in to update Vision Board goals.' });
+  const id = Number(req.params.id);
+  const steps = Array.isArray(req.body?.steps) ? req.body.steps.map((step) => ({ text: String(step.text || '').trim(), done: Boolean(step.done) })).filter((step) => step.text) : null;
+  if (!id || !steps) return res.status(400).json({ error: 'Valid goal steps are required.' });
+  try {
+    const now = new Date().toISOString();
+    await dbRun('UPDATE vision_goals SET steps = ?, updated_at = ? WHERE id = ? AND user_id = ?', [JSON.stringify(steps), now, id, user.userId]);
+    res.json({ success: true, steps });
+  } catch (err) { res.status(500).json({ error: 'Failed to update vision goal.' }); }
+});
+
+app.delete('/api/vision-goals/:id', async (req, res) => {
+  const user = await getAuthenticatedUser(req, res);
+  if (!user) return res.status(401).json({ error: 'Sign in to delete Vision Board goals.' });
+  try {
+    await dbRun('DELETE FROM vision_goals WHERE id = ? AND user_id = ?', [Number(req.params.id), user.userId]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Failed to delete vision goal.' }); }
 });
 
 // ── Draft Routes ───────────────────────────────────────────────────────────
