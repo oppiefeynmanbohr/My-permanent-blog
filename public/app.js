@@ -352,6 +352,7 @@ async function loadEntries() {
   const url = `/api/entries?${params.toString()}`;
   try {
     const response = await fetchWithSessionRecovery(url);
+    if (!response.ok) throw new Error('Request failed');
     const entries = filterOutLocallyDeletedEntries(await response.json());
     if (Array.isArray(entries) && entries.length > 0) {
       // Cache entries in localStorage for resilience
@@ -359,21 +360,12 @@ async function loadEntries() {
         try { localStorage.setItem(cacheKey, JSON.stringify(entries)); } catch {}
       }
       renderEntries(entries);
-    } else if (!search && !date) {
-      // Server returned nothing — try local cache
-      try {
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-          const cachedEntries = filterOutLocallyDeletedEntries(JSON.parse(cached));
-          if (cachedEntries.length > 0) {
-            renderEntries(cachedEntries);
-            if (saveStatus) saveStatus.textContent = '(Showing cached entries — server may be restarting)';
-            return;
-          }
-        }
-      } catch {}
-      renderEntries([]);
     } else {
+      // Server responded successfully with an empty list — this is the real,
+      // current state (not a network failure), so don't fall back to a stale cache.
+      if (!search && !date) {
+        try { localStorage.removeItem(cacheKey); } catch {}
+      }
       renderEntries(entries);
     }
   } catch {
