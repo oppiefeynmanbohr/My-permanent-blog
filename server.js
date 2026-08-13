@@ -1002,13 +1002,14 @@ app.post('/api/entries', async (req, res) => {
   try {
     if (userId) {
       await migrateAnonymousEntriesToUser(userId, browserId);
-      await dbRun('UPDATE entries SET user_id = ? WHERE user_id IS NULL AND (browser_id = ? OR browser_id = "") AND created_at <= ?', [userId, browserId, createdAt]);
+      await dbRun("UPDATE entries SET user_id = ? WHERE user_id IS NULL AND (browser_id = ? OR browser_id = '') AND created_at <= ?", [userId, browserId, createdAt]);
     }
     await dbRun(sql, [autoTitle, content, timestamp, createdAt, userId, entrySource, browserId]);
     const row = await dbGet('SELECT id FROM entries WHERE created_at = ? AND user_id = ? ORDER BY id DESC LIMIT 1', [createdAt, userId]);
     const newId = row ? row.id : Date.now();
     res.status(201).json({ id: newId, title: autoTitle, content, timestamp, created_at: createdAt, published: 0, source: entrySource });
   } catch (err) {
+    console.error('Entry save failed:', err.message);
     res.status(500).json({ error: 'Failed to save entry.' });
   }
 });
