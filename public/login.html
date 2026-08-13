@@ -53,11 +53,11 @@
           </div>
           <div class="auth-field">
             <label for="login-username">Username or Email</label>
-            <input id="login-username" type="text" placeholder="Your username or email" autocomplete="username" />
+            <input id="login-username" name="username" type="text" placeholder="Your username or email" autocomplete="username" />
           </div>
           <div class="auth-field">
             <label for="login-password">Password</label>
-            <input id="login-password" type="password" placeholder="Your password" autocomplete="current-password" />
+            <input id="login-password" name="password" type="password" placeholder="Your password" autocomplete="current-password" />
           </div>
           <div class="forgot-link"><a href="/reset-password">Forgot password?</a></div>
           <label class="auth-remember">
@@ -76,19 +76,19 @@
         <form id="signup-form" autocomplete="on" onsubmit="return false;">
           <div class="auth-field">
             <label for="signup-username">Username</label>
-            <input id="signup-username" type="text" placeholder="Choose a username" autocomplete="username" />
+            <input id="signup-username" name="new-username" type="text" placeholder="Choose a username" autocomplete="username" />
           </div>
           <div class="auth-field">
             <label for="signup-email">Email address</label>
-            <input id="signup-email" type="email" placeholder="your@email.com" autocomplete="email" />
+            <input id="signup-email" name="email" type="email" placeholder="your@email.com" autocomplete="email" />
           </div>
           <div class="auth-field">
             <label for="signup-password">Password</label>
-            <input id="signup-password" type="password" placeholder="At least 6 characters" autocomplete="new-password" />
+            <input id="signup-password" name="new-password" type="password" placeholder="At least 6 characters" autocomplete="new-password" />
           </div>
           <div class="auth-field">
             <label for="signup-confirm">Confirm password</label>
-            <input id="signup-confirm" type="password" placeholder="Repeat your password" autocomplete="new-password" />
+            <input id="signup-confirm" name="confirm-password" type="password" placeholder="Repeat your password" autocomplete="new-password" />
           </div>
           <div id="signup-status" class="auth-status"></div>
           <button class="auth-submit" id="signup-btn" type="submit">Create Account</button>
@@ -145,11 +145,11 @@
       }
     }
 
-    function rememberAccount(username) {
+    function rememberAccount(username, email = '') {
       const normalized = String(username || '').trim();
       if (!normalized) return;
       const accounts = getKnownAccounts().filter((account) => account.username.toLowerCase() !== normalized.toLowerCase());
-      accounts.unshift({ username: normalized });
+      accounts.unshift({ username: normalized, email: String(email || '').trim().toLowerCase() });
       localStorage.setItem('blog_known_accounts', JSON.stringify(accounts.slice(0, 20)));
       renderKnownAccounts();
     }
@@ -159,9 +159,17 @@
       const select = document.getElementById('saved-account-select');
       const accounts = getKnownAccounts();
       if (!accounts.length) return;
-      select.innerHTML = '<option value="">Select an account</option>' + accounts
-        .map((account) => `<option value="${account.username.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}">${account.username.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</option>`)
-        .join('');
+      select.replaceChildren();
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'Select an account';
+      select.appendChild(placeholder);
+      accounts.forEach((account) => {
+        const option = document.createElement('option');
+        option.value = account.email || account.username;
+        option.textContent = account.email ? `${account.username} (${account.email})` : account.username;
+        select.appendChild(option);
+      });
       field.style.display = 'flex';
     }
 
@@ -212,8 +220,8 @@
         localStorage.setItem('blog_logged_in', '1');
         localStorage.setItem('blog_username', data.username || username);
         localStorage.setItem('blog_browser_id', getBrowserId());
-        rememberAccount(data.username || username);
-        if (rememberEmail) localStorage.setItem('blog_saved_email', username);
+        rememberAccount(data.username || username, data.email || (username.includes('@') ? username : ''));
+        if (rememberEmail) localStorage.setItem('blog_saved_email', data.email || username);
         else localStorage.removeItem('blog_saved_email');
         statusEl.className = 'auth-status ok';
         statusEl.textContent = 'Logged in! Redirecting…';
@@ -257,7 +265,7 @@
         localStorage.setItem('blog_logged_in', '1');
         localStorage.setItem('blog_username', data.username || username);
         localStorage.setItem('blog_user_id', String(data.userId || ''));
-        rememberAccount(data.username || username);
+        rememberAccount(data.username || username, data.email || email);
         statusEl.className = 'auth-status ok';
         statusEl.textContent = 'Personal blog created! Redirecting…';
         setTimeout(() => { window.location.href = '/page1'; }, 600);

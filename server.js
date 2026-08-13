@@ -613,14 +613,14 @@ app.post('/api/auth/signup', async (req, res) => {
       'INSERT INTO users (username, email, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?)',
       [username.trim(), normalizedEmail, hash, salt, createdAt]
     );
-    const user = await dbGet('SELECT id, username FROM users WHERE email = ?', [normalizedEmail]);
+    const user = await dbGet('SELECT id, username, email FROM users WHERE email = ?', [normalizedEmail]);
     if (!user) return res.status(500).json({ error: 'Could not create the account.' });
     const previousToken = parseCookies(req).user_sid;
     if (previousToken) await dbRun('DELETE FROM user_sessions WHERE token = ?', [previousToken]);
     const browserId = getOrCreateClientId(req, res);
     await createUserSession(req, res, user.id, user.username, true, browserId);
     await migrateAnonymousEntriesToUser(user.id, browserId);
-    res.status(201).json({ success: true, username: user.username, userId: user.id });
+    res.status(201).json({ success: true, username: user.username, email: user.email, userId: user.id });
   } catch (err) {
     console.error('Signup DB error:', err.message);
     if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Username or email already taken.' });
@@ -655,7 +655,7 @@ app.post('/api/auth/login', async (req, res) => {
     const browserId = getOrCreateClientId(req, res);
     await createUserSession(req, res, user.id, user.username, !!rememberMe, browserId);
     await migrateAnonymousEntriesToUser(user.id, browserId);
-    res.json({ success: true, username: user.username });
+    res.json({ success: true, username: user.username, email: user.email, userId: user.id });
   } catch (err) {
     res.status(500).json({ error: 'Login failed.' });
   }
