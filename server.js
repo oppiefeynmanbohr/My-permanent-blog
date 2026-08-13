@@ -236,6 +236,7 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL UNIQUE,
   full_name TEXT NOT NULL DEFAULT '',
   signature TEXT NOT NULL DEFAULT '',
+  signature_image TEXT NOT NULL DEFAULT '',
   password_hash TEXT NOT NULL,
   password_salt TEXT NOT NULL,
   created_at TEXT NOT NULL
@@ -275,6 +276,7 @@ async function initDatabase() {
   const userColumns = await dbAll('PRAGMA table_info(users)');
   if (!userColumns.some(c => c.name === 'full_name')) await dbRun("ALTER TABLE users ADD COLUMN full_name TEXT NOT NULL DEFAULT ''");
   if (!userColumns.some(c => c.name === 'signature')) await dbRun("ALTER TABLE users ADD COLUMN signature TEXT NOT NULL DEFAULT ''");
+  if (!userColumns.some(c => c.name === 'signature_image')) await dbRun("ALTER TABLE users ADD COLUMN signature_image TEXT NOT NULL DEFAULT ''");
   await dbRun("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_signature ON users(signature) WHERE signature <> ''");
   await dbRun(`CREATE TABLE IF NOT EXISTS user_sessions (
     token TEXT PRIMARY KEY,
@@ -604,10 +606,11 @@ function formatTimestamp(date) {
 // ── User Auth Routes ────────────────────────────────────────────────────────[...] 
 
 app.post('/api/auth/signup', async (req, res) => {
-  const { username, email, fullName, signature, password } = req.body || {};
-  if (!username || !email || !fullName || !signature || !password) return res.status(400).json({ error: 'Name, signature, username, email, and password are required.' });
+  const { username, email, fullName, signature, signatureImage, password } = req.body || {};
+  if (!username || !email || !fullName || !signature || !signatureImage || !password) return res.status(400).json({ error: 'Name, signature, drawn signature, username, email, and password are required.' });
   if (username.length < 2 || username.length > 40) return res.status(400).json({ error: 'Username must be 2–40 characters.' });
   if (!/^[a-zA-Z0-9._-]{3,40}$/.test(signature)) return res.status(400).json({ error: 'Signature must be 3–40 letters, numbers, periods, underscores, or hyphens.' });
+  if (!String(signatureImage).startsWith('data:image/png;base64,') || String(signatureImage).length > 300000) return res.status(400).json({ error: 'Draw a valid signature before creating the account.' });
   if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Invalid email address.' });
 
@@ -618,17 +621,17 @@ app.post('/api/auth/signup', async (req, res) => {
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedSignature = signature.trim().toLowerCase();
     await dbRun(
-      'INSERT INTO users (username, email, full_name, signature, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [username.trim(), normalizedEmail, fullName.trim(), normalizedSignature, hash, salt, createdAt]
+      'INSERT INTO users (username, email, full_name, signature, signature_image, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [username.trim(), normalizedEmail, fullName.trim(), normalizedSignature, signatureImage, hash, salt, createdAt]
     );
-    const user = await dbGet('SELECT id, username, email, full_name, signature FROM users WHERE email = ?', [normalizedEmail]);
+    const user = await dbGet('SELECT id, username, email, full_name, signature, signature_image FROM users WHERE email = ?', [normalizedEmail]);
     if (!user) return res.status(500).json({ error: 'Could not create the account.' });
     const previousToken = parseCookies(req).user_sid;
     if (previousToken) await dbRun('DELETE FROM user_sessions WHERE token = ?', [previousToken]);
     const browserId = getOrCreateClientId(req, res);
     await createUserSession(req, res, user.id, user.username, true, browserId);
     await migrateAnonymousEntriesToUser(user.id, browserId);
-    res.status(201).json({ success: true, username: user.username, email: user.email, fullName: user.full_name, signature: user.signature, userId: user.id });
+    res.status(201).json({ success: true, username: user.username, email: user.email, fullName: user.full_name, signature: user.signature, signatureImage: user.signature_image, userId: user.id });
   } catch (err) {
     console.error('Signup DB error:', err.message);
     if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Username or email already taken.' });
@@ -663,7 +666,7 @@ app.post('/api/auth/login', async (req, res) => {
     const browserId = getOrCreateClientId(req, res);
     await createUserSession(req, res, user.id, user.username, !!rememberMe, browserId);
     await migrateAnonymousEntriesToUser(user.id, browserId);
-    res.json({ success: true, username: user.username, email: user.email, fullName: user.full_name || '', signature: user.signature || '', userId: user.id });
+    res.json({ success: true, username: user.username, email: user.email, fullName: user.full_name || '', signature: user.signature || '', signatureImage: user.signature_image || '', userId: user.id });
   } catch (err) {
     res.status(500).json({ error: 'Login failed.' });
   }

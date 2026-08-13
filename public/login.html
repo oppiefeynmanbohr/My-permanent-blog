@@ -30,6 +30,9 @@
     .back-link a { color:#c8a97e; text-decoration:none; font-weight:bold; }
     .panel { display:none; }
     .panel.active { display:block; }
+    .signature-pad { width:100%; height:120px; border:1px solid #ccc; border-radius:6px; background:#fff; touch-action:none; cursor:crosshair; box-sizing:border-box; }
+    .signature-actions { display:flex; justify-content:flex-end; margin-top:6px; }
+    .saved-signature { display:none; width:100%; height:70px; object-fit:contain; border:1px solid #e8c99a; border-radius:6px; background:#fff; box-sizing:border-box; }
   </style>
 </head>
 <body>
@@ -50,6 +53,7 @@
           <div class="auth-field" id="saved-accounts-field" style="display:none;">
             <label for="saved-account-select">Choose a saved account on this device</label>
             <select id="saved-account-select"></select>
+            <img id="saved-signature-preview" class="saved-signature" alt="Saved handwritten signature" />
           </div>
           <div class="auth-field">
             <label for="login-username">Username, Email, or Signature</label>
@@ -87,8 +91,13 @@
             <input id="signup-full-name" name="name" type="text" placeholder="Your name" autocomplete="name" />
           </div>
           <div class="auth-field">
-            <label for="signup-signature">Personal signature</label>
-            <input id="signup-signature" name="signature" type="text" placeholder="A unique signature" autocomplete="username" />
+            <label for="signup-signature">Signature ID</label>
+            <input id="signup-signature" name="signature" type="text" placeholder="A unique signature ID" autocomplete="username" />
+          </div>
+          <div class="auth-field">
+            <label for="signup-signature-pad">Draw your signature</label>
+            <canvas id="signup-signature-pad" class="signature-pad" width="360" height="120"></canvas>
+            <div class="signature-actions"><button id="clear-signature" class="secondary-button" type="button">Clear</button></div>
           </div>
           <div class="auth-field">
             <label for="signup-password">Password</label>
@@ -144,6 +153,48 @@
     }
 
     clearLegacyPasswordStorage();
+    const signaturePad = document.getElementById('signup-signature-pad');
+    const signatureContext = signaturePad.getContext('2d');
+    let signatureDrawing = false;
+    let signatureHasStroke = false;
+
+    function signaturePoint(event) {
+      const bounds = signaturePad.getBoundingClientRect();
+      return {
+        x: (event.clientX - bounds.left) * (signaturePad.width / bounds.width),
+        y: (event.clientY - bounds.top) * (signaturePad.height / bounds.height)
+      };
+    }
+
+    function clearSignaturePad() {
+      signatureContext.clearRect(0, 0, signaturePad.width, signaturePad.height);
+      signatureContext.fillStyle = '#fff';
+      signatureContext.fillRect(0, 0, signaturePad.width, signaturePad.height);
+      signatureContext.strokeStyle = '#1f1f1f';
+      signatureContext.lineWidth = 2;
+      signatureContext.lineCap = 'round';
+      signatureContext.lineJoin = 'round';
+      signatureHasStroke = false;
+    }
+
+    signaturePad.addEventListener('pointerdown', (event) => {
+      signatureDrawing = true;
+      signatureHasStroke = true;
+      signaturePad.setPointerCapture(event.pointerId);
+      const point = signaturePoint(event);
+      signatureContext.beginPath();
+      signatureContext.moveTo(point.x, point.y);
+    });
+    signaturePad.addEventListener('pointermove', (event) => {
+      if (!signatureDrawing) return;
+      const point = signaturePoint(event);
+      signatureContext.lineTo(point.x, point.y);
+      signatureContext.stroke();
+    });
+    signaturePad.addEventListener('pointerup', () => { signatureDrawing = false; });
+    signaturePad.addEventListener('pointercancel', () => { signatureDrawing = false; });
+    document.getElementById('clear-signature').addEventListener('click', clearSignaturePad);
+    clearSignaturePad();
     function getKnownAccounts() {
       try {
         const accounts = JSON.parse(localStorage.getItem('blog_known_accounts') || '[]');
@@ -153,11 +204,11 @@
       }
     }
 
-    function rememberAccount(username, email = '', fullName = '', signature = '') {
+    function rememberAccount(username, email = '', fullName = '', signature = '', signatureImage = '') {
       const normalized = String(username || '').trim();
       if (!normalized) return;
       const accounts = getKnownAccounts().filter((account) => account.username.toLowerCase() !== normalized.toLowerCase());
-      accounts.unshift({ username: normalized, email: String(email || '').trim().toLowerCase(), fullName: String(fullName || '').trim(), signature: String(signature || '').trim() });
+      accounts.unshift({ username: normalized, email: String(email || '').trim().toLowerCase(), fullName: String(fullName || '').trim(), signature: String(signature || '').trim(), signatureImage: String(signatureImage || '') });
       localStorage.setItem('blog_known_accounts', JSON.stringify(accounts.slice(0, 20)));
       renderKnownAccounts();
     }
@@ -183,9 +234,18 @@
     }
 
     document.getElementById('saved-account-select').addEventListener('change', (event) => {
-      const username = event.target.value;
-      if (!username) return;
-      document.getElementById('login-username').value = username;
+      const identifier = event.target.value;
+      const account = getKnownAccounts().find((entry) => identifier === (entry.signature || entry.email || entry.username));
+      if (!account) return;
+      document.getElementById('login-username').value = identifier;
+      const preview = document.getElementById('saved-signature-preview');
+      if (account.signatureImage) {
+        preview.src = account.signatureImage;
+        preview.style.display = 'block';
+      } else {
+        preview.removeAttribute('src');
+        preview.style.display = 'none';
+      }
       document.getElementById('login-password').focus();
     });
 
@@ -229,7 +289,7 @@
         localStorage.setItem('blog_logged_in', '1');
         localStorage.setItem('blog_username', data.username || username);
         localStorage.setItem('blog_browser_id', getBrowserId());
-        rememberAccount(data.username || username, data.email || (username.includes('@') ? username : ''), data.fullName, data.signature);
+        rememberAccount(data.username || username, data.email || (username.includes('@') ? username : ''), data.fullName, data.signature, data.signatureImage);
         if (rememberEmail) localStorage.setItem('blog_saved_email', data.email || username);
         else localStorage.removeItem('blog_saved_email');
         statusEl.className = 'auth-status ok';
@@ -251,9 +311,10 @@
       const email = document.getElementById('signup-email').value.trim();
       const fullName = document.getElementById('signup-full-name').value.trim();
       const signature = document.getElementById('signup-signature').value.trim();
+      const signatureImage = signatureHasStroke ? signaturePad.toDataURL('image/png') : '';
       const password = document.getElementById('signup-password').value;
       const confirm = document.getElementById('signup-confirm').value;
-      if (!username || !email || !fullName || !signature || !password) { statusEl.textContent = 'Please fill in all fields.'; return; }
+      if (!username || !email || !fullName || !signature || !signatureImage || !password) { statusEl.textContent = 'Please fill in all fields and draw your signature.'; return; }
       if (password !== confirm) { statusEl.textContent = 'Passwords do not match.'; return; }
       if (password.length < 6) { statusEl.textContent = 'Password must be at least 6 characters.'; return; }
       statusEl.textContent = '';
@@ -264,7 +325,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ username, email, fullName, signature, password })
+          body: JSON.stringify({ username, email, fullName, signature, signatureImage, password })
         });
         const data = await r.json();
         if (!r.ok) {
@@ -276,7 +337,7 @@
         localStorage.setItem('blog_logged_in', '1');
         localStorage.setItem('blog_username', data.username || username);
         localStorage.setItem('blog_user_id', String(data.userId || ''));
-        rememberAccount(data.username || username, data.email || email, data.fullName || fullName, data.signature || signature);
+        rememberAccount(data.username || username, data.email || email, data.fullName || fullName, data.signature || signature, data.signatureImage || signatureImage);
         statusEl.className = 'auth-status ok';
         statusEl.textContent = 'Personal blog created! Redirecting…';
         setTimeout(() => { window.location.href = '/page1'; }, 600);
