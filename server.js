@@ -102,7 +102,7 @@ function getCookieAttributes(req) {
   const parts = ['Path=/', 'HttpOnly'];
   if (COOKIE_DOMAIN) parts.push(`Domain=${COOKIE_DOMAIN}`);
   if (secure) parts.push('Secure');
-  const sameSite = COOKIE_SAME_SITE || (secure ? 'None' : 'Lax');
+  const sameSite = COOKIE_SAME_SITE === 'Strict' ? 'Strict' : 'Lax';
   parts.push(`SameSite=${sameSite}`);
   return parts;
 }

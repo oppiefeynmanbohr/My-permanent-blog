@@ -13,7 +13,7 @@ services:
       - key: COOKIE_SECURE
         value: "true"
       - key: COOKIE_SAME_SITE
-        value: "None"
+        value: "Lax"
       - key: COOKIE_DOMAIN
         value: ""
       # ── Turso cloud DB (recommended — free permanent storage) ──
