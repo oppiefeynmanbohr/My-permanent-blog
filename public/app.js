@@ -1,6 +1,7 @@
 const currentTimestamp = document.getElementById('current-timestamp');
 const entryTitle = document.getElementById('entry-title');
 const entryContent = document.getElementById('entry-content');
+const journalTextSize = document.getElementById('journal-text-size');
 const saveEntryButton = document.getElementById('save-entry');
 const saveStatus = document.getElementById('save-status');
 const entriesList = document.getElementById('entries-list');
@@ -23,6 +24,28 @@ const thesaurusSearchButton = document.getElementById('thesaurus-search');
 const thesaurusResults = document.getElementById('thesaurus-results');
 const adminStatusBadge = document.getElementById('admin-dictionary-status');
 const oxfordInput = document.getElementById('oxford-input');
+
+function applyJournalTextSize(size) {
+  if (!entryContent) return;
+  const sizes = { small: '0.9rem', medium: '1.1rem', large: '1.35rem' };
+  const selected = sizes[size] ? size : 'medium';
+  entryContent.style.fontSize = sizes[selected];
+  if (journalTextSize) journalTextSize.value = selected;
+  try {
+    const userId = localStorage.getItem('blog_user_id') || 'guest';
+    localStorage.setItem(`blogJournalTextSize:${userId}`, selected);
+  } catch {}
+}
+
+if (journalTextSize) {
+  let savedJournalTextSize = 'medium';
+  try {
+    const userId = localStorage.getItem('blog_user_id') || 'guest';
+    savedJournalTextSize = localStorage.getItem(`blogJournalTextSize:${userId}`) || 'medium';
+  } catch {}
+  applyJournalTextSize(savedJournalTextSize);
+  journalTextSize.addEventListener('change', () => applyJournalTextSize(journalTextSize.value));
+}
 const oxfordLookupButton = document.getElementById('oxford-lookup');
 const oxfordResults = document.getElementById('oxford-results');
 const connectSamsungPassRow = document.getElementById('connect-samsung-pass-row');

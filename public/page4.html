@@ -48,6 +48,11 @@
         </div>
         <div class="form-row">
           <label for="entry-content">Write your entry</label>
+          <select id="journal-text-size" aria-label="Journal text size">
+            <option value="small">Small text</option>
+            <option value="medium" selected>Medium text</option>
+            <option value="large">Large text</option>
+          </select>
           <textarea id="entry-content" rows="24" placeholder="What happened today..."></textarea>
         </div>
         <div class="form-row form-actions">
@@ -382,6 +387,18 @@
     refreshTimestamp();
     setInterval(refreshTimestamp, 30000);
     loadEntries();
+
+    const journalTextSize = document.getElementById('journal-text-size');
+    const journalEntryField = document.getElementById('entry-content');
+    const journalTextSizes = { small: '0.9rem', medium: '1.1rem', large: '1.35rem' };
+    const journalUserId = localStorage.getItem('blog_user_id') || 'guest';
+    const savedJournalTextSize = localStorage.getItem(`blogJournalTextSize:${journalUserId}`) || 'medium';
+    journalTextSize.value = journalTextSizes[savedJournalTextSize] ? savedJournalTextSize : 'medium';
+    journalEntryField.style.fontSize = journalTextSizes[journalTextSize.value];
+    journalTextSize.addEventListener('change', () => {
+      journalEntryField.style.fontSize = journalTextSizes[journalTextSize.value];
+      localStorage.setItem(`blogJournalTextSize:${journalUserId}`, journalTextSize.value);
+    });
   </script>
 </body>
 </html>
