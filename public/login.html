@@ -52,8 +52,8 @@
             <select id="saved-account-select"></select>
           </div>
           <div class="auth-field">
-            <label for="login-username">Username or Email</label>
-            <input id="login-username" name="username" type="text" placeholder="Your username or email" autocomplete="username" />
+            <label for="login-username">Username, Email, or Signature</label>
+            <input id="login-username" name="username" type="text" placeholder="Your username, email, or signature" autocomplete="username" />
           </div>
           <div class="auth-field">
             <label for="login-password">Password</label>
@@ -81,6 +81,14 @@
           <div class="auth-field">
             <label for="signup-email">Email address</label>
             <input id="signup-email" name="email" type="email" placeholder="your@email.com" autocomplete="email" />
+          </div>
+          <div class="auth-field">
+            <label for="signup-full-name">Full name</label>
+            <input id="signup-full-name" name="name" type="text" placeholder="Your name" autocomplete="name" />
+          </div>
+          <div class="auth-field">
+            <label for="signup-signature">Personal signature</label>
+            <input id="signup-signature" name="signature" type="text" placeholder="A unique signature" autocomplete="username" />
           </div>
           <div class="auth-field">
             <label for="signup-password">Password</label>
@@ -145,11 +153,11 @@
       }
     }
 
-    function rememberAccount(username, email = '') {
+    function rememberAccount(username, email = '', fullName = '', signature = '') {
       const normalized = String(username || '').trim();
       if (!normalized) return;
       const accounts = getKnownAccounts().filter((account) => account.username.toLowerCase() !== normalized.toLowerCase());
-      accounts.unshift({ username: normalized, email: String(email || '').trim().toLowerCase() });
+      accounts.unshift({ username: normalized, email: String(email || '').trim().toLowerCase(), fullName: String(fullName || '').trim(), signature: String(signature || '').trim() });
       localStorage.setItem('blog_known_accounts', JSON.stringify(accounts.slice(0, 20)));
       renderKnownAccounts();
     }
@@ -166,8 +174,9 @@
       select.appendChild(placeholder);
       accounts.forEach((account) => {
         const option = document.createElement('option');
-        option.value = account.email || account.username;
-        option.textContent = account.email ? `${account.username} (${account.email})` : account.username;
+        option.value = account.signature || account.email || account.username;
+        const identity = account.fullName || account.username;
+        option.textContent = account.signature ? `${identity} - ${account.signature}` : account.email ? `${identity} (${account.email})` : identity;
         select.appendChild(option);
       });
       field.style.display = 'flex';
@@ -220,7 +229,7 @@
         localStorage.setItem('blog_logged_in', '1');
         localStorage.setItem('blog_username', data.username || username);
         localStorage.setItem('blog_browser_id', getBrowserId());
-        rememberAccount(data.username || username, data.email || (username.includes('@') ? username : ''));
+        rememberAccount(data.username || username, data.email || (username.includes('@') ? username : ''), data.fullName, data.signature);
         if (rememberEmail) localStorage.setItem('blog_saved_email', data.email || username);
         else localStorage.removeItem('blog_saved_email');
         statusEl.className = 'auth-status ok';
@@ -240,9 +249,11 @@
       const statusEl = document.getElementById('signup-status');
       const username = document.getElementById('signup-username').value.trim();
       const email = document.getElementById('signup-email').value.trim();
+      const fullName = document.getElementById('signup-full-name').value.trim();
+      const signature = document.getElementById('signup-signature').value.trim();
       const password = document.getElementById('signup-password').value;
       const confirm = document.getElementById('signup-confirm').value;
-      if (!username || !email || !password) { statusEl.textContent = 'Please fill in all fields.'; return; }
+      if (!username || !email || !fullName || !signature || !password) { statusEl.textContent = 'Please fill in all fields.'; return; }
       if (password !== confirm) { statusEl.textContent = 'Passwords do not match.'; return; }
       if (password.length < 6) { statusEl.textContent = 'Password must be at least 6 characters.'; return; }
       statusEl.textContent = '';
@@ -253,7 +264,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ username, email, password })
+          body: JSON.stringify({ username, email, fullName, signature, password })
         });
         const data = await r.json();
         if (!r.ok) {
@@ -265,7 +276,7 @@
         localStorage.setItem('blog_logged_in', '1');
         localStorage.setItem('blog_username', data.username || username);
         localStorage.setItem('blog_user_id', String(data.userId || ''));
-        rememberAccount(data.username || username, data.email || email);
+        rememberAccount(data.username || username, data.email || email, data.fullName || fullName, data.signature || signature);
         statusEl.className = 'auth-status ok';
         statusEl.textContent = 'Personal blog created! Redirecting…';
         setTimeout(() => { window.location.href = '/page1'; }, 600);
