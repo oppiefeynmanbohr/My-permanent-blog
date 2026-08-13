@@ -212,9 +212,12 @@
           signupBtn.textContent = 'Create Account';
           return;
         }
+        localStorage.setItem('blog_logged_in', '1');
+        localStorage.setItem('blog_username', data.username || username);
+        localStorage.setItem('blog_user_id', String(data.userId || ''));
         statusEl.className = 'auth-status ok';
-        statusEl.textContent = 'Verification email sent. Open the link in your email to finish creating your account.';
-        signupBtn.textContent = 'Verification Email Sent';
+        statusEl.textContent = 'Personal blog created! Redirecting…';
+        setTimeout(() => { window.location.href = '/page1'; }, 600);
       } catch {
         statusEl.textContent = 'Network error. Try again.';
         signupBtn.disabled = false;

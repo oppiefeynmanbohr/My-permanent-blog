@@ -55,7 +55,6 @@ const SMTP_PASS = process.env.SMTP_PASS || '';
 const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
 
 const pendingPasswordResets = new Map(); // token -> { userId, expiresAt }
-const pendingSignups = new Map();
 
 function getMailTransport() {
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
@@ -605,77 +604,32 @@ app.post('/api/auth/signup', async (req, res) => {
   if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Invalid email address.' });
 
-  const salt = crypto.randomBytes(32).toString('hex');
-  const hash = hashPassword(password, salt);
-  const createdAt = new Date().toISOString();
-  const normalizedEmail = email.trim().toLowerCase();
-
   try {
-    const existing = await dbGet(
-      'SELECT id FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?',
-      [normalizeIdentifier(username), normalizedEmail]
-    );
-    if (existing) return res.status(409).json({ error: 'Username or email already taken.' });
-
-    const transport = getMailTransport();
-    if (!transport) {
-      return res.status(503).json({ error: 'Email verification is unavailable until the mail service is configured.' });
-    }
-
-    const token = crypto.randomBytes(32).toString('hex');
-    pendingSignups.set(token, {
-      username: username.trim(),
-      email: normalizedEmail,
-      passwordHash: hash,
-      passwordSalt: salt,
-      createdAt,
-      expiresAt: Date.now() + RESET_TTL_MS
-    });
-    const verificationLink = `${req.protocol}://${req.get('host')}/login?verify=${token}`;
-    await transport.sendMail({
-      from: SMTP_FROM,
-      to: normalizedEmail,
-      subject: 'Verify your My Permanent Blog email address',
-      text: `Hi ${username.trim()},\n\nOpen this link to create your personal blog account (expires in 1 hour):\n\n${verificationLink}`,
-      html: `<p>Hi <strong>${username.trim()}</strong>,</p><p>Open this link to create your personal blog account (expires in 1 hour):</p><p><a href="${verificationLink}">${verificationLink}</a></p>`
-    });
-    res.status(202).json({ success: true, verificationRequired: true });
-  } catch (err) {
-    console.error('Signup DB error:', err.message);
-    for (const [token, signup] of pendingSignups.entries()) {
-      if (signup.email === normalizedEmail) pendingSignups.delete(token);
-    }
-    if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Username or email already taken.' });
-    return res.status(500).json({ error: 'Failed to send verification email.' });
-  }
-});
-
-app.post('/api/auth/signup/verify', async (req, res) => {
-  const token = String(req.body?.token || '').trim();
-  const signup = pendingSignups.get(token);
-  if (!signup || signup.expiresAt < Date.now()) {
-    pendingSignups.delete(token);
-    return res.status(400).json({ error: 'This verification link has expired or is invalid.' });
-  }
-
-  try {
+    const salt = crypto.randomBytes(32).toString('hex');
+    const hash = hashPassword(password, salt);
+    const createdAt = new Date().toISOString();
+    const normalizedEmail = email.trim().toLowerCase();
     await dbRun(
       'INSERT INTO users (username, email, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?)',
-      [signup.username, signup.email, signup.passwordHash, signup.passwordSalt, signup.createdAt]
+      [username.trim(), normalizedEmail, hash, salt, createdAt]
     );
-    const user = await dbGet('SELECT id, username FROM users WHERE email = ?', [signup.email]);
+    const user = await dbGet('SELECT id, username FROM users WHERE email = ?', [normalizedEmail]);
     if (!user) return res.status(500).json({ error: 'Could not create the account.' });
     const previousToken = parseCookies(req).user_sid;
     if (previousToken) await dbRun('DELETE FROM user_sessions WHERE token = ?', [previousToken]);
     const browserId = getOrCreateClientId(req, res);
     await createUserSession(req, res, user.id, user.username, true, browserId);
-    pendingSignups.delete(token);
-    res.status(201).json({ success: true, username: user.username });
+    await migrateAnonymousEntriesToUser(user.id, browserId);
+    res.status(201).json({ success: true, username: user.username, userId: user.id });
   } catch (err) {
-    pendingSignups.delete(token);
+    console.error('Signup DB error:', err.message);
     if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Username or email already taken.' });
-    res.status(500).json({ error: 'Could not verify the email address.' });
+    return res.status(500).json({ error: 'Could not create the account.' });
   }
+});
+
+app.post('/api/auth/signup/verify', async (req, res) => {
+  res.status(410).json({ error: 'Email verification is not required. Create an account directly from the sign-up form.' });
 });
 
 app.post('/api/auth/login', async (req, res) => {
