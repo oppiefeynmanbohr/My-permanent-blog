@@ -367,16 +367,7 @@
               });
             } catch (draftError) {}
             setStatus('Entry saved.');
-            if (typeof window.loadEntries === 'function') {
-              await window.loadEntries();
-            } else {
-              window.location.reload();
-            }
-            // With many existing entries the new one lands off-screen at the bottom of the list.
-            var entriesListEl = document.getElementById('entries-list');
-            if (entriesListEl && entriesListEl.lastElementChild) {
-              entriesListEl.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            }
+            window.location.reload();
           } catch (err) {
             setStatus('Network error. Could not save entry.');
           } finally {
