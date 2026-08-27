@@ -313,41 +313,61 @@ function filterOutLocallyDeletedEntries(entries) {
 
 window.__mpbMarkDeletedLocally = markEntryDeletedLocally;
 
+function getDraftUpdatedAtKey(draftKey) {
+  return `${draftKey}:updatedAt`;
+}
+
+function setLocalDraftState(draftKey, content, updatedAt = new Date().toISOString()) {
+  try {
+    localStorage.setItem(draftKey, content);
+    if (updatedAt) localStorage.setItem(getDraftUpdatedAtKey(draftKey), updatedAt);
+  } catch (err) {
+    console.warn('Draft storage limit reached; keeping the current draft in the textarea only.', err);
+  }
+}
+
 async function restoreDraft() {
   if (!entryContent) return;
   const draftKey = getActiveUserStorageKey('main_entry_draft');
-  const savedDraft = localStorage.getItem(draftKey);
-  if (savedDraft !== null && savedDraft !== '') {
-    entryContent.value = savedDraft;
-    if (saveStatus) saveStatus.textContent = 'Restored your saved draft.';
-    return;
-  }
+  const savedDraft = localStorage.getItem(draftKey) || '';
+  const savedTimestamp = localStorage.getItem(getDraftUpdatedAtKey(draftKey)) || '';
 
   try {
     const response = await fetchWithSessionRecovery('/api/drafts?source=main');
-    if (response.ok) {
-      const data = await response.json().catch(() => ({}));
-      if (data.content) {
-        entryContent.value = data.content;
-        localStorage.setItem(draftKey, data.content);
-        if (saveStatus) saveStatus.textContent = 'Restored your saved draft from the server.';
-      }
+    if (!response.ok) {
+      throw new Error('Draft sync failed');
+    }
+
+    const data = await response.json().catch(() => ({}));
+    const serverContent = typeof data.content === 'string' ? data.content : '';
+    const serverTimestamp = data.updatedAt || '';
+    const hasLocalDraft = savedDraft.trim() !== '';
+    const hasServerDraft = serverContent.trim() !== '' || Boolean(serverTimestamp);
+
+    if (hasServerDraft && (!hasLocalDraft || !savedTimestamp || (serverTimestamp && new Date(serverTimestamp).getTime() > new Date(savedTimestamp).getTime()))) {
+      entryContent.value = serverContent;
+      setLocalDraftState(draftKey, serverContent, serverTimestamp || new Date().toISOString());
+      if (saveStatus) saveStatus.textContent = hasLocalDraft ? 'Restored the latest version of your draft from your account.' : 'Restored your saved draft from the server.';
+      return;
     }
   } catch {}
+
+  if (savedDraft !== null && savedDraft !== '') {
+    entryContent.value = savedDraft;
+    if (saveStatus) saveStatus.textContent = 'Restored your saved draft.';
+  }
 }
 
 async function saveDraft() {
   if (!entryContent) return;
   const draftKey = getActiveUserStorageKey('main_entry_draft');
   const value = entryContent.value;
-  try {
-    localStorage.setItem(draftKey, value);
-  } catch (err) {
-    console.warn('Draft storage limit reached; keeping the current draft in the textarea only.', err);
-  }
+  const updatedAt = new Date().toISOString();
+  setLocalDraftState(draftKey, value, updatedAt);
 
   try {
     if (!value.trim()) {
+      localStorage.removeItem(getDraftUpdatedAtKey(draftKey));
       await fetchWithSessionRecovery('/api/drafts', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -419,7 +439,7 @@ async function saveEntry() {
     const response = await fetchWithSessionRecovery('/api/entries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: pendingEntry.title, content, tzOffset: new Date().getTimezoneOffset() })
+      body: JSON.stringify({ title: pendingEntry.title, content })
     });
 
     if (!response.ok) {
@@ -432,6 +452,7 @@ async function saveEntry() {
 
     const draftKey = getActiveUserStorageKey('main_entry_draft');
     localStorage.removeItem(draftKey);
+    localStorage.removeItem(getDraftUpdatedAtKey(draftKey));
     try {
       await fetchWithSessionRecovery('/api/drafts', {
         method: 'PUT',
@@ -541,14 +562,18 @@ function hideNewSiteBannerForLater() {
 
 function getActiveUserStorageKey(prefix) {
   const browserId = localStorage.getItem('blog_browser_id') || 'browser-guest';
-  const userId = localStorage.getItem('blog_user_id') || localStorage.getItem('blog_username') || 'guest';
-  const primary = `${prefix}:${browserId}:${userId}`;
-  const fallback = `${prefix}:browser:${browserId}`;
+  const username = localStorage.getItem('blog_username') || '';
+  const userId = localStorage.getItem('blog_user_id') || username || 'guest';
+
+  if (userId && userId !== 'guest' && String(userId).trim() !== '') {
+    return `${prefix}:user:${String(userId).trim()}`;
+  }
+
+  const browserOnly = `${prefix}:browser:${browserId}`;
   try {
-    if (localStorage.getItem(primary) !== null) return primary;
-    if (localStorage.getItem(fallback) !== null) return fallback;
+    if (localStorage.getItem(browserOnly) !== null) return browserOnly;
   } catch {}
-  return primary;
+  return browserOnly;
 }
 
 function saveBlogTitle() {
@@ -1510,7 +1535,7 @@ async function flushPendingEntries() {
       const response = await fetchWithSessionRecovery('/api/entries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: entry.title, content: entry.content, source: entry.source || 'main', tzOffset: new Date().getTimezoneOffset() })
+        body: JSON.stringify({ title: entry.title, content: entry.content, source: entry.source || 'main' })
       });
       if (response.ok) {
         continue;

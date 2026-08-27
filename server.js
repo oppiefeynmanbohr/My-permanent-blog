@@ -15,6 +15,7 @@ const {
 // ── Turso cloud DB (permanent storage) or local SQLite fallback ───────────────
 const TURSO_URL = process.env.TURSO_URL || '';
 const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN || '';
+const LOCAL_ONLY_MODE = !TURSO_URL;
 let tursoClient = null;
 if (TURSO_URL) {
   try {
@@ -22,6 +23,8 @@ if (TURSO_URL) {
     tursoClient = createClient({ url: TURSO_URL, authToken: TURSO_AUTH_TOKEN });
     console.log('Using Turso cloud database for permanent storage.');
   } catch (e) { console.error('Turso init failed, falling back to SQLite:', e.message); }
+} else {
+  console.log('Local-only mode active: each user keeps separate entries on this computer.');
 }
 
 const app = express();
@@ -607,18 +610,15 @@ async function sendTextMessage(to, code) {
   return { ok: true };
 }
 
-// tzOffsetMinutes matches JS Date.getTimezoneOffset() (minutes behind UTC); when given,
-// the timestamp reflects the visitor's local time instead of the server's (UTC) time.
-function formatTimestamp(date, tzOffsetMinutes) {
-  const useOffset = typeof tzOffsetMinutes === 'number' && !Number.isNaN(tzOffsetMinutes);
-  const d = useOffset ? new Date(date.getTime() - tzOffsetMinutes * 60000) : date;
-  const getMonth = useOffset ? d.getUTCMonth() : d.getMonth();
-  const getDate = useOffset ? d.getUTCDate() : d.getDate();
-  const getYear = useOffset ? d.getUTCFullYear() : d.getFullYear();
-  const datePart = `${String(getMonth + 1).padStart(2, '0')}/${String(getDate).padStart(2, '0')}/${getYear}`;
+function formatTimestamp(date) {
+  const datePart = new Intl.DateTimeFormat('en-US', {
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric'
+  }).format(date);
 
-  let hours = useOffset ? d.getUTCHours() : d.getHours();
-  const minutes = useOffset ? d.getUTCMinutes() : d.getMinutes();
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
   const ampm = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12 || 12;
   const minutePart = String(minutes).padStart(2, '0');
@@ -1106,13 +1106,11 @@ app.get('/api/entries', async (req, res) => {
 app.post('/api/entries', async (req, res) => {
   cleanupAuthState();
   const user = await getAuthenticatedUser(req, res);
-  if (!user) return res.status(401).json({ error: 'Sign in to save entries to your personal blog.' });
   const browserId = getOrCreateClientId(req, res);
 
-  const { title, content, source, caldate, tzOffset } = req.body;
+  const { title, content, source, caldate } = req.body;
   if (!content) return res.status(400).json({ error: 'Content is required.' });
 
-  const tzOffsetMinutes = typeof tzOffset === 'number' && !Number.isNaN(tzOffset) ? tzOffset : undefined;
   const autoTitle = title || `Entry ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
   const entrySource = source || 'main';
 
@@ -1121,10 +1119,10 @@ app.post('/api/entries', async (req, res) => {
   if (caldate && /^\d{4}-\d{2}-\d{2}$/.test(caldate)) {
     now = new Date(`${caldate}T12:00:00`);
   }
-  const timestamp = caldate ? formatTimestamp(now) : formatTimestamp(now, tzOffsetMinutes);
+  const timestamp = formatTimestamp(now);
   const createdAt = now.toISOString();
   const sql = 'INSERT INTO entries (title, content, timestamp, created_at, published, user_id, source, browser_id) VALUES (?, ?, ?, ?, 0, ?, ?, ?)';
-  const userId = user.userId;
+  const userId = user ? user.userId : null;
 
   try {
     const result = await dbRun(sql, [autoTitle, content, timestamp, createdAt, userId, entrySource, browserId]);

@@ -17,7 +17,43 @@ Then open:
 http://127.0.0.1:3000
 ```
 
-## Using a custom domain later
+## Deploying to Render
+
+This project is already configured for Render with a `render.yaml` file and a Dockerfile.
+
+1. Push this repo to GitHub.
+2. In Render, click New + > Web Service.
+3. Connect the GitHub repo.
+4. Keep the default settings or use the existing `render.yaml` config.
+5. Add environment variables in Render if you want cloud storage and email support:
+   - `TURSO_URL`
+   - `TURSO_AUTH_TOKEN`
+   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`
+   - `ADMIN_OVERRIDE_CODE` (optional)
+6. Click Create Web Service.
+
+Render will start the app with the existing Node/start command and expose it on a public URL.
+
+## Running on your laptop too
+
+To run the same app locally on your laptop:
+
+```bash
+npm install
+node server.js
+```
+
+Then open:
+
+```text
+http://127.0.0.1:3000
+```
+
+## Important note on data
+
+If you want both your laptop and Render to share the same entries and settings, use a shared cloud database such as Turso. Without `TURSO_URL`/`TURSO_AUTH_TOKEN`, the app falls back to local SQLite files in `data/`, which means each machine keeps its own local data.
+
+For a custom domain later
 
 When you are ready to make the site public, deploy it on a server and point your domain to that server.
 
