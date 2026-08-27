@@ -310,7 +310,13 @@
         return window.fetch(url, Object.assign({ credentials: 'same-origin' }, options || {}));
       }
 
+      // Surface otherwise-silent script errors so "nothing happens" clicks are diagnosable.
+      window.addEventListener('error', function (event) {
+        setStatus('Script error: ' + (event.message || 'unknown error') + '. Try refreshing the page.');
+      });
+
       document.addEventListener('click', async function (event) {
+        try {
         var rawTarget = event.target;
         var target = rawTarget && rawTarget.nodeType === 1
           ? rawTarget
@@ -339,7 +345,7 @@
               method: 'POST',
               credentials: 'same-origin',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ content: content, source: 'main' })
+              body: JSON.stringify({ content: content, source: 'main', tzOffset: new Date().getTimezoneOffset() })
             });
             var saveData = await saveResp.json().catch(function () { return {}; });
             if (!saveResp.ok) {
@@ -513,6 +519,9 @@
             btn.disabled = false;
             inFlightActions.delete(actionKey);
           }
+        }
+        } catch (outerErr) {
+          setStatus('Unexpected error: ' + (outerErr && outerErr.message ? outerErr.message : String(outerErr)));
         }
       }, true);
     })();

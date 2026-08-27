@@ -210,7 +210,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ content, source: 'page4' })
+          body: JSON.stringify({ content, source: 'page4', tzOffset: new Date().getTimezoneOffset() })
         });
         if (r.status === 401) {
           saveStatus.textContent = 'Session expired — redirecting to login...';

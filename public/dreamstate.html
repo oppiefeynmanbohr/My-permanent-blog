@@ -222,7 +222,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            body: JSON.stringify({ content, source: 'dreamstate' })
+            body: JSON.stringify({ content, source: 'dreamstate', tzOffset: new Date().getTimezoneOffset() })
           });
         } catch {}
       }, 3000);
@@ -257,7 +257,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ content, source: 'dreamstate' })
+          body: JSON.stringify({ content, source: 'dreamstate', tzOffset: new Date().getTimezoneOffset() })
         });
         if (r.status === 401) {
           setStatus('Session expired — redirecting to login...', 'err');

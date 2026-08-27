@@ -131,7 +131,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ content, source: PAGE_SOURCE })
+          body: JSON.stringify({ content, source: PAGE_SOURCE, tzOffset: new Date().getTimezoneOffset() })
         });
         if (!res.ok) {
           if (res.status === 401) {

@@ -419,7 +419,7 @@ async function saveEntry() {
     const response = await fetchWithSessionRecovery('/api/entries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: pendingEntry.title, content })
+      body: JSON.stringify({ title: pendingEntry.title, content, tzOffset: new Date().getTimezoneOffset() })
     });
 
     if (!response.ok) {
@@ -1510,7 +1510,7 @@ async function flushPendingEntries() {
       const response = await fetchWithSessionRecovery('/api/entries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: entry.title, content: entry.content, source: entry.source || 'main' })
+        body: JSON.stringify({ title: entry.title, content: entry.content, source: entry.source || 'main', tzOffset: new Date().getTimezoneOffset() })
       });
       if (response.ok) {
         continue;

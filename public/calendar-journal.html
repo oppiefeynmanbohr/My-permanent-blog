@@ -342,7 +342,7 @@
         const r = await fetch('/api/entries', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ content, source: 'calendar', caldate: dateStr })
+          body: JSON.stringify({ content, source: 'calendar', caldate: dateStr, tzOffset: new Date().getTimezoneOffset() })
         });
         if (!r.ok) { status.textContent = 'Could not save. Try again.'; return; }
         const newEntry = await r.json();
