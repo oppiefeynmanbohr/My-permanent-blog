@@ -1065,9 +1065,7 @@ app.get('/api/entries', async (req, res) => {
   const published = req.query.published;
   const isPublicFeed = published === 'true';
   const user = isPublicFeed ? null : await getAuthenticatedUser(req, res);
-  if (!isPublicFeed && !user) {
-    return res.status(401).json({ error: 'Sign in to access your personal blog.' });
-  }
+  const browserId = getOrCreateClientId(req, res);
   const source = req.query.source || '';
   const calmonth = req.query.calmonth || ''; // e.g. '2026-07'
   const order = (req.query.order || 'asc').toLowerCase() === 'desc' ? 'DESC' : 'ASC';
@@ -1081,7 +1079,15 @@ app.get('/api/entries', async (req, res) => {
 
   // The published feed is intentionally public; every other query belongs only
   // to the authenticated blogger.
-  if (!isPublicFeed) { clauses.push('user_id = ?'); params.push(user.userId); }
+  if (!isPublicFeed) {
+    if (user) {
+      clauses.push('(user_id = ? OR (user_id IS NULL AND browser_id = ?))');
+      params.push(user.userId, browserId);
+    } else {
+      clauses.push('user_id IS NULL AND browser_id = ?');
+      params.push(browserId);
+    }
+  }
 
   if (source) { clauses.push('source = ?'); params.push(source); }
   if (calmonth) { clauses.push("strftime('%Y-%m', created_at) = ?"); params.push(calmonth); }
